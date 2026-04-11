@@ -147,33 +147,37 @@
 @endsection
 @push('scripts')
     <script>
-        var token = localStorage.getItem('fcm_token');
-        if (token) {
-            document.querySelector('input[name="fcm_token"]').value = token;
-        }
-        const recoveryToggle = document.getElementById('toggle-recovery-code');
-        recoveryToggle?.addEventListener('click', function (e) {
-            e.preventDefault();
-            const wrapper = document.getElementById('recovery-code-wrapper');
-            wrapper?.classList.toggle('d-none');
-        });
-        document.addEventListener('click', function (e) {
-            const btn = e.target.closest('.copy-cred');
-            if (!btn) return;
-            e.preventDefault();
-            const form = document.querySelector(btn.getAttribute('data-target-form'));
-            if (!form) return;
-            const email = btn.getAttribute('data-email');
-            const password = btn.getAttribute('data-password');
-            const emailInput = form.querySelector('input[name="email"]');
-            const passInput = form.querySelector('input[name="password"]');
-            if (emailInput) emailInput.value = email;
-            if (passInput) passInput.value = password;
-            try {
-                navigator.clipboard && navigator.clipboard.writeText(password);
-            } catch (err) {
-                // noop
+        (function () {
+            var token = localStorage.getItem('fcm_token');
+            if (token) {
+                document.querySelector('input[name="fcm_token"]').value = token;
             }
-        });
+
+            const recoveryToggle = document.getElementById('toggle-recovery-code');
+            recoveryToggle?.addEventListener('click', function (e) {
+                e.preventDefault();
+                const wrapper = document.getElementById('recovery-code-wrapper');
+                wrapper?.classList.toggle('d-none');
+            });
+
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('.copy-cred');
+                if (!btn) return;
+                e.preventDefault();
+                const form = document.querySelector(btn.getAttribute('data-target-form'));
+                if (!form) return;
+                const email = btn.getAttribute('data-email');
+                const password = btn.getAttribute('data-password');
+                const emailInput = form.querySelector('input[name="email"]');
+                const passInput = form.querySelector('input[name="password"]');
+                if (emailInput) emailInput.value = email;
+                if (passInput) passInput.value = password;
+                try {
+                    navigator.clipboard && navigator.clipboard.writeText(password);
+                } catch (err) {
+                    // noop
+                }
+            });
+        })();
     </script>
 @endpush

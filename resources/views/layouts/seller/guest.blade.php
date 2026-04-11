@@ -30,7 +30,6 @@
     </div>
 </div>
 @include('layouts.partials._scripts')
-@stack('scripts')
 </body>
 
 </html>

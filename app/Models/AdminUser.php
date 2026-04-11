@@ -68,7 +68,16 @@ class AdminUser extends Authenticatable implements HasMedia
 
     public function isTotpEnabled(): bool
     {
-        return !empty($this->totp_secret) && !empty($this->totp_enabled_at);
+        if (empty($this->totp_enabled_at)) {
+            return false;
+        }
+
+        try {
+            return !empty($this->totp_secret);
+        } catch (\Throwable $e) {
+            report($e);
+            return false;
+        }
     }
 
     public function getDefaultGuardName(): string

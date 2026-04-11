@@ -1,0 +1,95 @@
+<?php
+
+namespace App\Http\Resources\Product;
+
+use App\Models\Review;
+use App\Models\SellerFeedback;
+use App\Services\CurrencyService;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class ProductResource extends JsonResource
+{
+
+    public function toArray($request): array
+    {
+        $reviews = Review::scopeProductRatingStats($this->id);
+        $stats = SellerFeedback::getSellerFeedbackStatistics($this->seller_id);
+        $currency = app(CurrencyService::class);
+
+        return [
+            'id' => $this->id,
+            'uuid' => $this->uuid,
+            'category_id' => $this->category_id,
+            'brand_id' => $this->brand_id,
+            'seller_id' => $this->seller_id,
+            'title' => $this->title,
+            'slug' => $this->slug,
+            'type' => $this->type,
+            'short_description' => $this->short_description,
+            'description' => $this->description,
+            'category' => $this->category?->slug,
+            'brand' => $this->brand?->slug,
+            'item_count_in_cart' => $this->itemCountInCart ?? 0,
+            'category_name' => $this->category?->title,
+            'brand_name' => $this->brand?->title,
+            'seller' => $this->seller?->user->name ?? "N/A",
+            'indicator' => $this->indicator,
+            'favorite' => $this->favorite,
+            'estimated_delivery_time' => $this->estimated_delivery_time,
+            'ratings' => (float)$reviews['average_rating'] ?? 0,
+            'rating_count' => (float)$reviews['total_reviews'] ?? 0,
+            'main_image' => $this->main_image,
+            'image_fit' => $this->image_fit,
+            'additional_images' => $this->additional_images,
+            'minimum_order_quantity' => (float) $this->minimum_order_quantity,
+            'quantity_step_size' => (float) $this->quantity_step_size,
+            'total_allowed_quantity' => (float) $this->total_allowed_quantity,
+            'is_returnable' => (float)$this->is_returnable,
+            'returnable_days' => $this->returnable_days,
+            'is_cancelable' => (float)$this->is_cancelable,
+            'cancelable_till' => $this->cancelable_till,
+            'tags' => $this->tags,
+            // Dynamic custom fields stored as JSON in DB
+            'custom_fields' => $this->custom_fields ?? [],
+            'warranty_period' => $this->warranty_period,
+            'guarantee_period' => $this->guarantee_period,
+            'made_in' => $this->made_in,
+            'is_inclusive_tax' => $this->is_inclusive_tax,
+            'video_type' => $this->video_type,
+            'video_link' => $this->video_link,
+            'status' => $this->status,
+            'featured' => $this->featured,
+            'metadata' => $this->metadata,
+            'is_indexable' => $this->is_indexable ?? true,
+            'seo_title' => $this->metadata['seo_title'] ?? null,
+            'seo_description' => $this->metadata['seo_description'] ?? null,
+            'seo_keywords' => $this->metadata['seo_keywords'] ?? null,
+            'og_title' => $this->metadata['og_title'] ?? null,
+            'og_description' => $this->metadata['og_description'] ?? null,
+            'og_image' => $this->resolveMetadataImageUrl('og_image'),
+            'twitter_title' => $this->metadata['twitter_title'] ?? null,
+            'twitter_description' => $this->metadata['twitter_description'] ?? null,
+            'twitter_card' => $this->metadata['twitter_card'] ?? null,
+            'twitter_image' => $this->resolveMetadataImageUrl('twitter_image'),
+            'schema_mode' => $this->metadata['schema_mode'] ?? 'auto',
+            'schema_json_ld' => $this->metadata['schema_json_ld'] ?? null,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+            'currency_symbol' => $currency->getSymbol(),
+            'currency_code' => $currency->getCode(),
+            'seller_ratings' => $stats,
+            'store_status' => optional(
+                    $this->variants->first()?->storeProductVariants->first()?->store
+                )->checkStoreStatus() ?? [],
+            'variants' => ProductVariantResource::collection($this->whenLoaded('variants')),
+            'attributes' => $this->getFormattedVariantAttributes(),
+        ];
+    }
+
+    private function resolveMetadataImageUrl(string $key): ?string
+    {
+        $path = $this->metadata[$key] ?? null;
+
+        return !empty($path) ? url('storage/' . ltrim($path, '/')) : null;
+    }
+}

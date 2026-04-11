@@ -1,0 +1,25 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class HeroTrustBadge extends Model
+{
+    protected $fillable = [
+        'icon_name',
+        'label',
+        'sort_order',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active'  => 'boolean',
+        'sort_order' => 'integer',
+    ];
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+}

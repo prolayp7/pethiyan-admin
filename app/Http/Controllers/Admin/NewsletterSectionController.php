@@ -1,0 +1,107 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Setting;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
+
+class NewsletterSectionController extends Controller
+{
+    private const SETTING_KEY = 'newsletter_section';
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Index
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function show(): View
+    {
+        $settings = $this->getSettings();
+        return view('admin.newsletter-section.index', compact('settings'));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Save Settings
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'is_active'         => 'required|boolean',
+            'badge_text'        => 'nullable|string|max:120',
+            'heading'           => 'nullable|string|max:255',
+            'heading_highlight' => 'nullable|string|max:255',
+            'subheading'        => 'nullable|string|max:500',
+            'perks'             => 'nullable|array|max:10',
+            'perks.*'           => 'nullable|string|max:200',
+            'form_title'        => 'nullable|string|max:200',
+            'form_subtitle'     => 'nullable|string|max:300',
+        ]);
+
+        // Filter empty perk entries
+        $data['perks'] = array_values(array_filter($data['perks'] ?? [], fn($p) => trim((string) $p) !== ''));
+
+        Setting::updateOrCreate(
+            ['variable' => self::SETTING_KEY],
+            ['value'    => json_encode($data, JSON_UNESCAPED_UNICODE)]
+        );
+
+        $this->triggerFrontendRevalidate();
+
+        return response()->json(['success' => true, 'message' => 'Newsletter section settings saved.']);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public static function getSettings(): array
+    {
+        $setting = Setting::where('variable', self::SETTING_KEY)->first();
+        $value   = [];
+        if ($setting) {
+            $value = is_array($setting->value)
+                ? $setting->value
+                : (json_decode((string) $setting->value, true) ?: []);
+        }
+
+        return [
+            'is_active'         => $value['is_active']         ?? true,
+            'badge_text'        => $value['badge_text']        ?? 'Newsletter',
+            'heading'           => $value['heading']           ?? 'Stay Updated with',
+            'heading_highlight' => $value['heading_highlight'] ?? 'Packaging Trends',
+            'subheading'        => $value['subheading']        ?? 'Join 5,000+ brand owners who get our weekly packaging insights, exclusive deals, and new product alerts.',
+            'perks'             => $value['perks']             ?? [
+                'Exclusive deals & early access',
+                'New product announcements',
+                'Packaging tips & brand guides',
+            ],
+            'form_title'        => $value['form_title']        ?? 'Get packaging insights',
+            'form_subtitle'     => $value['form_subtitle']     ?? 'No spam, unsubscribe any time.',
+        ];
+    }
+
+    private function triggerFrontendRevalidate(): void
+    {
+        $frontendUrl = rtrim((string) env('FRONTEND_APP_URL', ''), '/');
+        $secret      = (string) env('FRONTEND_REVALIDATE_SECRET', '');
+
+        if ($frontendUrl === '' || $secret === '') {
+            return;
+        }
+
+        try {
+            Http::timeout(3)->post("{$frontendUrl}/api/revalidate", [
+                'secret' => $secret,
+                'tags'   => ['newsletter-section'],
+                'paths'  => ['/'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Newsletter Section revalidation failed.', ['message' => $e->getMessage()]);
+        }
+    }
+}

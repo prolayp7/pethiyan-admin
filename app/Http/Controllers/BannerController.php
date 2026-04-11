@@ -40,6 +40,7 @@ class BannerController extends Controller
             $this->createPermission = $this->hasPermission(AdminPermissionEnum::BANNER_CREATE());
         }
     }
+    
 
     /**
      * Display a listing of the resource.

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\SettingTypeEnum;
 use App\Http\Controllers\Controller;
+use App\Services\SettingService;
 use App\Services\TotpService;
 use App\Types\Api\ApiResponseType;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +14,10 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminTotpController extends Controller
 {
-    public function __construct(private readonly TotpService $totpService)
+    public function __construct(
+        private readonly TotpService $totpService,
+        private readonly SettingService $settingService
+    )
     {
     }
 
@@ -34,7 +39,7 @@ class AdminTotpController extends Controller
 
         $request->session()->put('admin_totp_setup_secret', $secret);
 
-        $issuer = config('app.name', 'Lcommerce');
+        $issuer = $this->resolveIssuerName($request);
         $account = $admin->email ?: ('admin_' . $admin->id);
         $otpauth = $this->totpService->getProvisioningUri($issuer, $account, $secret);
 
@@ -147,5 +152,14 @@ class AdminTotpController extends Controller
         return ApiResponseType::sendJsonResponse(true, 'Recovery codes regenerated successfully.', [
             'recovery_codes' => $recoveryCodes,
         ]);
+    }
+
+    private function resolveIssuerName(Request $request): string
+    {
+        $systemSettings = $this->settingService
+            ->getSettingByVariable(SettingTypeEnum::SYSTEM())
+            ?->toArray($request)['value'] ?? [];
+
+        return (string) ($systemSettings['appName'] ?? config('app.name', 'Lcommerce'));
     }
 }

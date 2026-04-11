@@ -448,26 +448,38 @@
                                     <h4 class="card-title">Google Authenticator (TOTP)</h4>
                                 </div>
                                 <div class="card-body">
-                                    <div class="mb-3">
-                                        <span class="badge {{ $adminTotpEnabled ? 'bg-green' : 'bg-secondary' }}" id="totp-status-badge">{{ $adminTotpEnabled ? 'Enabled' : 'Disabled' }}</span>
-                                        <small class="text-muted d-block mt-1" id="totp-enabled-at">{{ $adminTotpEnabledAt ? 'Enabled at: ' . $adminTotpEnabledAt : '' }}</small>
+                                    <div class="border rounded-3 p-3 p-lg-4 bg-light-subtle mb-4">
+                                        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+                                            <div>
+                                                <div class="text-uppercase text-secondary fw-semibold small">Status</div>
+                                                <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                                                    <span class="badge rounded-pill px-3 py-2 {{ $adminTotpEnabled ? 'bg-green text-white' : 'bg-secondary text-white' }}" id="totp-status-badge">{{ $adminTotpEnabled ? 'Enabled' : 'Disabled' }}</span>
+                                                    <small class="text-muted" id="totp-enabled-at">{{ $adminTotpEnabledAt ? 'Enabled at: ' . $adminTotpEnabledAt : '' }}</small>
+                                                </div>
+                                            </div>
+                                            <div class="text-secondary small">
+                                                Protect admin logins with Google Authenticator verification.
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div id="totp-setup-block" class="border rounded p-3 mb-3 {{ $adminTotpEnabled ? 'd-none' : '' }}">
+                                    <div id="totp-setup-block" class="border rounded-3 p-3 p-lg-4 mb-3 bg-white {{ $adminTotpEnabled ? 'd-none' : '' }}">
                                         <div class="d-flex align-items-center justify-content-between mb-3">
                                             <h5 class="mb-0">Setup</h5>
                                             <button type="button" class="btn btn-primary btn-sm" id="totp-start-setup-btn">Start Setup</button>
                                         </div>
-                                        <p class="text-muted mb-3">Scan QR with Google Authenticator, then enable with one code.</p>
+                                        <p class="text-muted mb-4">Scan the QR code with Google Authenticator, or use the manual secret if scanning is unavailable.</p>
                                         <div id="totp-setup-data" class="d-none">
-                                            <div class="row g-3 align-items-center">
-                                                <div class="col-md-4">
-                                                    <img id="totp-qr-image" src="" alt="TOTP QR" class="img-fluid border rounded">
+                                            <div class="row g-4 align-items-center">
+                                                <div class="col-lg-4 col-md-5">
+                                                    <div class="border rounded-3 p-3 text-center bg-light">
+                                                        <img id="totp-qr-image" src="" alt="TOTP QR" class="img-fluid rounded-2">
+                                                    </div>
                                                 </div>
-                                                <div class="col-md-8">
-                                                    <label class="form-label">Manual Secret</label>
+                                                <div class="col-lg-8 col-md-7">
+                                                    <label class="form-label fw-semibold">Manual Secret</label>
                                                     <input type="text" class="form-control" id="totp-manual-secret" readonly>
-                                                    <small class="text-muted">Use this if QR scan does not work.</small>
+                                                    <small class="text-muted d-block mt-2">Use this secret if the QR code does not scan properly.</small>
                                                 </div>
                                             </div>
                                         </div>
@@ -488,7 +500,7 @@
                                         </form>
                                     </div>
 
-                                    <div id="totp-manage-block" class="border rounded p-3 {{ $adminTotpEnabled ? '' : 'd-none' }}">
+                                    <div id="totp-manage-block" class="border rounded-3 p-3 p-lg-4 bg-white {{ $adminTotpEnabled ? '' : 'd-none' }}">
                                         <h5 class="mb-3">Manage</h5>
                                         <form id="totp-disable-form" class="mb-3">
                                             <div class="row g-3">
@@ -528,7 +540,7 @@
                                     </div>
 
                                     <div id="totp-recovery-codes-wrapper" class="mt-3 d-none">
-                                        <label class="form-label">Recovery Codes</label>
+                                        <label class="form-label fw-semibold">Recovery Codes</label>
                                         <ul class="list-group" id="totp-recovery-codes-list"></ul>
                                         <small class="text-danger d-block mt-2">Save these codes now. They may not be shown again.</small>
                                     </div>
@@ -639,12 +651,12 @@
 
         const setTotpUi = (enabled, enabledAt = null) => {
             if (enabled) {
-                totpStatusBadge.className = 'badge bg-green';
+                totpStatusBadge.className = 'badge rounded-pill px-3 py-2 bg-green text-white';
                 totpStatusBadge.textContent = 'Enabled';
                 totpSetupBlock.classList.add('d-none');
                 totpManageBlock.classList.remove('d-none');
             } else {
-                totpStatusBadge.className = 'badge bg-secondary';
+                totpStatusBadge.className = 'badge rounded-pill px-3 py-2 bg-secondary text-white';
                 totpStatusBadge.textContent = 'Disabled';
                 totpSetupBlock.classList.remove('d-none');
                 totpManageBlock.classList.add('d-none');
@@ -666,7 +678,7 @@
                 const data = response?.data?.data || {};
                 setTotpUi(Boolean(data.enabled), data.enabled_at ?? null);
             }).catch((error) => {
-                totpStatusBadge.className = 'badge bg-red';
+                totpStatusBadge.className = 'badge rounded-pill px-3 py-2 bg-red text-white';
                 totpStatusBadge.textContent = 'Status unavailable';
                 handleApiError(error);
             });

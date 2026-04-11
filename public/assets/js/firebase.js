@@ -13,12 +13,19 @@ function toSafeHttpUrl(url) {
 
 async function initFirebase() {
     try {
+        const httpClient = window.axios || globalThis.axios;
+
+        if (!httpClient) {
+            console.warn('Axios is unavailable; skipping Firebase initialization.');
+            return;
+        }
+
         // 🔹 Check if config is cached
         let firebaseConfig = JSON.parse(localStorage.getItem('firebase_config'));
 
         // 🔹 If not found, call API once
         if (!firebaseConfig) {
-            const { data } = await axios.get('/api/settings/firebase-config');
+            const { data } = await httpClient.get('/api/settings/firebase-config');
             firebaseConfig = data.data;
             localStorage.setItem('firebase_config', JSON.stringify(firebaseConfig));
         }

@@ -2,6 +2,15 @@
 <!-- include jQuery library -->
 <script src="{{asset('assets/vendor/axios/axios.min.js')}}"></script>
 <script src="{{asset('assets/vendor/jquery/jquery.js')}}"></script>
+<script>
+    window.axios = window.axios || globalThis.axios;
+    window.jQuery = window.jQuery || globalThis.jQuery || globalThis.$;
+    window.$ = window.$ || window.jQuery || globalThis.$;
+
+    var axios = window.axios;
+    var jQuery = window.jQuery;
+    var $ = window.$;
+</script>
 
 <script src="{{asset('assets/theme/js/tabler.min.js')}}" defer></script>
 {{--<script src="{{asset('assets/theme/js/style.min.js')}}" defer></script>--}}

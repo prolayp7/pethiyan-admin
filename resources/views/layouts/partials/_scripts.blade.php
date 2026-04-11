@@ -35,7 +35,7 @@
 <script src="{{asset('assets/vendor/tom-select/js/tom-select.base.min.js')}}" defer></script>
 
 {{-- sweet alert --}}
-<script src="{{asset('assets/vendor/sweetalert/js/sweetalert2.all.min.js')}}"></script>
+<script src="{{hyperAsset('assets/vendor/sweetalert/js/sweetalert2.all.min.js')}}"></script>
 
 {{-- Data Table --}}
 <script src="{{asset('assets/vendor/datatable/js/dataTables.js')}}" defer></script>
@@ -61,17 +61,24 @@
     const base_url = document.getElementById('base_url')?.value;
     const user_id = document.getElementById('user_id')?.value;
     const currencySymbol = document.getElementById('selected-currency-symbol')?.value;
-    const Toast = Swal.mixin({
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-            toast.onmouseenter = Swal.stopTimer;
-            toast.onmouseleave = Swal.resumeTimer;
-        }
-    });
+    const Toast = typeof Swal !== 'undefined'
+        ? Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+            }
+        })
+        : {
+            fire: ({ title = '', icon = 'info' } = {}) => {
+                const logMethod = icon === 'error' ? 'error' : 'log';
+                console[logMethod](title);
+            }
+        };
 
     // Theme switching functions
     function getCurrentTheme() {

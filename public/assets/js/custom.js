@@ -303,16 +303,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-$(document).on('hidden.bs.modal', '.modal', function () {
-    const forms = this.querySelectorAll('form.form-submit');
+document.addEventListener('hidden.bs.modal', function (event) {
+    if (!event.target.classList.contains('modal')) return;
+
+    const forms = event.target.querySelectorAll('form.form-submit');
     forms.forEach(function (form) {
         clearValidationErrors(form);
     });
 });
 
 // Clear validation errors when modal is shown (optional - for fresh start)
-$(document).on('shown.bs.modal', '.modal', function () {
-    const forms = this.querySelectorAll('form.form-submit');
+document.addEventListener('shown.bs.modal', function (event) {
+    if (!event.target.classList.contains('modal')) return;
+
+    const forms = event.target.querySelectorAll('form.form-submit');
     forms.forEach(function (form) {
         clearValidationErrors(form);
     });

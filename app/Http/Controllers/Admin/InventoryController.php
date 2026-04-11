@@ -106,12 +106,12 @@ class InventoryController extends Controller
                 'price'        => '₹' . number_format($spv->attributes['price'] ?? 0, 2),
                 'stock'        => $spv->stock,
                 'stock_status' => '<span class="badge bg-' . $stockClass . '">' . $stockLabel . '</span>',
-                'action'       => '<button class="btn btn-sm btn-outline-primary btn-edit-stock"
+                'action'       => '<button class="btn btn-sm btn-ghost-primary btn-edit-stock d-inline-flex align-items-center gap-1 px-3 text-nowrap"
                                     data-id="' . $spv->id . '"
                                     data-stock="' . $spv->stock . '"
                                     data-product="' . e($product?->title) . '"
                                     data-variant="' . e($variantLabel) . '">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit" width="16" height="16"
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-edit" width="14" height="14"
                                         viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
                                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                                         <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/>

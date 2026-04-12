@@ -40,6 +40,8 @@ class SettingController extends Controller
 
     private const PAYMENT_UNLOCK_SESSION_KEY = 'admin_payment_settings_unlocked_at';
     private const PAYMENT_UNLOCK_TTL_MINUTES = 10;
+    private const AUTHENTICATION_UNLOCK_SESSION_KEY = 'admin_authentication_settings_unlocked_at';
+    private const AUTHENTICATION_UNLOCK_TTL_MINUTES = 10;
 
     /** Fields belonging to each system-settings section for partial saves */
     private const SYSTEM_SECTION_FIELDS = [
@@ -89,6 +91,14 @@ class SettingController extends Controller
                 );
             }
 
+            if ($type === SettingTypeEnum::AUTHENTICATION() && !$this->isAuthenticationSettingsUnlocked($request)) {
+                return ApiResponseType::sendJsonResponse(
+                    success: false,
+                    message: __('Please verify admin password and authenticator code to edit authentication settings.'),
+                    data: []
+                );
+            }
+
             // Map setting type to the corresponding class
             $method = match ($type) {
                 SettingTypeEnum::SYSTEM() => SystemSettingType::class,
@@ -127,6 +137,13 @@ class SettingController extends Controller
                         unset($payload[$mediaField]);
                     }
                 }
+            }
+
+            // For PAYMENT settings, merge existing DB values as defaults so that
+            // fields absent from the form (wallet, bank transfer, other gateways)
+            // are preserved rather than reset to empty on every save.
+            if ($type === SettingTypeEnum::PAYMENT() && !empty($existingValues)) {
+                $payload = array_merge($existingValues, $payload);
             }
 
             // Partial section save: merge submitted fields with existing values so
@@ -357,6 +374,10 @@ class SettingController extends Controller
                     ? $this->isPaymentSettingsUnlocked(request())
                     : false,
                 'paymentUnlockTtlMinutes' => self::PAYMENT_UNLOCK_TTL_MINUTES,
+                'authenticationSettingsUnlocked' => $variable === SettingTypeEnum::AUTHENTICATION()
+                    ? $this->isAuthenticationSettingsUnlocked(request())
+                    : false,
+                'authenticationUnlockTtlMinutes' => self::AUTHENTICATION_UNLOCK_TTL_MINUTES,
             ]);
         } catch (AuthorizationException $e) {
             abort(403, __('labels.unauthorized_access'));
@@ -434,6 +455,77 @@ class SettingController extends Controller
         $isValid = now()->timestamp <= ((int) $unlockedAt + (self::PAYMENT_UNLOCK_TTL_MINUTES * 60));
         if (!$isValid) {
             $request->session()->forget(self::PAYMENT_UNLOCK_SESSION_KEY);
+        }
+
+        return $isValid;
+    }
+
+    public function unlockAuthenticationSettings(Request $request): JsonResponse
+    {
+        try {
+            $this->authorize('updateSetting', [Setting::class, SettingTypeEnum::AUTHENTICATION()]);
+        } catch (AuthorizationException $e) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: __('labels.unauthorized_access'),
+                data: [],
+                status: 403
+            );
+        }
+
+        $validated = $request->validate([
+            'password' => 'required|string',
+            'totp_code' => 'required|string|size:6',
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+        if (!$admin) {
+            return ApiResponseType::sendJsonResponse(false, __('labels.unauthorized_access'), [], 401);
+        }
+
+        if (!Hash::check($validated['password'], $admin->password)) {
+            return ApiResponseType::sendJsonResponse(false, __('Invalid password.'), [], 422);
+        }
+
+        $totpEnabled = $admin instanceof \App\Models\AdminUser && method_exists($admin, 'isTotpEnabled')
+            ? $admin->isTotpEnabled()
+            : (!empty($admin->totp_secret) && !empty($admin->totp_enabled_at));
+
+        if (!$totpEnabled) {
+            return ApiResponseType::sendJsonResponse(false, __('Admin TOTP is not enabled.'), [], 422);
+        }
+
+        if (!$this->totpService->verifyCode($admin->totp_secret, trim($validated['totp_code']))) {
+            return ApiResponseType::sendJsonResponse(false, __('Invalid authenticator code.'), [], 422);
+        }
+
+        $request->session()->put(self::AUTHENTICATION_UNLOCK_SESSION_KEY, now()->timestamp);
+
+        return ApiResponseType::sendJsonResponse(true, __('Authentication settings unlocked.'), [
+            'unlocked' => true,
+            'expires_in_seconds' => self::AUTHENTICATION_UNLOCK_TTL_MINUTES * 60,
+        ]);
+    }
+
+    public function lockAuthenticationSettings(Request $request): JsonResponse
+    {
+        $request->session()->forget(self::AUTHENTICATION_UNLOCK_SESSION_KEY);
+
+        return ApiResponseType::sendJsonResponse(true, __('Authentication settings locked.'), [
+            'unlocked' => false,
+        ]);
+    }
+
+    private function isAuthenticationSettingsUnlocked(Request $request): bool
+    {
+        $unlockedAt = $request->session()->get(self::AUTHENTICATION_UNLOCK_SESSION_KEY);
+        if (empty($unlockedAt)) {
+            return false;
+        }
+
+        $isValid = now()->timestamp <= ((int) $unlockedAt + (self::AUTHENTICATION_UNLOCK_TTL_MINUTES * 60));
+        if (!$isValid) {
+            $request->session()->forget(self::AUTHENTICATION_UNLOCK_SESSION_KEY);
         }
 
         return $isValid;

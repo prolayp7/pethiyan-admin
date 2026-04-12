@@ -26,13 +26,14 @@ class EasepayService
         $setting = $settingService->getSettingByVariable(SettingTypeEnum::PAYMENT());
         $value   = $setting?->value ?? [];
 
-        $this->merchantKey  = $value['easepayMerchantKey']  ?? '';
-        $this->merchantSalt = $value['easepayMerchantSalt'] ?? '';
-        $this->mode         = $value['easepayPaymentMode']  ?? PaymentModeEnum::Test->value;
+        $this->merchantKey  = trim($value['easepayMerchantKey']  ?? '');
+        $this->merchantSalt = trim($value['easepayMerchantSalt'] ?? '');
+        $this->mode         = trim($value['easepayPaymentMode']  ?? PaymentModeEnum::Test->value);
 
         $this->baseUrl = $this->mode === PaymentModeEnum::Live->value
             ? 'https://pay.easebuzz.in'
             : 'https://testpay.easebuzz.in';
+
     }
 
     // -------------------------------------------------------------------------

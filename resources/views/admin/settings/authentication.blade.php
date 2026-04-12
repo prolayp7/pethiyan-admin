@@ -18,6 +18,18 @@
     $adminUser = auth('admin')->user();
     $adminTotpEnabled = $adminUser && method_exists($adminUser, 'isTotpEnabled') ? $adminUser->isTotpEnabled() : false;
     $adminTotpEnabledAt = $adminUser?->totp_enabled_at;
+    $isUnlocked = (bool) ($authenticationSettingsUnlocked ?? false);
+    $maskValue = static function (?string $value): string {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+        $length = strlen($value);
+        if ($length <= 6) {
+            return str_repeat('•', $length);
+        }
+        return substr($value, 0, 3) . str_repeat('•', max(0, $length - 6)) . substr($value, -3);
+    };
 @endphp
 
 @section('admin-content')
@@ -50,6 +62,25 @@
                             <form action="{{ route('admin.settings.store') }}" class="form-submit" method="post">
                                 @csrf
                                 <input type="hidden" name="type" value="authentication">
+                                <div class="card mb-4 border-{{ $isUnlocked ? 'green' : 'orange' }}">
+                                    <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div>
+                                            <h4 class="card-title mb-1">Sensitive Authentication Credentials</h4>
+                                            @if($isUnlocked)
+                                                <p class="text-muted mb-0">Editing is temporarily unlocked for {{ $authenticationUnlockTtlMinutes ?? 10 }} minutes.</p>
+                                            @else
+                                                <p class="text-muted mb-0">Credentials are masked and locked by default. Verify password + authenticator code to edit.</p>
+                                            @endif
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            @if($isUnlocked)
+                                                <button type="button" class="btn btn-outline-danger" id="authentication-lock-btn">Lock Now</button>
+                                            @else
+                                                <button type="button" class="btn btn-primary" id="authentication-unlock-btn">Unlock to Edit</button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="card mb-4" id="pills-custom-sms">
                                     <div class="card-header">
                                         <h4 class="card-title">{{ __('labels.custom_sms') }}</h4>
@@ -60,7 +91,7 @@
                                                 <span class="col">{{ __('labels.enable_custom_sms') }}</span>
                                                 <span class="col-auto">
                                                         <label class="form-check form-check-single form-switch">
-                                                            <input class="form-check-input" type="checkbox"
+                                                            <input class="form-check-input auth-sensitive-toggle" type="checkbox"
                                                                    name="customSms" value="1" {{ isset($settings['customSms']) && $settings['customSms'] ? 'checked' : '' }} />
                                                         </label>
                                                     </span>
@@ -94,17 +125,19 @@
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.custom_sms_token_account_sid') }}</label>
-                                                <input type="text" class="form-control"
+                                                <input type="password" class="form-control sensitive-field revealable-field"
                                                        name="customSmsTokenAccountSid"
+                                                       id="customSmsTokenAccountSid"
                                                        placeholder="{{ __('labels.custom_sms_token_account_sid_placeholder') }}"
-                                                       value="{{ $settings['customSmsTokenAccountSid'] ?? '' }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['customSmsTokenAccountSid'] ?? '') : $maskValue($settings['customSmsTokenAccountSid'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.custom_sms_auth_token') }}</label>
-                                                <input type="text" class="form-control" name="customSmsAuthToken"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="customSmsAuthToken"
+                                                       id="customSmsAuthToken"
                                                        placeholder="{{ __('labels.custom_sms_auth_token_placeholder') }}"
-                                                       value="{{ $settings['customSmsAuthToken'] ?? '' }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['customSmsAuthToken'] ?? '') : $maskValue($settings['customSmsAuthToken'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
@@ -302,15 +335,17 @@
                                         <div class="mb-3">
                                             <label
                                                 class="form-label">{{ __('labels.google_recaptcha_site_key') }}</label>
-                                            <input type="text" class="form-control" name="googleRecaptchaSiteKey"
+                                            <input type="password" class="form-control sensitive-field revealable-field" name="googleRecaptchaSiteKey"
+                                                   id="googleRecaptchaSiteKey"
                                                    placeholder="{{ __('labels.google_recaptcha_site_key_placeholder') }}"
-                                                   value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['googleRecaptchaSiteKey'] ?? '****'), '****', 3, 8) : ($settings['googleRecaptchaSiteKey'] ?? '') }}"/>
+                                                   value="{{ $isUnlocked ? ($settings['googleRecaptchaSiteKey'] ?? '') : $maskValue($settings['googleRecaptchaSiteKey'] ?? '') }}"/>
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">{{ __('labels.google_api_key') }}</label>
-                                            <input type="text" class="form-control" name="googleApiKey"
+                                            <input type="password" class="form-control sensitive-field revealable-field" name="googleApiKey"
+                                                   id="googleApiKey"
                                                    placeholder="{{ __('labels.enter_google_api_key') }}"
-                                                   value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['googleApiKey'] ?? '****'), '****', 3, 8) : ($settings['googleApiKey'] ?? '') }}"/>
+                                                   value="{{ $isUnlocked ? ($settings['googleApiKey'] ?? '') : $maskValue($settings['googleApiKey'] ?? '') }}"/>
                                         </div>
                                     </div>
                                 </div>
@@ -324,7 +359,7 @@
                                                 <span class="col">{{ __('labels.enable_firebase') }}</span>
                                                 <span class="col-auto">
                                                         <label class="form-check form-check-single form-switch">
-                                                            <input class="form-check-input" type="checkbox"
+                                                            <input class="form-check-input auth-sensitive-toggle" type="checkbox"
                                                                    name="firebase" value="1" {{ isset($settings['firebase']) && $settings['firebase'] ? 'checked' : '' }} />
                                                         </label>
                                                     </span>
@@ -335,59 +370,67 @@
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_api_key') }}</label>
-                                                <input type="text" class="form-control" name="fireBaseApiKey"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="fireBaseApiKey"
+                                                       id="fireBaseApiKey"
                                                        placeholder="{{ __('labels.firebase_api_key_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseApiKey'] ?? '****'), '****', 3, 8) : ($settings['fireBaseApiKey'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseApiKey'] ?? '') : $maskValue($settings['fireBaseApiKey'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_auth_domain') }}</label>
-                                                <input type="text" class="form-control" name="fireBaseAuthDomain"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="fireBaseAuthDomain"
+                                                       id="fireBaseAuthDomain"
                                                        placeholder="{{ __('labels.firebase_auth_domain_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseAuthDomain'] ?? '****'), '****', 3, 8) : ($settings['fireBaseAuthDomain'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseAuthDomain'] ?? '') : $maskValue($settings['fireBaseAuthDomain'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_database_url') }}</label>
-                                                <input type="url" class="form-control" name="fireBaseDatabaseURL"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="fireBaseDatabaseURL"
+                                                       id="fireBaseDatabaseURL"
                                                        placeholder="{{ __('labels.firebase_database_url_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseDatabaseURL'] ?? '****'), '****', 3, 8) : ($settings['fireBaseDatabaseURL'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseDatabaseURL'] ?? '') : $maskValue($settings['fireBaseDatabaseURL'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_project_id') }}</label>
-                                                <input type="text" class="form-control" name="fireBaseProjectId"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="fireBaseProjectId"
+                                                       id="fireBaseProjectId"
                                                        placeholder="{{ __('labels.firebase_project_id_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseProjectId'] ?? '****'), '****', 3, 8) : ($settings['fireBaseProjectId'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseProjectId'] ?? '') : $maskValue($settings['fireBaseProjectId'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_storage_bucket') }}</label>
-                                                <input type="text" class="form-control" name="fireBaseStorageBucket"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="fireBaseStorageBucket"
+                                                       id="fireBaseStorageBucket"
                                                        placeholder="{{ __('labels.firebase_storage_bucket_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseStorageBucket'] ?? '****'), '****', 3, 8) : ($settings['fireBaseStorageBucket'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseStorageBucket'] ?? '') : $maskValue($settings['fireBaseStorageBucket'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_messaging_sender_id') }}</label>
-                                                <input type="text" class="form-control"
+                                                <input type="password" class="form-control sensitive-field revealable-field"
                                                        name="fireBaseMessagingSenderId"
+                                                       id="fireBaseMessagingSenderId"
                                                        placeholder="{{ __('labels.firebase_messaging_sender_id_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseMessagingSenderId'] ?? '****'), '****', 3, 8) : ($settings['fireBaseMessagingSenderId'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseMessagingSenderId'] ?? '') : $maskValue($settings['fireBaseMessagingSenderId'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_app_id') }}</label>
-                                                <input type="text" class="form-control" name="fireBaseAppId"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="fireBaseAppId"
+                                                       id="fireBaseAppId"
                                                        placeholder="{{ __('labels.firebase_app_id_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseAppId'] ?? '****'), '****', 3, 8) : ($settings['fireBaseAppId'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseAppId'] ?? '') : $maskValue($settings['fireBaseAppId'] ?? '') }}"/>
                                             </div>
                                             <div class="mb-3">
                                                 <label
                                                     class="form-label required">{{ __('labels.firebase_measurement_id') }}</label>
-                                                <input type="text" class="form-control" name="fireBaseMeasurementId"
+                                                <input type="password" class="form-control sensitive-field revealable-field" name="fireBaseMeasurementId"
+                                                       id="fireBaseMeasurementId"
                                                        placeholder="{{ __('labels.firebase_measurement_id_placeholder') }}"
-                                                       value="{{ ($systemSettings['demoMode'] ?? false) ? Str::mask(($settings['fireBaseMeasurementId'] ?? '****'), '****', 3, 8) : ($settings['fireBaseMeasurementId'] ?? '') }}"/>
+                                                       value="{{ $isUnlocked ? ($settings['fireBaseMeasurementId'] ?? '') : $maskValue($settings['fireBaseMeasurementId'] ?? '') }}"/>
                                             </div>
                                         </div>
                                     </div>
@@ -402,7 +445,7 @@
                                                 <span class="col">{{ __('labels.apple_login') }}</span>
                                                 <span class="col-auto">
                                                         <label class="form-check form-check-single form-switch">
-                                                            <input class="form-check-input" type="checkbox"
+                                                            <input class="form-check-input auth-sensitive-toggle" type="checkbox"
                                                                    name="appleLogin" value="1" {{ isset($settings['appleLogin']) && $settings['appleLogin'] ? 'checked' : '' }} />
                                                         </label>
                                                     </span>
@@ -413,7 +456,7 @@
                                                 <span class="col">{{ __('labels.google_login') }}</span>
                                                 <span class="col-auto">
                                                         <label class="form-check form-check-single form-switch">
-                                                            <input class="form-check-input" type="checkbox"
+                                                            <input class="form-check-input auth-sensitive-toggle" type="checkbox"
                                                                    name="googleLogin" value="1" {{ isset($settings['googleLogin']) && $settings['googleLogin'] ? 'checked' : '' }} />
                                                         </label>
                                                     </span>
@@ -436,7 +479,7 @@
                                     <div class="d-flex">
                                         @can('updateSetting', [\App\Models\Setting::class, 'authentication'])
                                             <button type="submit"
-                                                    class="btn btn-primary ms-auto">{{ __('labels.submit') }}</button>
+                                                    class="btn btn-primary ms-auto" id="authentication-submit-btn">{{ __('labels.submit') }}</button>
                                         @endcan
                                     </div>
                                 </div>
@@ -602,6 +645,17 @@
         const customSmsFields = document.getElementById('customSmsFields');
         const firebaseToggle = document.querySelector('input[name="firebase"]');
         const firebaseFields = document.getElementById('firebaseFields');
+        const sensitiveFields = document.querySelectorAll('.sensitive-field');
+        const authSensitiveToggles = document.querySelectorAll('.auth-sensitive-toggle');
+        const authenticationSubmitBtn = document.getElementById('authentication-submit-btn');
+        const authenticationUnlockBtn = document.getElementById('authentication-unlock-btn');
+        const authenticationLockBtn = document.getElementById('authentication-lock-btn');
+        const addFieldButtons = [
+            document.getElementById('addHeaderField'),
+            document.getElementById('addParamsField'),
+            document.getElementById('addBodyField')
+        ].filter(Boolean);
+        const unlocked = @json($isUnlocked);
 
         const toggleCustomSmsFields = () => {
             customSmsFields.style.display = customSmsToggle.checked ? 'block' : 'none';
@@ -609,15 +663,79 @@
         const toggleFirebaseFields = () => {
             firebaseFields.style.display = firebaseToggle.checked ? 'block' : 'none';
         };
+        const applyLockState = (isUnlockedState) => {
+            sensitiveFields.forEach((field) => {
+                field.readOnly = !isUnlockedState && field.tagName !== 'SELECT';
+                if (field.tagName === 'SELECT') {
+                    field.disabled = !isUnlockedState;
+                }
+            });
+            authSensitiveToggles.forEach((field) => {
+                field.disabled = !isUnlockedState;
+            });
+            addFieldButtons.forEach((button) => {
+                button.disabled = !isUnlockedState;
+            });
+            document.querySelectorAll('.remove-field').forEach((button) => {
+                button.disabled = !isUnlockedState;
+            });
+            if (authenticationSubmitBtn) {
+                authenticationSubmitBtn.disabled = !isUnlockedState;
+            }
+        };
+        const unlockAuthenticationSettings = async () => {
+            const password = window.prompt('Enter your admin password');
+            if (!password) return;
+            const totp = window.prompt('Enter 6-digit authenticator code');
+            if (!totp) return;
+
+            const response = await fetch(@json(route('admin.settings.authentication.unlock')), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    password: password,
+                    totp_code: totp
+                })
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.success === false) {
+                alert(payload.message || 'Failed to unlock authentication settings.');
+                return;
+            }
+            window.location.reload();
+        };
+        const lockAuthenticationSettings = async () => {
+            await fetch(@json(route('admin.settings.authentication.lock')), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+            window.location.reload();
+        };
 
         customSmsToggle?.addEventListener('change', toggleCustomSmsFields);
         firebaseToggle?.addEventListener('change', toggleFirebaseFields);
+        if (authenticationUnlockBtn) {
+            authenticationUnlockBtn.addEventListener('click', unlockAuthenticationSettings);
+        }
+        if (authenticationLockBtn) {
+            authenticationLockBtn.addEventListener('click', lockAuthenticationSettings);
+        }
         if (customSmsToggle && customSmsFields) {
             toggleCustomSmsFields();
         }
         if (firebaseToggle && firebaseFields) {
             toggleFirebaseFields();
         }
+        applyLockState(unlocked);
 
         const totpStatusBadge = document.getElementById('totp-status-badge');
         const totpEnabledAt = document.getElementById('totp-enabled-at');

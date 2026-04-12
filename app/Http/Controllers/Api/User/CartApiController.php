@@ -73,7 +73,7 @@ class CartApiController extends Controller
             $result['message'],
             $result['success']
                 ? [
-                'cart' => new CartResource($result['data']['cart']),
+                'cart' => $result['data']['cart'] ? new CartResource($result['data']['cart']) : null,
                 'synced_items' => $result['data']['synced_items'],
                 'failed_items' => $result['data']['failed_items'],
             ]

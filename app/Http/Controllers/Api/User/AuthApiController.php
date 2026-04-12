@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
 use Kreait\Firebase\Factory;
 use App\Models\OtpVerification;
@@ -278,6 +279,16 @@ class AuthApiController extends Controller
                 'token_type' => 'Bearer',
                 'data' => new UserResource($user)
             ]);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            $firstError = collect($errors)->flatten()->first() ?? $e->getMessage();
+
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: $firstError,
+                data: ['errors' => $errors],
+                status: 422
+            );
         } catch (AuthenticationException $e) {
             return ApiResponseType::sendJsonResponse(
                 success: false,

@@ -87,6 +87,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/', [SettingController::class, 'index'])->name('index');
             Route::post('payment/unlock', [SettingController::class, 'unlockPaymentSettings'])->name('payment.unlock');
             Route::post('payment/lock', [SettingController::class, 'lockPaymentSettings'])->name('payment.lock');
+            Route::post('authentication/unlock', [SettingController::class, 'unlockAuthenticationSettings'])->name('authentication.unlock');
+            Route::post('authentication/lock', [SettingController::class, 'lockAuthenticationSettings'])->name('authentication.lock');
             Route::get('{setting}', [SettingController::class, 'show'])->name('show');
             Route::post('store', [SettingController::class, 'store'])->name('store');
         });

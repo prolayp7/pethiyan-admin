@@ -20,14 +20,21 @@ class ImageWebpService
     ];
 
     /**
+     * Maximum pixel dimension (width or height) for stored images.
+     * Images larger than this are downscaled proportionally before encoding.
+     */
+    private const MAX_DIMENSION = 1920;
+
+    /**
      * Convert an uploaded image file to WebP and return a temporary file path.
      * Non-image files (PDFs, videos, etc.) are returned unchanged.
      *
      * @param  UploadedFile  $file
-     * @param  int           $quality  WebP quality 1–100 (default 85)
+     * @param  int           $quality    WebP quality 1–100 (default 85)
+     * @param  int           $maxDim     Max width or height in pixels (default 1920)
      * @return array{path: string, filename: string, isWebp: bool}
      */
-    public static function convert(UploadedFile $file, int $quality = 85): array
+    public static function convert(UploadedFile $file, int $quality = 85, int $maxDim = self::MAX_DIMENSION): array
     {
         $mime = $file->getMimeType();
         $originalName = $file->getClientOriginalName();
@@ -42,7 +49,7 @@ class ImageWebpService
             ];
         }
 
-        // If already WebP, still run through GD to normalise and re-encode
+        // If already WebP, still run through GD to normalise, resize, and re-encode
         $sourcePath = $file->getRealPath();
         $image = self::createGdImage($sourcePath, $mime);
 
@@ -62,6 +69,9 @@ class ImageWebpService
             imagesavealpha($image, true);
         }
 
+        // Downscale if either dimension exceeds the cap
+        $image = self::downscale($image, $maxDim);
+
         $slug      = Str::slug($basename) ?: 'image';
         $tempPath  = sys_get_temp_dir() . '/' . $slug . '_' . uniqid() . '.webp';
 
@@ -73,6 +83,46 @@ class ImageWebpService
             'filename' => $slug . '.webp',
             'isWebp'   => true,
         ];
+    }
+
+    /**
+     * Downscale a GD image so neither dimension exceeds $maxDim.
+     * Returns the original resource untouched if already within bounds.
+     *
+     * @param  \GdImage  $image
+     * @param  int       $maxDim
+     * @return \GdImage
+     */
+    private static function downscale(\GdImage $image, int $maxDim): \GdImage
+    {
+        $w = imagesx($image);
+        $h = imagesy($image);
+
+        if ($w <= $maxDim && $h <= $maxDim) {
+            return $image;
+        }
+
+        // Proportional scale — longest side becomes $maxDim
+        if ($w >= $h) {
+            $newW = $maxDim;
+            $newH = (int) round($h * $maxDim / $w);
+        } else {
+            $newH = $maxDim;
+            $newW = (int) round($w * $maxDim / $h);
+        }
+
+        $resized = imagecreatetruecolor($newW, $newH);
+
+        // Preserve alpha channel for transparent images
+        imagealphablending($resized, false);
+        imagesavealpha($resized, true);
+        $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+        imagefill($resized, 0, 0, $transparent);
+
+        imagecopyresampled($resized, $image, 0, 0, 0, 0, $newW, $newH, $w, $h);
+        imagedestroy($image);
+
+        return $resized;
     }
 
     /**

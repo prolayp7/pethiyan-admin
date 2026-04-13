@@ -84,6 +84,9 @@ Route::prefix('settings')->name('api.')->group(function () {
     Route::get('/{setting}', [SettingApiController::class, 'show'])->name('settings.show');
 });
 
+// Public promo popup route
+Route::get('promos/popup', [PromoApiController::class, 'getPopupPromo']);
+
 Route::middleware('auth:sanctum')->group(function () {
     //logout
     Route::post('logout', [AuthApiController::class, 'logout']);
@@ -206,6 +209,7 @@ Route::prefix('products')->name('products.')->middleware('throttle:60,1')->group
     Route::get('/', [ProductApiController::class, 'getAllProduct']);
     Route::get('/featured', [ProductApiController::class, 'getFeaturedProduct']);
     Route::get('/new-arrivals', [ProductApiController::class, 'getNewArrivals']);
+    Route::get('/by-ids', [ProductApiController::class, 'getByIds']);
     Route::get('/search-by-keywords', [ProductApiController::class, 'searchByKeywords']);
     Route::get('/store-wise', [ProductApiController::class, 'storeWise']);
     Route::get('/{slug}', [ProductApiController::class, 'show']);

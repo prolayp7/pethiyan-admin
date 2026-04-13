@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\SettingService;
 use App\Services\SmsService;
 use App\Services\WalletService;
+use App\Support\FrontendAuthCookie;
 use App\Types\Api\ApiResponseType;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,11 @@ class OtpAuthController extends Controller
 {
     protected array $smsConfig;
     protected bool  $demoMode;
+
+    protected function respondWithFrontendAuthCookie(array $payload, string $token, int $status = 200): JsonResponse
+    {
+        return response()->json($payload, $status)->cookie(FrontendAuthCookie::make($token));
+    }
 
     public function __construct(
         protected SettingService $settingService,
@@ -189,12 +195,16 @@ class OtpAuthController extends Controller
 
         $token = $user->createToken('otp-auth')->plainTextToken;
 
-        return ApiResponseType::sendJsonResponse(true, $isNew ? 'labels.registration_successful' : 'labels.login_successful', [
+        return $this->respondWithFrontendAuthCookie(ApiResponseType::toArray(
+            true,
+            __($isNew ? 'labels.registration_successful' : 'labels.login_successful'),
+            [
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'is_new_user'  => $isNew,
             'user'         => new UserResource($user),
-        ]);
+            ]
+        ), $token);
     }
 
     // -------------------------------------------------------------------------

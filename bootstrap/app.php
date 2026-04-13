@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Middleware\ActiveDeliveryBoy;
+use App\Http\Middleware\ApiCorsCredentialsMiddleware;
 use App\Http\Middleware\CheckInstallation;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\StorageCorsMiddleware;
+use App\Http\Middleware\UseAuthTokenCookie;
 use App\Http\Middleware\ValidateAdmin;
 use App\Http\Middleware\ValidateSeller;
 use App\Http\Middleware\VerifiedDeliveryBoy;
@@ -66,6 +68,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(prepend: [
             CheckMaintenanceMode::class,
+            ApiCorsCredentialsMiddleware::class,
+            UseAuthTokenCookie::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

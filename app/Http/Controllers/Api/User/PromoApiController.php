@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Enums\Product\ProductStatusEnum;
+use App\Enums\Product\ProductVarificationStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Models\OrderPromoLine;
 use App\Models\Promo;
+use App\Models\Product;
 use App\Services\CartService;
 use App\Types\Api\ApiResponseType;
 use Dedoc\Scramble\Attributes\Group;
@@ -21,6 +24,86 @@ class PromoApiController extends Controller
     public function __construct(CartService $cartService)
     {
         $this->cartService = $cartService;
+    }
+
+    /**
+     * Get active promo popup data for storefront visitors.
+     */
+    public function getPopupPromo(): JsonResponse
+    {
+        try {
+            $now = now();
+
+            $promo = Promo::query()
+                ->where(function ($query) use ($now) {
+                    $query->where('start_date', '<=', $now)
+                        ->orWhereNull('start_date');
+                })
+                ->where(function ($query) use ($now) {
+                    $query->where('end_date', '>=', $now)
+                        ->orWhereNull('end_date');
+                })
+                ->where(function ($query) {
+                    $query->whereNull('max_total_usage')
+                        ->orWhereRaw('usage_count < max_total_usage');
+                })
+                ->orderByDesc('start_date')
+                ->orderByDesc('created_at')
+                ->first();
+
+            if (!$promo) {
+                return ApiResponseType::sendJsonResponse(
+                    success: true,
+                    message: 'No active popup promo available.',
+                    data: null
+                );
+            }
+
+            $products = Product::query()
+                ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
+                ->where('status', ProductStatusEnum::ACTIVE->value)
+                ->where('featured', '1')
+                ->with([
+                    'variants.storeProductVariants',
+                ])
+                ->orderByDesc('id')
+                ->limit(3)
+                ->get()
+                ->map(function (Product $product) {
+                    return [
+                        'id' => $product->id,
+                        'title' => $product->title,
+                        'slug' => $product->slug,
+                        'image_url' => $product->main_image ?: $product->variants->pluck('image')->filter()->first(),
+                        'price' => $this->resolveProductPrice($product),
+                    ];
+                })
+                ->values();
+
+            return ApiResponseType::sendJsonResponse(
+                success: true,
+                message: __('messages.promos_retrieved_successfully'),
+                data: [
+                    'promo' => [
+                        'id' => $promo->id,
+                        'code' => $promo->code,
+                        'description' => $promo->description,
+                        'discount_type' => $promo->discount_type,
+                        'discount_amount' => (float) ($promo->discount_amount ?? 0),
+                        'discount_label' => $this->formatDiscountLabel($promo),
+                        'start_date' => optional($promo->start_date)?->toIso8601String(),
+                        'end_date' => optional($promo->end_date)?->toIso8601String(),
+                    ],
+                    'products' => $products,
+                ]
+            );
+        } catch (\Exception $e) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: __('labels.something_went_wrong'),
+                data: []
+            );
+        }
     }
 
     /**
@@ -135,5 +218,35 @@ class PromoApiController extends Controller
                 'promo_details' => $result['promo']
             ]
         );
+    }
+
+    private function formatDiscountLabel(Promo $promo): string
+    {
+        return match ($promo->discount_type) {
+            'percent' => rtrim(rtrim(number_format((float) $promo->discount_amount, 2, '.', ''), '0'), '.') . '% OFF',
+            'flat' => '₹' . rtrim(rtrim(number_format((float) $promo->discount_amount, 2, '.', ''), '0'), '.') . ' OFF',
+            'free_shipping' => 'FREE SHIPPING',
+            default => 'SPECIAL OFFER',
+        };
+    }
+
+    private function resolveProductPrice(Product $product): float
+    {
+        $prices = $product->variants
+            ->flatMap(function ($variant) {
+                return $variant->storeProductVariants->map(function ($storeVariant) {
+                    return $storeVariant->special_price && $storeVariant->special_price > 0
+                        ? (float) $storeVariant->special_price
+                        : (float) ($storeVariant->price ?? 0);
+                });
+            })
+            ->filter(fn($price) => $price > 0)
+            ->values();
+
+        if ($prices->isEmpty()) {
+            return 0;
+        }
+
+        return (float) $prices->min();
     }
 }

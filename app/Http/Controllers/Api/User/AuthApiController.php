@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\SettingService;
 use App\Traits\AuthTrait;
 use App\Types\Api\ApiResponseType;
+use App\Support\FrontendAuthCookie;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,11 @@ class AuthApiController extends Controller
     public function __construct(SettingService $settingService)
     {
         $this->settingService = $settingService;
+    }
+
+    protected function respondWithFrontendAuthCookie(array $payload, string $token, int $status = 200): JsonResponse
+    {
+        return response()->json($payload, $status)->cookie(FrontendAuthCookie::make($token));
     }
 
     /**
@@ -220,13 +226,13 @@ class AuthApiController extends Controller
                 ]);
                 $token = $user->createToken($firebaseUser->email)->plainTextToken;
                 event(new UserLoggedIn($user));
-                return response()->json([
+                return $this->respondWithFrontendAuthCookie([
                     'success' => true,
                     'message' => __('labels.login_successful'),
                     'access_token' => $token,
                     'token_type' => 'Bearer',
                     'data' => new UserResource($user)
-                ]);
+                ], $token);
             }
             if (!$request->has('mobile')) {
                 return ApiResponseType::sendJsonResponse(
@@ -272,13 +278,15 @@ class AuthApiController extends Controller
                 Log::error('Welcome wallet credit failed for user ' . $user->id . ': ' . $th->getMessage());
             }
             event(new UserRegistered($user));
-            return response()->json([
+            $token = $user->createToken($firebaseUser->email)->plainTextToken;
+
+            return $this->respondWithFrontendAuthCookie([
                 'success' => true,
                 'message' => __('labels.registration_successful'),
-                'access_token' => $user->createToken($firebaseUser->email)->plainTextToken,
+                'access_token' => $token,
                 'token_type' => 'Bearer',
                 'data' => new UserResource($user)
-            ]);
+            ], $token);
         } catch (ValidationException $e) {
             $errors = $e->errors();
             $firstError = collect($errors)->flatten()->first() ?? $e->getMessage();
@@ -361,13 +369,13 @@ class AuthApiController extends Controller
                     ]);
                     $token = $user->createToken($email)->plainTextToken;
                     event(new UserLoggedIn($user));
-                    return response()->json([
+                    return $this->respondWithFrontendAuthCookie([
                         'success' => true,
                         'message' => __('labels.login_successful'),
                         'access_token' => $token,
                         'token_type' => 'Bearer',
                         'data' => new UserResource($user)
-                    ]);
+                    ], $token);
                 }
             }
 
@@ -424,13 +432,15 @@ class AuthApiController extends Controller
                 Log::error('Welcome wallet credit failed for user ' . $user->id . ': ' . $th->getMessage());
             }
             event(new UserRegistered($user));
-            return response()->json([
+            $token = $user->createToken($finalEmail)->plainTextToken;
+
+            return $this->respondWithFrontendAuthCookie([
                 'success' => true,
                 'message' => __('labels.registration_successful'),
-                'access_token' => $user->createToken($finalEmail)->plainTextToken,
+                'access_token' => $token,
                 'token_type' => 'Bearer',
                 'data' => new UserResource($user)
-            ]);
+            ], $token);
         } catch (AuthenticationException $e) {
             return ApiResponseType::sendJsonResponse(
                 success: false,

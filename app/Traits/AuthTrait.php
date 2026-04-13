@@ -16,6 +16,7 @@ use App\Types\Api\ApiResponseType;
 use App\Services\SettingService;
 use App\Enums\SettingTypeEnum;
 use App\Services\WalletService;
+use App\Support\FrontendAuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth as FacadesAuth;
@@ -28,6 +29,16 @@ use Illuminate\Validation\ValidationException;
 
 trait AuthTrait
 {
+    protected function respondWithFrontendAuthCookie(array $payload, string $token, int $status = 200): JsonResponse
+    {
+        return response()->json($payload, $status)->cookie(FrontendAuthCookie::make($token));
+    }
+
+    protected function respondWithoutFrontendAuthCookie(array $payload, int $status = 200): JsonResponse
+    {
+        return response()->json($payload, $status)->withoutCookie(FrontendAuthCookie::NAME)->cookie(FrontendAuthCookie::forget());
+    }
+
     private function resolveSessionGuard(): string
     {
         if (property_exists($this, 'role')) {
@@ -212,13 +223,13 @@ trait AuthTrait
             }
             $token = $user->createToken($user->email ?? ($user->mobile ?? 'api-token'))->plainTextToken;
             event(new UserLoggedIn($user));
-            return response()->json([
+            return $this->respondWithFrontendAuthCookie([
                 'success' => true,
                 'message' => __('labels.login_successful'),
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'data' => new UserResource($user)
-            ]);
+            ], $token);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -330,13 +341,13 @@ trait AuthTrait
         $token = $admin->createToken($admin->email ?? ('admin-token-' . $admin->id))->plainTextToken;
         event(new UserLoggedIn($admin));
 
-        return response()->json([
+        return $this->respondWithFrontendAuthCookie([
             'success' => true,
             'message' => __('labels.login_successful'),
             'access_token' => $token,
             'token_type' => 'Bearer',
             'data' => new UserResource($admin)
-        ]);
+        ], $token);
     }
 
     public function register(Request $request): JsonResponse
@@ -409,17 +420,19 @@ trait AuthTrait
 
             event(new UserRegistered($user));
 
-            return response()->json([
+            $token = $user->createToken($validated['email'])->plainTextToken;
+
+            return $this->respondWithFrontendAuthCookie([
                 'success' => true,
                 'message' => __('labels.registration_successful'),
-                'access_token' => $user->createToken($validated['email'])->plainTextToken,
+                'access_token' => $token,
                 'token_type' => 'Bearer',
                 'data' => [
                     'user' => new UserResource($user),
                     'mobile_verified' => false,
                     'otp_sent' => $otpSent,
                 ],
-            ]);
+            ], $token);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -471,12 +484,10 @@ trait AuthTrait
     public function logout(Request $request): JsonResponse
     {
         try {
-            $request->user()->currentAccessToken()->delete();
-            return ApiResponseType::sendJsonResponse(
-                success: true,
-                message: 'labels.logout_successful',
-                data: []
-            );
+            $request->user()?->currentAccessToken()?->delete();
+            return response()->json(
+                ApiResponseType::toArray(true, __('labels.logout_successful'), [])
+            )->withoutCookie(FrontendAuthCookie::NAME)->cookie(FrontendAuthCookie::forget());
         } catch (\Exception $e) {
             return ApiResponseType::sendJsonResponse(
                 success: false,

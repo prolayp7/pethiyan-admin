@@ -255,6 +255,67 @@ class ProductApiController extends Controller
     }
 
     /**
+     * Get products by explicit IDs while preserving requested order.
+     */
+    #[QueryParameter('ids', description: 'Comma-separated list of product IDs.', type: 'string', example: '12,48,91')]
+    #[QueryParameter('customer_state_code', description: 'Optional customer state code for GST split (intra/inter).', type: 'string', example: 'TN')]
+    public function getByIds(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'ids' => 'required|string',
+                'customer_state_code' => 'nullable|string|max:10',
+            ]);
+
+            $ids = collect(explode(',', (string) $validated['ids']))
+                ->map(fn($value) => (int) trim($value))
+                ->filter(fn($value) => $value > 0)
+                ->unique()
+                ->values();
+
+            if ($ids->isEmpty()) {
+                return ApiResponseType::sendJsonResponse(false, 'labels.validation_error', [
+                    'ids' => ['At least one valid product ID is required.'],
+                ]);
+            }
+
+            $products = Product::query()
+                ->whereIn('id', $ids->all())
+                ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
+                ->where('status', ProductStatusEnum::ACTIVE->value)
+                ->with([
+                    'category:id,title,slug',
+                    'taxClasses:id,title',
+                    'taxClasses.taxRates:id,title,rate',
+                    'variants.attributes.attribute:id,title,slug',
+                    'variants.attributes.attributeValue:id,title,swatche_value',
+                    'variants.storeProductVariants.store:id,name,slug,state_code,state_name',
+                ])
+                ->get()
+                ->sortBy(fn($product) => $ids->search($product->id))
+                ->values();
+
+            return ApiResponseType::sendJsonResponse(
+                success: true,
+                message: 'labels.products_fetched_successfully',
+                data: ProductCatalogResource::collection($products)->resolve($request)
+            );
+        } catch (ValidationException $e) {
+            return ApiResponseType::sendJsonResponse(false, 'labels.validation_error', $e->errors());
+        } catch (\Exception $e) {
+            Log::error('Products get-by-ids API failed.', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.error_fetching_products',
+                data: []
+            );
+        }
+    }
+
+    /**
      * Get products All Products.
      */
     #[QueryParameter('page', description: 'Page number for pagination.', type: 'int', default: 1, example: 1)]

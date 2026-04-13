@@ -68,7 +68,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(prepend: [
             CheckMaintenanceMode::class,
-            ApiCorsCredentialsMiddleware::class,
+            // ApiCorsCredentialsMiddleware removed: CORS is now handled by
+            // HandleCors (global middleware) reading config/cors.php.
+            // Running both caused HandleCors to override headers for preflight
+            // requests (OPTIONS) before ApiCorsCredentialsMiddleware could run.
             UseAuthTokenCookie::class,
         ]);
     })

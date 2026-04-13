@@ -38,6 +38,7 @@ class ProductApiController extends Controller
     #[QueryParameter('search', description: 'Search term', type: 'string', example: 'tape')]
     #[QueryParameter('include_child_categories', description: 'Include child category products', type: 'boolean', default: false)]
     #[QueryParameter('customer_state_code', description: 'Customer state code for GST calculation', type: 'string', example: 'TN')]
+    #[QueryParameter('slugs', description: 'Comma-separated list of product slugs to fetch (used for browsing history)', type: 'string', example: 'poly-mailer-bag,bubble-wrap')]
     public function index(Request $request): JsonResponse
     {
         try {
@@ -52,6 +53,7 @@ class ProductApiController extends Controller
                 'search'                   => 'nullable|string|min:2|max:255',
                 'include_child_categories' => 'nullable|boolean',
                 'customer_state_code'      => 'nullable|string|max:10',
+                'slugs'                    => 'nullable|string',
             ]);
 
             $perPage = (int) ($validated['per_page'] ?? 15);
@@ -88,6 +90,12 @@ class ProductApiController extends Controller
                 $brandSlugs = array_filter(array_map('trim', explode(',', $validated['brands'])));
                 $brandIds   = \App\Models\Brand::whereIn('slug', $brandSlugs)->pluck('id')->toArray();
                 $query->whereIn('brand_id', $brandIds);
+            }
+
+            // Filter by specific slugs (browsing history)
+            if (!empty($validated['slugs'])) {
+                $slugs = array_values(array_filter(array_map('trim', explode(',', $validated['slugs']))));
+                $query->whereIn('slug', $slugs);
             }
 
             // Exclude products

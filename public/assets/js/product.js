@@ -1554,6 +1554,7 @@ function bindVariantGstPreviewEvents() {
         pricingContainer.addEventListener('input', function (event) {
             if (event.target && event.target.classList.contains('store-price')) {
                 recalculateVariantGstRow(event.target.closest('.variant-pricing-row'));
+                recalculateVisiblePanIndiaTables();
             }
         });
         pricingContainer.dataset.gstEventsBound = '1';
@@ -1561,7 +1562,10 @@ function bindVariantGstPreviewEvents() {
 
     const gstRateSelect = document.querySelector('select[name="gst_rate"]');
     if (gstRateSelect && !gstRateSelect.dataset.gstEventsBound) {
-        gstRateSelect.addEventListener('change', recalculateAllVariantGstRows);
+        gstRateSelect.addEventListener('change', () => {
+            recalculateAllVariantGstRows();
+            recalculateVisiblePanIndiaTables();
+        });
         gstRateSelect.dataset.gstEventsBound = '1';
     }
 
@@ -1581,6 +1585,7 @@ function bindSimpleGstPreviewEvents() {
         pricingContainer.addEventListener('input', function (event) {
             if (event.target && event.target.classList.contains('store-price')) {
                 recalculateSimpleGstRow(event.target.closest('.simple-pricing-row'));
+                recalculateVisiblePanIndiaTables();
             }
         });
         pricingContainer.dataset.gstEventsBound = '1';
@@ -1588,7 +1593,10 @@ function bindSimpleGstPreviewEvents() {
 
     const gstRateSelect = document.querySelector('select[name="gst_rate"]');
     if (gstRateSelect && !gstRateSelect.dataset.simpleGstEventsBound) {
-        gstRateSelect.addEventListener('change', recalculateAllSimpleGstRows);
+        gstRateSelect.addEventListener('change', () => {
+            recalculateAllSimpleGstRows();
+            recalculateVisiblePanIndiaTables();
+        });
         gstRateSelect.dataset.simpleGstEventsBound = '1';
     }
 
@@ -1602,6 +1610,166 @@ function bindSimpleGstPreviewEvents() {
 document.addEventListener('DOMContentLoaded', function () {
     ensureGstSlabPreselected();
 });
+
+// ============================================================
+// Pan India GST Breakdown
+// ============================================================
+
+/**
+ * Collect price entries from within a store pricing card.
+ * Returns [{label, price}, …] — one entry per .store-price input.
+ */
+function collectStorePriceEntries(card) {
+    const inputs = card ? Array.from(card.querySelectorAll('.store-price')) : [];
+    if (!inputs.length) return [{ label: 'Price', price: '' }];
+    return inputs.map(inp => {
+        const row   = inp.closest('tr');
+        const cell  = row ? row.querySelector('.variant-label-cell') : null;
+        const label = cell ? (cell.innerText || cell.textContent || '').trim().substring(0, 30) : 'Price';
+        return { label: label || 'Variant', price: inp.value };
+    });
+}
+
+/**
+ * Build the full HTML for the Pan India state-wise breakdown table.
+ */
+function buildPanIndiaTableHtml(wrapper) {
+    const storeGstCode   = wrapper.dataset.storeGstCode   || '';
+    const storeStateCode = wrapper.dataset.storeStateCode || '';
+    const gstRate        = getSelectedGstRatePercent();
+    // Filter out states with no gst_code (bad/duplicate data) and deduplicate by gst_code
+    const seenGstCodes = new Set();
+    const states = (window._gstStates || []).filter(s => {
+        const code = normalizeGstCode(String(s.gst_code || ''));
+        if (!code) return false;
+        if (seenGstCodes.has(code)) return false;
+        seenGstCodes.add(code);
+        return true;
+    });
+
+    const card          = wrapper.closest('.store-pricing-card') || wrapper.closest('.accordion-item');
+    const priceEntries  = collectStorePriceEntries(card);
+    const normStoreGst  = normalizeGstCode(storeGstCode);
+    const normStoreState= normalizeStateCode(storeStateCode);
+
+    // Grouped header: one 4-col span per price entry
+    const headerPriceCols = priceEntries.length > 1
+        ? priceEntries.map(e =>
+            `<th colspan="4" class="text-center border-start small">${e.label}</th>`
+          ).join('')
+        : `<th class="border-start">CGST</th><th>SGST</th><th>IGST</th><th>Total Cost</th>`;
+
+    const subHeaderCols = priceEntries.length > 1
+        ? priceEntries.map(() =>
+            `<th class="border-start small">CGST</th><th class="small">SGST</th><th class="small">IGST</th><th class="small">Total Cost</th>`
+          ).join('')
+        : '';
+
+    const rows = states.map(state => {
+        const stateGst  = normalizeGstCode(String(state.gst_code  || ''));
+        const stateSt   = normalizeStateCode(String(state.state_code || ''));
+
+        let supplyType;
+        if (normStoreGst && stateGst) {
+            supplyType = normStoreGst === stateGst ? 'intra' : 'inter';
+        } else if (normStoreState && stateSt) {
+            supplyType = normStoreState === stateSt ? 'intra' : 'inter';
+        } else {
+            supplyType = 'inter';
+        }
+
+        const isIntra   = supplyType === 'intra';
+        const badgeCls  = isIntra ? 'text-bg-success' : 'text-bg-warning';
+        const supplyLbl = isIntra ? 'CGST+SGST' : 'IGST';
+        const rowCls    = isIntra ? 'table-success' : '';
+
+        const priceCols = priceEntries.map(entry => {
+            const price = parseFloat(entry.price) || 0;
+            if (!price) {
+                return `<td colspan="4" class="text-muted text-center small border-start">No price</td>`;
+            }
+            const c   = calculateVariantGstFromPrice(price, gstRate, supplyType);
+            const fmt = v => `₹${v.toFixed(2)}`;
+            return `
+                <td class="border-start">${fmt(c.cgstAmount)}</td>
+                <td>${fmt(c.sgstAmount)}</td>
+                <td>${fmt(c.igstAmount)}</td>
+                <td class="fw-medium">${fmt(c.totalCost)}</td>
+            `;
+        }).join('');
+
+        return `
+            <tr class="${rowCls}">
+                <td class="text-nowrap small">${state.name}</td>
+                <td class="text-center"><span class="badge bg-blue-lt text-blue">${state.gst_code || ''}</span></td>
+                <td><span class="badge ${badgeCls} small">${supplyLbl}</span></td>
+                ${priceCols}
+            </tr>
+        `;
+    }).join('');
+
+    const sellerLabel = storeGstCode ? `GST ${storeGstCode}` : (storeStateCode || 'N/A');
+
+    return `
+        <div class="d-flex align-items-center gap-2 mb-2 mt-1 px-1">
+            <i class="ti ti-world text-blue fs-4"></i>
+            <span class="fw-semibold small text-muted">Pan India GST Breakdown</span>
+            <span class="badge bg-blue-lt text-blue ms-auto">Seller State: ${sellerLabel}</span>
+        </div>
+        <div class="table-responsive border rounded" style="max-height:400px;overflow-y:auto;">
+            <table class="table table-sm table-bordered table-hover mb-0">
+                <thead class="sticky-top">
+                    <tr class="table-dark">
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}">State</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}">GST</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}">Supply</th>
+                        ${headerPriceCols}
+                    </tr>
+                    ${priceEntries.length > 1 ? `<tr class="table-secondary">${subHeaderCols}</tr>` : ''}
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * Re-render all currently-visible Pan India wrappers (called when price or GST rate changes).
+ */
+function recalculateVisiblePanIndiaTables() {
+    document.querySelectorAll('.pan-india-wrapper:not(.d-none)').forEach(wrapper => {
+        wrapper.innerHTML = buildPanIndiaTableHtml(wrapper);
+    });
+}
+
+/**
+ * Wire up toggle buttons inside `container`.
+ */
+function initPanIndiaToggles(container) {
+    container.querySelectorAll('.pan-india-toggle-btn').forEach(btn => {
+        if (btn.dataset.panIndiaBound) return;
+        btn.dataset.panIndiaBound = '1';
+        btn.addEventListener('click', function () {
+            const accordionBody = this.closest('.accordion-body');
+            if (!accordionBody) return;
+            const wrapper = accordionBody.querySelector('.pan-india-wrapper');
+            if (!wrapper) return;
+            const hidden = wrapper.classList.contains('d-none');
+            if (hidden) {
+                wrapper.classList.remove('d-none');
+                wrapper.innerHTML = buildPanIndiaTableHtml(wrapper);
+                this.innerHTML = '<i class="ti ti-world-off me-1"></i>Hide Pan India GST';
+                this.classList.remove('btn-outline-info');
+                this.classList.add('btn-info');
+            } else {
+                wrapper.classList.add('d-none');
+                this.innerHTML = '<i class="ti ti-world me-1"></i>Pan India GST';
+                this.classList.remove('btn-info');
+                this.classList.add('btn-outline-info');
+            }
+        });
+    });
+}
 
 // Fetch stores from the server
 let cachedStores = null; // Store cached result
@@ -1759,6 +1927,12 @@ function initializeSimplePricing() {
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="text-end mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-info pan-india-toggle-btn">
+                                    <i class="ti ti-world me-1"></i>Pan India GST
+                                </button>
+                            </div>
+                            <div class="pan-india-wrapper d-none" data-store-gst-code="${store.gst_code || ''}" data-store-state-code="${store.state_code || ''}"></div>
                         </div>
                     </div>
                 </div>
@@ -1782,6 +1956,7 @@ function initializeSimplePricing() {
 
         bindSimpleGstPreviewEvents();
         recalculateAllSimpleGstRows();
+        initPanIndiaToggles(accordionContainer);
     });
 }
 
@@ -1843,6 +2018,7 @@ function updateVariantPricing() {
                                     </thead>
                                     <tbody>
                                         ${variants.map(variant => {
+                                        // (variant rows below)
                 const variantId = variant.id;
                 const storeStateCode = store.state_code || '';
                 const storeGstCode = store.gst_code || '';
@@ -1905,9 +2081,15 @@ function updateVariantPricing() {
                     ? `<span class="badge bg-primary-subtle text-primary me-1">${variantTitleText}</span>`
                     : '<span class="text-muted small">Variant</span>');
 
+                const productName = (
+    (window.productData?.product?.title) ||
+    (document.querySelector('input[name="title"]')?.value) ||
+    ''
+).trim();
                 return `
                                                 <tr class="variant-pricing-row" data-store-id="${store.id}" data-store-state-code="${storeStateCode}" data-store-gst-code="${storeGstCode}" data-variant-id="${variantId}">
                                                     <td class="variant-label-cell">
+                                                        ${productName ? `<div class="fw-semibold text-dark small mb-1">${productName}</div>` : ''}
                                                         ${variantTitleText ? `<div class="fw-semibold text-dark mb-1">${variantTitleText}</div>` : ''}
                                                         <div>${variantLabelHtml}</div>
                                                     </td>
@@ -1937,6 +2119,12 @@ function updateVariantPricing() {
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="text-end mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-info pan-india-toggle-btn">
+                                    <i class="ti ti-world me-1"></i>Pan India GST
+                                </button>
+                            </div>
+                            <div class="pan-india-wrapper d-none" data-store-gst-code="${store.gst_code || ''}" data-store-state-code="${store.state_code || ''}"></div>
                         </div>
                     </div>
                 </div>
@@ -1956,6 +2144,7 @@ function updateVariantPricing() {
 
         bindVariantGstPreviewEvents();
         recalculateAllVariantGstRows();
+        initPanIndiaToggles(container);
     });
 }
 
@@ -1986,7 +2175,13 @@ function refreshVariantPricingLabels() {
 
         const cell = row.querySelector('.variant-label-cell');
         if (cell) {
-            cell.innerHTML = (titleText ? `<div class="fw-semibold text-dark mb-1">${titleText}</div>` : '')
+            const productName = (
+    (window.productData?.product?.title) ||
+    (document.querySelector('input[name="title"]')?.value) ||
+    ''
+).trim();
+            cell.innerHTML = (productName ? `<div class="text-muted small mb-1" style="font-size:0.72rem;">${productName}</div>` : '')
+                + (titleText ? `<div class="fw-semibold text-dark mb-1">${titleText}</div>` : '')
                 + `<div>${labelHtml}</div>`;
         }
     });

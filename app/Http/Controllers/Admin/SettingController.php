@@ -6,6 +6,7 @@ use App\Enums\SettingTypeEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Services\FrontendRevalidateService;
+use App\Services\ImageConversionService;
 use App\Services\SettingService;
 use App\Services\TotpService;
 use App\Types\Api\ApiResponseType;
@@ -252,88 +253,55 @@ class SettingController extends Controller
     /**
      * Handle media file uploads and assign paths to the settings object.
      *
+     * Raster images are converted to WebP (quality 90) before storage.
+     * PWA logo files must remain PNG for manifest compatibility.
+     * The service-account JSON file is stored as-is on the local disk.
+     *
      * @param Request $request
      * @param mixed $settings
      * @return void
      */
     private function handleMediaUploads(Request $request, $settings): void
     {
-        $mediaFields = [
-            'logo' => [
-                'name' => fn($file) => 'logo-' . time() . '.' . $file->getClientOriginalExtension(),
-                'path' => 'settings'
-            ],
-
-            'favicon' => [
-                'name' => fn($file) => 'favicon-' . time() . '.' . $file->getClientOriginalExtension(),
-                'path' => 'settings'
-            ],
-
-            'siteHeaderDarkLogo' => [
-                'name' => fn($file) => 'site-header-dark-logo-' . time() . '.' . $file->getClientOriginalExtension(),
-                'path' => 'settings'
-            ],
-
-            'siteHeaderLogo' => [
-                'name' => fn($file) => 'site-header-logo-' . time() . '.' . $file->getClientOriginalExtension(),
-                'path' => 'settings'
-            ],
-
-            'siteFooterLogo' => [
-                'name' => fn($file) => 'site-footer-logo-' . time() . '.' . $file->getClientOriginalExtension(),
-                'path' => 'settings'
-            ],
-
-            'siteFavicon' => [
-                'name' => fn($file) => 'site-favicon-' . time() . '.' . $file->getClientOriginalExtension(),
-                'path' => 'settings'
-            ],
-
-            'backgroundImage' => [
-                'name' => fn($file) => uniqid() . '-' . $file->getClientOriginalName(),
-                'path' => 'settings'
-            ],
-
-            'icon' => [
-                'name' => fn($file) => uniqid() . '-' . $file->getClientOriginalName(),
-                'path' => 'settings'
-            ],
-
-            'activeIcon' => [
-                'name' => fn($file) => uniqid() . '-' . $file->getClientOriginalName(),
-                'path' => 'settings'
-            ],
-
-            'serviceAccountFile' => ['name' => 'service-account-file.json', 'path' => 'settings', 'disk' => 'local'],
-            'pwaLogo192x192' => [
-                'name' => fn($file) => 'pwa-logo-192x192-' . time() . '.png',
-                'path' => 'pwa_logos'
-            ],
-
-            'pwaLogo512x512' => [
-                'name' => fn($file) => 'pwa-logo-512x512-' . time() . '.png',
-                'path' => 'pwa_logos'
-            ],
-
-            'pwaLogo144x144' => [
-                'name' => fn($file) => 'pwa-logo-144x144-' . time() . '.png',
-                'path' => 'pwa_logos'
-            ],
-
-            'adminSignature' => [
-                'name' => fn($file) => 'admin-signature-' . time() . '.' . $file->getClientOriginalExtension(),
-                'path' => 'settings'
-            ],
+        // Fields that should be converted to WebP: baseName (no extension) => directory.
+        $webpFields = [
+            'logo'               => ['base' => fn() => 'logo-'                    . time(), 'path' => 'settings'],
+            'favicon'            => ['base' => fn() => 'favicon-'                 . time(), 'path' => 'settings'],
+            'siteHeaderDarkLogo' => ['base' => fn() => 'site-header-dark-logo-'   . time(), 'path' => 'settings'],
+            'siteHeaderLogo'     => ['base' => fn() => 'site-header-logo-'        . time(), 'path' => 'settings'],
+            'siteFooterLogo'     => ['base' => fn() => 'site-footer-logo-'        . time(), 'path' => 'settings'],
+            'siteFavicon'        => ['base' => fn() => 'site-favicon-'            . time(), 'path' => 'settings'],
+            'backgroundImage'    => ['base' => fn() => 'background-'              . uniqid(), 'path' => 'settings'],
+            'icon'               => ['base' => fn() => 'icon-'                    . uniqid(), 'path' => 'settings'],
+            'activeIcon'         => ['base' => fn() => 'active-icon-'             . uniqid(), 'path' => 'settings'],
+            'adminSignature'     => ['base' => fn() => 'admin-signature-'         . time(), 'path' => 'settings'],
         ];
 
-        foreach ($mediaFields as $field => $config) {
+        foreach ($webpFields as $field => $config) {
             if ($request->hasFile($field)) {
-                $file = $request->file($field);
-                $fileName = is_callable($config['name']) ? $config['name']($file) : $config['name'];
-                $disk = $config['disk'] ?? 'public';
-                $path = $file->storeAs($config['path'], $fileName, $disk);
-                $settings->$field = $path;
+                $file     = $request->file($field);
+                $baseName = $config['base']();
+                $settings->$field = ImageConversionService::storeAsWebP($file, $config['path'], $baseName);
             }
+        }
+
+        // PWA logos must stay PNG — browsers require it for web-app manifests.
+        $pwaFields = [
+            'pwaLogo192x192' => ['name' => 'pwa-logo-192x192-' . time() . '.png', 'path' => 'pwa_logos'],
+            'pwaLogo512x512' => ['name' => 'pwa-logo-512x512-' . time() . '.png', 'path' => 'pwa_logos'],
+            'pwaLogo144x144' => ['name' => 'pwa-logo-144x144-' . time() . '.png', 'path' => 'pwa_logos'],
+        ];
+
+        foreach ($pwaFields as $field => $config) {
+            if ($request->hasFile($field)) {
+                $settings->$field = $request->file($field)->storeAs($config['path'], $config['name'], 'public');
+            }
+        }
+
+        // Service-account JSON — not an image, store as-is on the local (non-public) disk.
+        if ($request->hasFile('serviceAccountFile')) {
+            $settings->serviceAccountFile = $request->file('serviceAccountFile')
+                ->storeAs('settings', 'service-account-file.json', 'local');
         }
     }
 
@@ -567,15 +535,15 @@ class SettingController extends Controller
         $webValues['facebookPixelId'] = $request->input('facebookPixelId', $webValues['facebookPixelId'] ?? '');
 
         if ($request->hasFile('seoOgImage')) {
-            $file = $request->file('seoOgImage');
-            $name = 'seo-og-image-' . time() . '.' . $file->getClientOriginalExtension();
-            $webValues['ogImage'] = $file->storeAs('settings', $name, 'public');
+            $webValues['ogImage'] = ImageConversionService::storeAsWebP(
+                $request->file('seoOgImage'), 'settings', 'seo-og-image-' . time()
+            );
         }
 
         if ($request->hasFile('seoTwitterImage')) {
-            $file = $request->file('seoTwitterImage');
-            $name = 'seo-twitter-image-' . time() . '.' . $file->getClientOriginalExtension();
-            $webValues['twitterImage'] = $file->storeAs('settings', $name, 'public');
+            $webValues['twitterImage'] = ImageConversionService::storeAsWebP(
+                $request->file('seoTwitterImage'), 'settings', 'seo-twitter-image-' . time()
+            );
         }
 
         Setting::updateOrCreate(

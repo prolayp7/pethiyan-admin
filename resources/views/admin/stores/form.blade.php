@@ -25,9 +25,7 @@
                 <nav class="nav nav-vertical nav-pills" id="pills">
                     <a class="nav-link" href="#pills-basic">{{ __('labels.basic_details') }}</a>
                     <a class="nav-link" href="#pills-location">{{ __('labels.location_details') }}</a>
-                    <a class="nav-link" href="#pills-logos">{{ __('labels.logo_and_banner') }}</a>
                     <a class="nav-link" href="#pills-documents">{{ __('labels.business_documents') }}</a>
-                    <a class="nav-link" href="#pills-bank">{{ __('labels.bank_details') }}</a>
                 </nav>
             </div>
         </div>
@@ -153,63 +151,12 @@
                             </div>
                         </div>
 
-                        <!-- Logo & Banner -->
-                        <div class="card mb-4" id="pills-logos">
-                            <div class="card-header">
-                                <h4 class="card-title">{{ __('labels.logo_and_banner') }}</h4>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.store_logo') }}</label>
-                                    <x-filepond_image name="store_logo"
-                                                      imageUrl="{{ $store->store_logo ?? null }}"/>
-                                    @error('store_logo')
-                                    <div class="text-danger mt-2">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">{{ __('labels.store_banner') }}</label>
-                                    <x-filepond_image name="store_banner"
-                                                      imageUrl="{{ $store->store_banner ?? null }}"/>
-                                    @error('store_banner')
-                                    <div class="text-danger mt-2">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Business Documents -->
                         <div class="card mb-4" id="pills-documents">
                             <div class="card-header">
                                 <h4 class="card-title">{{ __('labels.business_documents') }}</h4>
                             </div>
                             <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.address_proof') }}</label>
-                                    <x-filepond_image name="address_proof"
-                                                      imageUrl="{{ $store->address_proof ?? null }}"
-                                                      disabled="{{ !empty($store->address_proof) ? 'true' : 'false' }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.voided_check') }}</label>
-                                    <x-filepond_image name="voided_check"
-                                                      imageUrl="{{ $store->voided_check ?? null }}"
-                                                      disabled="{{ !empty($store->voided_check) ? 'true' : 'false' }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.tax_name') }}</label>
-                                    <input type="text" class="form-control" name="tax_name"
-                                           placeholder="{{ __('labels.enter_tax_name') }}"
-                                           value="{{ old('tax_name', $store->tax_name ?? '') }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.tax_number') }}</label>
-                                    <input type="text" class="form-control" name="tax_number"
-                                           placeholder="{{ __('labels.enter_tax_number') }}"
-                                           value="{{ old('tax_number', $store->tax_number ?? '') }}"/>
-                                </div>
-
-                                <hr class="my-3"/>
                                 <h5 class="mb-3">GST Registration (India)</h5>
                                 <div class="mb-3">
                                     <label class="form-label">GSTIN</label>
@@ -241,57 +188,6 @@
                                             <span class="form-check-label">GST Registered</span>
                                         </label>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Bank Details -->
-                        <div class="card mb-4" id="pills-bank">
-                            <div class="card-header">
-                                <h4 class="card-title">{{ __('labels.bank_details') }}</h4>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.bank_name') }}</label>
-                                    <input type="text" class="form-control" name="bank_name"
-                                           placeholder="{{ __('labels.enter_bank_name') }}"
-                                           value="{{ old('bank_name', $store->bank_name ?? '') }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.bank_branch_code') }}</label>
-                                    <input type="text" class="form-control" name="bank_branch_code"
-                                           placeholder="{{ __('labels.enter_bank_branch_code') }}"
-                                           value="{{ old('bank_branch_code', $store->bank_branch_code ?? '') }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.account_holder_name') }}</label>
-                                    <input type="text" class="form-control" name="account_holder_name"
-                                           placeholder="{{ __('labels.enter_account_holder_name') }}"
-                                           value="{{ old('account_holder_name', $store->account_holder_name ?? '') }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.account_number') }}</label>
-                                    <input type="number" min="0" class="form-control" name="account_number"
-                                           placeholder="{{ __('labels.enter_account_number') }}"
-                                           value="{{ old('account_number', $store->account_number ?? '') }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.routing_number') }}</label>
-                                    <input type="number" min="0" class="form-control" name="routing_number"
-                                           placeholder="{{ __('labels.enter_routing_number') }}"
-                                           value="{{ old('routing_number', $store->routing_number ?? '') }}"/>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label required">{{ __('labels.bank_account_type') }}</label>
-                                    <select class="form-select" name="bank_account_type">
-                                        @foreach($bankAccountTypes as $accountType)
-                                            <option
-                                                value="{{ $accountType }}"
-                                                {{ !empty($store) && $store->bank_account_type === $accountType ? 'selected' : '' }}>
-                                                {{ $accountType }}
-                                            </option>
-                                        @endforeach
-                                    </select>
                                 </div>
                             </div>
                         </div>

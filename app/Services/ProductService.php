@@ -17,7 +17,9 @@ use App\Models\ProductVariantAttribute;
 use App\Models\Review;
 use App\Models\StoreProductVariant;
 use App\Enums\SpatieMediaCollectionName;
+use App\Services\ImageWebpService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductService
@@ -578,8 +580,20 @@ class ProductService
     {
         // Remove the existing main image
         $variant->clearMediaCollection(SpatieMediaCollectionName::VARIANT_IMAGE());
-        // Upload the new image
-        $variant->addMediaFromRequest($payload_image)->toMediaCollection(SpatieMediaCollectionName::VARIANT_IMAGE());
+
+        // Upload the new image with WebP conversion
+        $file = request()->file($payload_image);
+        if ($file) {
+            $converted = ImageWebpService::convert($file);
+            $variant->addMedia($converted['path'])
+                ->usingFileName($converted['filename'])
+                ->toMediaCollection(SpatieMediaCollectionName::VARIANT_IMAGE());
+            if ($converted['isWebp']) {
+                @unlink($converted['path']);
+            }
+        } else {
+            $variant->addMediaFromRequest($payload_image)->toMediaCollection(SpatieMediaCollectionName::VARIANT_IMAGE());
+        }
     }
 
     private function handleVariantSeoImageUploads(ProductVariant $variant, $request, string $variantId): void
@@ -597,7 +611,19 @@ class ProductService
                 continue;
             }
 
-            $metadata[$field] = $request->file($requestField)->store('seo/product-variant', 'public');
+            $file      = $request->file($requestField);
+            $converted = ImageWebpService::convert($file);
+            $stored    = Storage::disk('public')->put('seo/product-variant', new \Illuminate\Http\File($converted['path']), ['visibility' => 'public']);
+            $target    = dirname($stored) . '/' . $converted['filename'];
+            if ($stored !== $target) {
+                Storage::disk('public')->move($stored, $target);
+                $stored = $target;
+            }
+            if ($converted['isWebp']) {
+                @unlink($converted['path']);
+            }
+
+            $metadata[$field] = $stored;
             $updated = true;
         }
 
@@ -651,7 +677,19 @@ class ProductService
                 continue;
             }
 
-            $metadata[$field] = $request->file($field)->store('seo/product', 'public');
+            $file      = $request->file($field);
+            $converted = ImageWebpService::convert($file);
+            $stored    = Storage::disk('public')->put('seo/product', new \Illuminate\Http\File($converted['path']), ['visibility' => 'public']);
+            $target    = dirname($stored) . '/' . $converted['filename'];
+            if ($stored !== $target) {
+                Storage::disk('public')->move($stored, $target);
+                $stored = $target;
+            }
+            if ($converted['isWebp']) {
+                @unlink($converted['path']);
+            }
+
+            $metadata[$field] = $stored;
             $updated = true;
         }
 

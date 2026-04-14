@@ -12,6 +12,7 @@ use App\Http\Resources\CategoryResource;
 use App\Models\Category;
 use App\Services\ImageWebpService;
 use App\Traits\ChecksPermissions;
+use Illuminate\Support\Facades\Storage;
 use App\Traits\PanelAware;
 use App\Types\Api\ApiResponseType;
 use BackedEnum;
@@ -415,7 +416,19 @@ class CategoryController extends Controller
                 continue;
             }
 
-            $metadata[$field] = $request->file($field)->store('seo/category', 'public');
+            $file      = $request->file($field);
+            $converted = ImageWebpService::convert($file);
+            $stored    = Storage::disk('public')->put('seo/category', new \Illuminate\Http\File($converted['path']), ['visibility' => 'public']);
+            $target    = dirname($stored) . '/' . $converted['filename'];
+            if ($stored !== $target) {
+                Storage::disk('public')->move($stored, $target);
+                $stored = $target;
+            }
+            if ($converted['isWebp']) {
+                @unlink($converted['path']);
+            }
+
+            $metadata[$field] = $stored;
             $updated = true;
         }
 

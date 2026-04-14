@@ -147,9 +147,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         // customers (web panel users)
         Route::prefix('customers')->name('customers.')->group(function () {
-            Route::get('/', [CustomerController::class, 'index'])->name('index');
-            Route::get('/datatable', [CustomerController::class, 'datatable'])->name('datatable');
-            Route::get('/export', [CustomerController::class, 'export'])->name('export');
+            Route::get('/',                                       [CustomerController::class, 'index'])->name('index');
+            Route::post('/',                                      [CustomerController::class, 'store'])->name('store');
+            Route::get('/datatable',                              [CustomerController::class, 'datatable'])->name('datatable');
+            Route::get('/export',                                 [CustomerController::class, 'export'])->name('export');
+            Route::get('/{id}',                                   [CustomerController::class, 'show'])->name('show');
+            Route::put('/{id}',                                   [CustomerController::class, 'update'])->name('update');
+            Route::delete('/{id}',                                [CustomerController::class, 'destroy'])->name('destroy');
+            Route::patch('/{id}/toggle-status',                   [CustomerController::class, 'toggleStatus'])->name('toggle-status');
+            // Addresses
+            Route::get('/{id}/addresses',                         [CustomerController::class, 'addresses'])->name('addresses');
+            Route::post('/{id}/addresses',                        [CustomerController::class, 'storeAddress'])->name('addresses.store');
+            Route::put('/{id}/addresses/{addressId}',             [CustomerController::class, 'updateAddress'])->name('addresses.update');
+            Route::delete('/{id}/addresses/{addressId}',          [CustomerController::class, 'destroyAddress'])->name('addresses.destroy');
+            // Orders
+            Route::get('/{id}/orders',                            [CustomerController::class, 'orders'])->name('orders');
         });
 
         // sellers

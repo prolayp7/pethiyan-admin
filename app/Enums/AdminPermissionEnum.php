@@ -85,6 +85,11 @@ use ArchTech\Enums\Values;
  * @method static STORE_EDIT()
  * @method static STORE_DELETE()
  * @method static STORE_VERIFY()
+ * @method static CUSTOMER_VIEW()
+ * @method static CUSTOMER_CREATE()
+ * @method static CUSTOMER_EDIT()
+ * @method static CUSTOMER_DELETE()
+ * @method static CUSTOMER_EXPORT()
  *
  * Module-wise setting permissions
  * @method static SETTING_SYSTEM_VIEW()
@@ -220,7 +225,11 @@ enum AdminPermissionEnum: string
     case STORE_DELETE = 'store.delete';
     case STORE_VERIFY = 'store.verify';
     // Customers (web panel users)
-    case CUSTOMER_VIEW = 'customer.view';
+    case CUSTOMER_VIEW   = 'customer.view';
+    case CUSTOMER_CREATE = 'customer.create';
+    case CUSTOMER_EDIT   = 'customer.edit';
+    case CUSTOMER_DELETE = 'customer.delete';
+    case CUSTOMER_EXPORT = 'customer.export';
 
     public static function groupedPermissions(): array
     {
@@ -298,6 +307,10 @@ enum AdminPermissionEnum: string
                 'name' => 'Customers',
                 'permissions' => [
                     self::CUSTOMER_VIEW(),
+                    self::CUSTOMER_CREATE(),
+                    self::CUSTOMER_EDIT(),
+                    self::CUSTOMER_DELETE(),
+                    self::CUSTOMER_EXPORT(),
                 ],
             ],
             'products' => [

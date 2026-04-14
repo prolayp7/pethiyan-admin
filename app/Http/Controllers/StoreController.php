@@ -245,9 +245,6 @@ class StoreController extends Controller
             $validated = $request->safe()->except('address_proof', 'voided_check');
             $validated['seller_id'] = $seller->id;
             $isExistInZone = DeliveryZoneService::getZonesAtPoint($validated['latitude'], $validated['longitude']);
-            if ($isExistInZone['exists'] === false) {
-                return ApiResponseType::sendJsonResponse(success: false, message: 'Store location is not within any delivery zone');
-            }
             $country = Country::where('name', $validated['country'])->firstOrFail();
             if (!empty($country->phonecode)) {
                 $validated['country_code'] = $country->phonecode;
@@ -318,9 +315,6 @@ class StoreController extends Controller
             $store = Store::findOrFail($id);
             $validated = $request->validated();
             $isExistInZone = DeliveryZoneService::getZonesAtPoint($validated['latitude'], $validated['longitude']);
-            if ($isExistInZone['exists'] === false) {
-                return ApiResponseType::sendJsonResponse(success: false, message: 'Store location is not within any delivery zone');
-            }
             $country = Country::where('name', $validated['country'])->firstOrFail();
             if (!empty($country->phonecode)) {
                 $validated['country_code'] = $country->phonecode;

@@ -106,8 +106,20 @@ window.addEventListener('load', function () {
         $('#modalProductName').text($(this).data('product'));
         $('#modalVariantName').text($(this).data('variant'));
         $('#stockInput').val($(this).data('stock'));
+        $('#saveStockBtn').prop('disabled', false).text('Save');
         $('#editStockModal').modal('show');
     });
+
+    const $saveStockBtn = $('#saveStockBtn');
+    const saveStockBtnText = $saveStockBtn.text().trim();
+
+    function setSaveStockLoadingState(isLoading) {
+        if (isLoading) {
+            $saveStockBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...');
+        } else {
+            $saveStockBtn.prop('disabled', false).text(saveStockBtnText);
+        }
+    }
 
     $('#saveStockBtn').on('click', function () {
         if (!currentSpvId) return;
@@ -117,21 +129,27 @@ window.addEventListener('load', function () {
             return;
         }
 
+        setSaveStockLoadingState(true);
+
         $.ajax({
             url: '/admin/inventory/' + currentSpvId + '/stock',
             method: 'POST',
             data: { stock: stock, _token: '{{ csrf_token() }}' },
             success: function (res) {
-                if (res.status) {
+                const success = typeof res.success !== 'undefined' ? res.success : res.status;
+                if (success) {
                     $('#editStockModal').modal('hide');
                     table.ajax.reload(null, false);
-                    showToastr('success', res.message);
+                    showToastr('success', res.message || 'Stock updated successfully.');
                 } else {
-                    showToastr('error', res.message);
+                    showToastr('error', res.message || 'Unable to update stock.');
                 }
             },
             error: function () {
                 showToastr('error', 'Failed to update stock.');
+            },
+            complete: function () {
+                setSaveStockLoadingState(false);
             }
         });
     });

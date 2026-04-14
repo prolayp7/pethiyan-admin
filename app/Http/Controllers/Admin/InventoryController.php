@@ -87,9 +87,9 @@ class InventoryController extends Controller
                 ->join(', ') ?? '—';
 
             $stockClass = match (true) {
-                $spv->stock === 0  => 'danger',
-                $spv->stock <= 10  => 'warning',
-                default            => 'success',
+                $spv->stock === 0  => 'danger-lt',
+                $spv->stock <= 10  => 'warning-lt',
+                default            => 'success-lt',
             };
             $stockLabel = match (true) {
                 $spv->stock === 0  => 'Out of Stock',
@@ -105,7 +105,7 @@ class InventoryController extends Controller
                 'sku'          => $spv->sku ?? '—',
                 'price'        => '₹' . number_format($spv->attributes['price'] ?? 0, 2),
                 'stock'        => $spv->stock,
-                'stock_status' => '<span class="badge bg-' . $stockClass . '">' . $stockLabel . '</span>',
+                'stock_status' => '<span class="badge bg-' . $stockClass . ' fw-medium">' . $stockLabel . '</span>',
                 'action'       => '<button class="btn btn-sm btn-ghost-primary btn-edit-stock d-inline-flex align-items-center gap-1 px-3 text-nowrap"
                                     data-id="' . $spv->id . '"
                                     data-stock="' . $spv->stock . '"

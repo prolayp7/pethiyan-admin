@@ -38,8 +38,14 @@ return [
                     'sub_title'  => 'labels.product_faqs',
                     'permission' => 'product_faqs.view',
                 ],
+                'attributes' => [
+                    'sub_active' => 'attributes',
+                    'sub_route'  => 'admin.attributes.index',
+                    'sub_title'  => 'labels.attributes',
+                    'permission' => 'attribute.view',
+                ],
             ],
-        ],        
+        ],
         'categories' => [
             'icon'       => 'ti-category-2',
             'route'      => 'admin.categories.index',

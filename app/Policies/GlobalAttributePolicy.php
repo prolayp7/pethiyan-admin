@@ -18,13 +18,15 @@ class GlobalAttributePolicy
      */
     public function viewAny(User|AdminUser $user): bool
     {
+        if ($user instanceof AdminUser) {
+            return true;
+        }
+
         try {
-            // Only sellers with a valid seller record can create product FAQs
             if ($user->seller() === null) {
                 return false;
             }
 
-            // Must have a seller role or explicit permission
             if (
                 $user->hasRole(DefaultSystemRolesEnum::SELLER()) ||
                 $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_VIEW())
@@ -43,6 +45,10 @@ class GlobalAttributePolicy
      */
     public function view(User|AdminUser $user, GlobalProductAttribute $attribute): bool
     {
+        if ($user instanceof AdminUser) {
+            return true;
+        }
+
         return false;
     }
 
@@ -51,13 +57,15 @@ class GlobalAttributePolicy
      */
     public function create(User|AdminUser $user): bool
     {
+        if ($user instanceof AdminUser) {
+            return true;
+        }
+
         try {
-            // Only sellers with a valid seller record can create product FAQs
             if ($user->seller() === null) {
                 return false;
             }
 
-            // Must have a seller role or explicit permission
             if (
                 $user->hasRole(DefaultSystemRolesEnum::SELLER()) ||
                 $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_CREATE())
@@ -76,15 +84,16 @@ class GlobalAttributePolicy
      */
     public function update(User|AdminUser $user, GlobalProductAttribute $attribute): bool
     {
+        if ($user instanceof AdminUser) {
+            return true;
+        }
+
         try {
-            // Only the seller who owns the product can update it
             if ($user->seller() === null) {
                 return false;
             }
 
-            // Check if the user is the owner
             if ($user->seller()->id === $attribute->seller_id) {
-                // Check role or permission
                 if (
                     $user->hasRole(DefaultSystemRolesEnum::SELLER()) ||
                     $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_EDIT())
@@ -105,15 +114,16 @@ class GlobalAttributePolicy
      */
     public function delete(User|AdminUser $user, GlobalProductAttribute $attribute): bool
     {
+        if ($user instanceof AdminUser) {
+            return true;
+        }
+
         try {
-            // Only the seller who owns the product can update it
             if ($user->seller() === null) {
                 return false;
             }
 
-            // Check if the user is the owner
             if ($user->seller()->id === $attribute->seller_id) {
-                // Check role or permission
                 if (
                     $user->hasRole(DefaultSystemRolesEnum::SELLER()) ||
                     $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_DELETE())

@@ -159,15 +159,22 @@ Route::prefix('seller')->name('seller.')->group(function () {
             Route::get('/{id}', [ProductController::class, 'show'])->name('show');
         });
 
-        // global attributes
+        // global attributes (values must come first to avoid {id} wildcard conflict)
+        Route::prefix('attributes/values')->name('attributes.values.')->group(function () {
+            Route::get('/datatable', [GlobalAttributeValueController::class, 'getAllAttributeValues'])->name('datatable');
+            Route::post('/', [GlobalAttributeValueController::class, 'store'])->name('store');
+            Route::get('/{id}/edit', [GlobalAttributeValueController::class, 'edit'])->name('edit')->whereNumber('id');
+            Route::post('/{id}', [GlobalAttributeValueController::class, 'update'])->name('update')->whereNumber('id');
+            Route::delete('/{id}', [GlobalAttributeValueController::class, 'destroy'])->name('delete')->whereNumber('id');
+        });
         Route::prefix('attributes')->name('attributes.')->group(function () {
             Route::get('/', [GlobalAttributeController::class, 'index'])->name('index');
-            route::post('/', [GlobalAttributeController::class, 'store'])->name('store');
+            Route::post('/', [GlobalAttributeController::class, 'store'])->name('store');
             Route::get('/datatable', [GlobalAttributeController::class, 'getAttributes'])->name('datatable');
             Route::get('/search', [GlobalAttributeController::class, 'search'])->name('search');
-            Route::get('/{id}/edit', [GlobalAttributeController::class, 'edit'])->name('edit');
-            Route::post('/{id}', [GlobalAttributeController::class, 'update'])->name('update');
-            Route::delete('/{id}', [GlobalAttributeController::class, 'destroy'])->name('delete');
+            Route::get('/{id}/edit', [GlobalAttributeController::class, 'edit'])->name('edit')->whereNumber('id');
+            Route::post('/{id}', [GlobalAttributeController::class, 'update'])->name('update')->whereNumber('id');
+            Route::delete('/{id}', [GlobalAttributeController::class, 'destroy'])->name('delete')->whereNumber('id');
         });
 
         // product conditions
@@ -179,14 +186,6 @@ Route::prefix('seller')->name('seller.')->group(function () {
             Route::get('/{id}/edit', [ProductConditionController::class, 'edit'])->name('edit');
             Route::post('/{id}', [ProductConditionController::class, 'update'])->name('update');
             Route::delete('/{id}', [ProductConditionController::class, 'destroy'])->name('delete');
-        });
-
-        route::prefix('attribute/values')->name('attributes.values.')->group(function () {
-            Route::get('/datatable', [GlobalAttributeValueController::class, 'getAllAttributeValues'])->name('datatable');
-            Route::post('/', [GlobalAttributeValueController::class, 'store'])->name('store');
-            Route::get('/{id}/edit', [GlobalAttributeValueController::class, 'edit'])->name('edit');
-            Route::post('/{id}', [GlobalAttributeValueController::class, 'update'])->name('update');
-            Route::delete('/{id}', [GlobalAttributeValueController::class, 'destroy'])->name('delete');
         });
 
         // product Faqs

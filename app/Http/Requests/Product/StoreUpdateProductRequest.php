@@ -59,18 +59,7 @@ class StoreUpdateProductRequest extends FormRequest
             'custom_fields.*' => 'nullable|string|max:255',
             'pricing' => 'required|json',
             'variants_json' => 'required_if:type,variant|json',
-            'weight' => 'nullable|min:0',
-            'height' => 'nullable|min:0',
-            'length' => 'nullable|min:0',
-            'breadth' => 'nullable|min:0',
-            'capacity' => 'nullable|min:0',
-            'capacity_unit' => 'nullable|in:ml,l,oz,g,kg',
-            'weight_unit' => 'nullable|in:g,kg,ml,oz,lb',
-            'height_unit' => 'nullable|in:mm,cm,inch,m',
-            'breadth_unit' => 'nullable|in:mm,cm,inch,m',
-            'length_unit' => 'nullable|in:mm,cm,inch,m',
-            'color_value_id' => 'nullable|integer|exists:global_product_attribute_values,id',
-            'barcode' => 'nullable|string',
+            'simple_attributes_json' => 'nullable|string',
             'metadata' => 'nullable|array',
             'metadata.seo_title' => 'nullable|string|max:255',
             'metadata.seo_description' => 'nullable|string|max:500',
@@ -176,22 +165,36 @@ class StoreUpdateProductRequest extends FormRequest
                 $this->validateVariantProduct($validator, $pricingArr);
             } else {
                 $this->validateSimpleProduct($validator, $pricingArr);
-                $this->validateSimpleColorSelection($validator);
+                $this->validateSimpleAttributesJson($validator);
             }
         });
     }
 
-    protected function validateSimpleColorSelection($validator): void
+    protected function validateSimpleAttributesJson($validator): void
     {
-        $colorValueId = $this->input('color_value_id');
-        if (empty($colorValueId)) {
+        $json = $this->input('simple_attributes_json');
+        if (empty($json)) {
             return;
         }
 
-        $colorValue = GlobalProductAttributeValue::with('attribute')->find($colorValueId);
-        $attributeTitle = strtolower((string)($colorValue?->attribute?->title ?? ''));
-        if (!$colorValue || $attributeTitle !== 'color') {
-            $validator->errors()->add('color_value_id', 'Selected color is invalid.');
+        $attrs = json_decode($json, true);
+        if (!is_array($attrs)) {
+            $validator->errors()->add('simple_attributes_json', 'Attributes data is invalid.');
+            return;
+        }
+
+        foreach ($attrs as $i => $attr) {
+            if (empty($attr['attribute_id']) || empty($attr['value_id'])) {
+                $validator->errors()->add('simple_attributes_json', "Attribute entry #{$i} is missing attribute_id or value_id.");
+                return;
+            }
+            $exists = GlobalProductAttributeValue::where('id', $attr['value_id'])
+                ->where('global_attribute_id', $attr['attribute_id'])
+                ->exists();
+            if (!$exists) {
+                $validator->errors()->add('simple_attributes_json', "Attribute value #{$i} is invalid.");
+                return;
+            }
         }
     }
 
@@ -309,8 +312,6 @@ class StoreUpdateProductRequest extends FormRequest
         $variantIds = array_column($variantPricingArr, 'variant_id') ?? [];
         $isDefaultSet = false;
 
-        // Validate barcode uniqueness
-        $this->validateVariantBarcodeUniqueness($validator, $variants);
         if (empty($variants)) {
             $validator->errors()->add('variants_json', __('labels.variant_required'));
         }
@@ -353,23 +354,6 @@ class StoreUpdateProductRequest extends FormRequest
             return true;
         }
 
-//        if (empty($variant['weight'])) {
-//            $validator->errors()->add('variants_json', $variant['title'] . ' Variant weight is required.');
-//            return true;
-//        }
-//        if (empty($variant['height'])) {
-//            $validator->errors()->add('variants_json', $variant['title'] . ' Variant height is required.');
-//            return true;
-//        }
-//        if (empty($variant['length'])) {
-//            $validator->errors()->add('variants_json', $variant['title'] . ' Variant length is required.');
-//            return true;
-//        }
-//        if (empty($variant['breadth'])) {
-//            $validator->errors()->add('variants_json', $variant['title'] . ' Variant breadth is required.');
-//            return true;
-//        }
-
         if (!in_array($variant['id'], $variantIds)) {
             $validator->errors()->add(
                 'pricing',
@@ -378,39 +362,6 @@ class StoreUpdateProductRequest extends FormRequest
         }
 
         return false;
-    }
-
-    /**
-     * Validate that variant barcodes are unique.
-     *
-     * @param $validator
-     * @param array $variants
-     * @return void
-     */
-    protected function validateVariantBarcodeUniqueness($validator, array $variants): void
-    {
-        $barcodes = [];
-        $duplicateBarcodes = [];
-
-        foreach ($variants as $variant) {
-            if (!empty($variant['barcode'])) {
-                $barcode = $variant['barcode'];
-                if (in_array($barcode, $barcodes)) {
-                    if (!in_array($barcode, $duplicateBarcodes)) {
-                        $duplicateBarcodes[] = $barcode;
-                    }
-                } else {
-                    $barcodes[] = $barcode;
-                }
-            }
-        }
-
-        if (!empty($duplicateBarcodes)) {
-            $validator->errors()->add(
-                'variants_json',
-                'Variant barcodes must be unique. Duplicate barcodes found: ' . implode(', ', $duplicateBarcodes)
-            );
-        }
     }
 
     /**

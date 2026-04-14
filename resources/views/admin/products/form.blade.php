@@ -313,27 +313,6 @@
                 <div class="wizard-step d-none" data-step="4">
                     <div class="container">
                         <div id="attributes" data-attributes="{{ $attributes }}"></div>
-                        @php
-                            $attributesArr = json_decode($attributes ?? '[]', true) ?: [];
-                            $colorAttribute = collect($attributesArr)->first(function ($attr) {
-                                $name = strtolower((string)($attr['name'] ?? $attr['title'] ?? ''));
-                                return $name === 'color';
-                            });
-                            $colorAttributeId = $colorAttribute['id'] ?? null;
-                            $colorOptions = collect($colorAttribute['values'] ?? [])->map(function ($value) {
-                                return [
-                                    'id' => $value['id'] ?? null,
-                                    'name' => $value['name'] ?? $value['title'] ?? '',
-                                ];
-                            })->filter(fn($v) => !empty($v['id']))->values()->all();
-
-                            $selectedSimpleColor = old('color_value_id');
-                            if ($selectedSimpleColor === null && !empty($singleProductVariant) && $colorAttributeId) {
-                                $selectedSimpleColor = optional($singleProductVariant->attributes->first(function ($attr) use ($colorAttributeId) {
-                                    return (int)($attr->global_attribute_id ?? 0) === (int)$colorAttributeId;
-                                }))->global_attribute_value_id;
-                            }
-                        @endphp
                         <div class="mb-3">
                             <label class="form-label required">{{ __('labels.product_type') }}</label>
                             <select class="form-select text-capitalize" name="type" id="productType" {{ !empty($product->type) ? 'readonly' : '' }}>
@@ -343,115 +322,8 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div id="simpleProductSection" class="d-none">
-                            @php
-                                $simpleCapacityUnit = strtolower((string)old('capacity_unit', $singleProductVariant->capacity_unit ?? 'ml'));
-                                $simpleWeightUnit = strtolower((string)old('weight_unit', $singleProductVariant->weight_unit ?? 'kg'));
-                                $simpleHeightUnit = strtolower((string)old('height_unit', $singleProductVariant->height_unit ?? 'cm'));
-                                $simpleBreadthUnit = strtolower((string)old('breadth_unit', $singleProductVariant->breadth_unit ?? 'cm'));
-                                $simpleLengthUnit = strtolower((string)old('length_unit', $singleProductVariant->length_unit ?? 'cm'));
-                            @endphp
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">{{ __('labels.capacity') }}</label>
-                                        <div class="input-group">
-                                            <input type="number" min="0" class="form-control" name="capacity" value="{{ old('capacity', $singleProductVariant->capacity ?? '') }}">
-                                            <select class="input-group-text form-select ps-2 pe-1" style="max-width: 90px;" name="capacity_unit">
-                                                <option value="ml" {{ $simpleCapacityUnit === 'ml' ? 'selected' : '' }}>ml</option>
-                                                <option value="l" {{ $simpleCapacityUnit === 'l' ? 'selected' : '' }}>l</option>
-                                                <option value="oz" {{ $simpleCapacityUnit === 'oz' ? 'selected' : '' }}>oz</option>
-                                                <option value="g" {{ $simpleCapacityUnit === 'g' ? 'selected' : '' }}>g</option>
-                                                <option value="kg" {{ $simpleCapacityUnit === 'kg' ? 'selected' : '' }}>kg</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">{{ __('labels.barcode') }}</label>
-                                        <input type="text" class="form-control" name="barcode" value="{{ $singleProductVariant->barcode ?? '' }}">
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label required">{{ __('labels.weight') }}</label>
-                                        <div class="input-group">
-                                            <input type="number" min="0" class="form-control" name="weight" value="{{ old('weight', $singleProductVariant->weight ?? '') }}">
-                                            <select class="input-group-text form-select ps-2 pe-1" style="max-width: 90px;" name="weight_unit">
-                                                <option value="g" {{ $simpleWeightUnit === 'g' ? 'selected' : '' }}>g</option>
-                                                <option value="kg" {{ $simpleWeightUnit === 'kg' ? 'selected' : '' }}>kg</option>
-                                                <option value="ml" {{ $simpleWeightUnit === 'ml' ? 'selected' : '' }}>ml</option>
-                                                <option value="oz" {{ $simpleWeightUnit === 'oz' ? 'selected' : '' }}>oz</option>
-                                                <option value="lb" {{ $simpleWeightUnit === 'lb' ? 'selected' : '' }}>lb</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label required">{{ __('labels.height') }}</label>
-                                        <div class="input-group">
-                                            <input type="number" min="0" class="form-control" name="height" value="{{ old('height', $singleProductVariant->height ?? '') }}">
-                                            <select class="input-group-text form-select ps-2 pe-1" style="max-width: 90px;" name="height_unit">
-                                                <option value="mm" {{ $simpleHeightUnit === 'mm' ? 'selected' : '' }}>mm</option>
-                                                <option value="cm" {{ $simpleHeightUnit === 'cm' ? 'selected' : '' }}>cm</option>
-                                                <option value="inch" {{ $simpleHeightUnit === 'inch' ? 'selected' : '' }}>inch</option>
-                                                <option value="m" {{ $simpleHeightUnit === 'm' ? 'selected' : '' }}>m</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label required">{{ __('labels.length') }}</label>
-                                        <div class="input-group">
-                                            <input type="number" min="0" class="form-control" name="length" value="{{ old('length', $singleProductVariant->length ?? '') }}">
-                                            <select class="input-group-text form-select ps-2 pe-1" style="max-width: 90px;" name="length_unit">
-                                                <option value="mm" {{ $simpleLengthUnit === 'mm' ? 'selected' : '' }}>mm</option>
-                                                <option value="cm" {{ $simpleLengthUnit === 'cm' ? 'selected' : '' }}>cm</option>
-                                                <option value="inch" {{ $simpleLengthUnit === 'inch' ? 'selected' : '' }}>inch</option>
-                                                <option value="m" {{ $simpleLengthUnit === 'm' ? 'selected' : '' }}>m</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label required">{{ __('labels.breadth') }}</label>
-                                        <div class="input-group">
-                                            <input type="number" min="0" class="form-control" name="breadth" value="{{ old('breadth', $singleProductVariant->breadth ?? '') }}">
-                                            <select class="input-group-text form-select ps-2 pe-1" style="max-width: 90px;" name="breadth_unit">
-                                                <option value="mm" {{ $simpleBreadthUnit === 'mm' ? 'selected' : '' }}>mm</option>
-                                                <option value="cm" {{ $simpleBreadthUnit === 'cm' ? 'selected' : '' }}>cm</option>
-                                                <option value="inch" {{ $simpleBreadthUnit === 'inch' ? 'selected' : '' }}>inch</option>
-                                                <option value="m" {{ $simpleBreadthUnit === 'm' ? 'selected' : '' }}>m</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">{{ __('labels.color') }}</label>
-                                        <select class="form-select" name="color_value_id">
-                                            <option value="">{{ __('labels.select_option') }}</option>
-                                            @foreach($colorOptions as $colorOption)
-                                                <option value="{{ $colorOption['id'] }}" {{ (string)$selectedSimpleColor === (string)$colorOption['id'] ? 'selected' : '' }}>
-                                                    {{ $colorOption['name'] }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        @if(empty($colorOptions))
-                                            <small class="form-hint">No color attribute values found.</small>
-                                        @endif
-                                        @if($colorAttributeId)
-                                            <input type="hidden" name="color_attribute_id" value="{{ $colorAttributeId }}">
-                                        @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <div id="simpleProductSection" class="d-none"></div>
+                        {{-- Generic attribute picker for simple products --}}
                         <div id="variationsSection" class="d-none">
                             <div class="card border-0 bg-light">
                                 <div class="card-header bg-transparent border-bottom gap-1">
@@ -459,20 +331,6 @@
                                     <p class="text-muted mb-0 small">Add attributes and their values to create product variants</p>
                                 </div>
                                 <div class="card-body">
-                                    <div class="mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h5 class="mb-0">Attributes</h5>
-                                            <button type="button" class="btn btn-primary d-none" id="addAttributeBtn">
-                                                <i class="ti ti-plus"></i> Add Attribute
-                                            </button>
-                                        </div>
-                                        <div id="attributesContainer"></div>
-                                    </div>
-                                    <div class="mb-4 text-center">
-                                        <button type="button" class="btn btn-success" id="generateVariantsBtn" disabled>
-                                            <i class="ti ti-wand"></i> Generate Variants
-                                        </button>
-                                    </div>
                                     <div id="variantsContainer" class="card mb-4">
                                         <div class="card-header d-flex justify-content-between align-items-center">
                                             <h5 class="card-title mb-0">Product Variants</h5>

@@ -219,6 +219,11 @@ document.addEventListener('DOMContentLoaded', function () {
         nextStepBtn.type = currentStep === totalSteps ? 'submit' : 'button';
 
         updateURL(currentStep);
+
+        // Refresh variant labels in the pricing table when navigating to the pricing step
+        if (currentStep === totalSteps && typeof refreshVariantPricingLabels === 'function') {
+            refreshVariantPricingLabels();
+        }
     }
 
     function getStepFromURL() {
@@ -296,7 +301,7 @@ if (attributesElement !== null) {
 }
 
 
-let variants = [], removedVariants = [], attributeCounter = 0;
+let variants = [], removedVariants = [];
 let productPricing = null;
 
 // Function to initialize the form in edit mode
@@ -312,7 +317,7 @@ function initializeEditMode() {
 
     // Initialize variants if product type is 'variant'
     if (window.productData.type === 'variant' && window.productData.variants) {
-        initializeVariantAttributes();
+        initializeVariantData();
 
         // Fetch and initialize store pricing
         if (window.productData.product && window.productData.product.id) {
@@ -321,7 +326,6 @@ function initializeEditMode() {
     }
     // Initialize simple product fields if product type is 'simple'
     else if (window.productData.type === 'simple' && window.productData.variant) {
-
         // Fetch and initialize store pricing
         if (window.productData.product && window.productData.product.id) {
             fetchProductPricing(window.productData.product.id);
@@ -330,125 +334,42 @@ function initializeEditMode() {
 }
 
 
-// Function to initialize variant attributes in edit mode
-function initializeVariantAttributes() {
+// Build variants[] from server data then render all cards (edit mode)
+function initializeVariantData() {
     if (!window.productData || !window.productData.variants) return;
 
-    // Extract unique attributes from variants
-    const variantAttributes = new Map();
-
-    window.productData.variants.forEach(variant => {
-        if (variant.attributes) {
-            variant.attributes.forEach(attr => {
-                if (!variantAttributes.has(attr.global_attribute_id)) {
-                    variantAttributes.set(attr.global_attribute_id, new Set());
-                }
-                variantAttributes.get(attr.global_attribute_id).add(attr.global_attribute_value_id);
-            });
-        }
-    });
-
-    // Add attributes to the form
-    variantAttributes.forEach((values, attrId) => {
-        // Find attribute in dbAttributes
-        let attrKey = null;
-        for (const key in dbAttributes) {
-            if (dbAttributes[key].id === attrId) {
-                attrKey = key;
-                break;
-            }
-        }
-
-        if (attrKey) {
-            // Add attribute to form
-            const id = `attr_${++attributeCounter}`;
-            const html = `
-                <div class="card mb-3" data-id="${id}">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <label class="form-label">Attribute</label>
-                                <select class="form-select attr-select" onchange="loadValues('${id}', this.value)">
-                                    <option value="">Select Attribute</option>
-                                    ${Object.keys(dbAttributes).filter(key => !VARIANT_FIELD_ATTRS.includes(dbAttributes[key].name.toLowerCase())).map(key =>
-                `<option value="${key}" ${key === attrKey ? 'selected' : ''}>${dbAttributes[key].name}</option>`
-            ).join('')}
-                                </select>
-                            </div>
-                            <div class="col-md-7">
-                                <label class="form-label">Values</label>
-                                <select class="form-select attribute-value-select" multiple size="4" data-values="${id}">
-                                    <option disabled>Select attribute first</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.getElementById('attributesContainer').insertAdjacentHTML('beforeend', html);
-
-            // Load values for this attribute
-            loadValues(id, attrKey);
-
-            // Select the values
-            setTimeout(() => {
-                const select = document.querySelector(`[data-values="${id}"]`);
-                if (select && select.tomselect) {
-                    const valueIds = Array.from(values).map(v => v.toString());
-                    select.tomselect.setValue(valueIds);
-                }
-            }, 100);
-        }
-    });
-
-    // Build variants directly from server data in edit mode.
-    // This preserves persisted variant IDs and avoids collapsing variants
-    // that may share the same title/price or even attribute combinations.
-    setTimeout(() => {
-        variants = window.productData.variants.map((serverVariant) => {
-            const attrs = {};
-            (serverVariant.attributes || []).forEach((attr) => {
-                attrs[String(attr.global_attribute_id)] = Number(attr.global_attribute_value_id);
-            });
-
-            return {
-                id: String(serverVariant.id),
-                attributes: attrs,
-                title: serverVariant.title || '',
-                capacity: serverVariant.capacity || '',
-                capacity_unit: serverVariant.capacity_unit || 'ml',
-                weight: serverVariant.weight || '',
-                weight_unit: serverVariant.weight_unit || 'kg',
-                height: serverVariant.height || '',
-                height_unit: serverVariant.height_unit || 'cm',
-                breadth: serverVariant.breadth || '',
-                breadth_unit: serverVariant.breadth_unit || 'cm',
-                length: serverVariant.length || '',
-                length_unit: serverVariant.length_unit || 'cm',
-                image: serverVariant.image || '',
-                availability: serverVariant.availability || '',
-                barcode: serverVariant.barcode || '',
-                is_default: serverVariant.is_default || '',
-                is_indexable: serverVariant.metadata?.is_indexable ?? serverVariant.is_indexable ?? true,
-                seo_title: serverVariant.metadata?.seo_title || serverVariant.seo_title || '',
-                seo_description: serverVariant.metadata?.seo_description || serverVariant.seo_description || '',
-                seo_keywords: serverVariant.metadata?.seo_keywords || serverVariant.seo_keywords || '',
-                og_title: serverVariant.metadata?.og_title || serverVariant.og_title || '',
-                og_description: serverVariant.metadata?.og_description || serverVariant.og_description || '',
-                og_image: normalizeStorageUrl(serverVariant.og_image || serverVariant.metadata?.og_image || ''),
-                twitter_title: serverVariant.metadata?.twitter_title || serverVariant.twitter_title || '',
-                twitter_description: serverVariant.metadata?.twitter_description || serverVariant.twitter_description || '',
-                twitter_card: serverVariant.metadata?.twitter_card || serverVariant.twitter_card || '',
-                twitter_image: normalizeStorageUrl(serverVariant.twitter_image || serverVariant.metadata?.twitter_image || ''),
-                schema_mode: serverVariant.metadata?.schema_mode || serverVariant.schema_mode || 'auto',
-                schema_json_ld: serverVariant.metadata?.schema_json_ld || serverVariant.schema_json_ld || '',
-            };
+    variants = window.productData.variants.map((serverVariant) => {
+        const attrs = {};
+        (serverVariant.attributes || []).forEach((attr) => {
+            attrs[String(attr.global_attribute_id)] = Number(attr.global_attribute_value_id);
         });
 
-        renderVariants();
-        document.getElementById('variantsContainer')?.classList.remove('d-none');
-        updateVariantPricing();
-    }, 500);
+        return {
+            id: String(serverVariant.id),
+            attributes: attrs,
+            title: serverVariant.title || '',
+            image: serverVariant.image || '',
+            availability: serverVariant.availability || '',
+            is_default: serverVariant.is_default || '',
+            is_indexable: serverVariant.metadata?.is_indexable ?? serverVariant.is_indexable ?? true,
+            seo_title: serverVariant.metadata?.seo_title || serverVariant.seo_title || '',
+            seo_description: serverVariant.metadata?.seo_description || serverVariant.seo_description || '',
+            seo_keywords: serverVariant.metadata?.seo_keywords || serverVariant.seo_keywords || '',
+            og_title: serverVariant.metadata?.og_title || serverVariant.og_title || '',
+            og_description: serverVariant.metadata?.og_description || serverVariant.og_description || '',
+            og_image: normalizeStorageUrl(serverVariant.og_image || serverVariant.metadata?.og_image || ''),
+            twitter_title: serverVariant.metadata?.twitter_title || serverVariant.twitter_title || '',
+            twitter_description: serverVariant.metadata?.twitter_description || serverVariant.twitter_description || '',
+            twitter_card: serverVariant.metadata?.twitter_card || serverVariant.twitter_card || '',
+            twitter_image: normalizeStorageUrl(serverVariant.twitter_image || serverVariant.metadata?.twitter_image || ''),
+            schema_mode: serverVariant.metadata?.schema_mode || serverVariant.schema_mode || 'auto',
+            schema_json_ld: serverVariant.metadata?.schema_json_ld || serverVariant.schema_json_ld || '',
+        };
+    });
+
+    renderVariants();
+    document.getElementById('variantsContainer')?.classList.remove('d-none');
+    updateVariantPricing();
 }
 
 // Initialize edit mode if needed
@@ -481,7 +402,6 @@ function toggleProductVariantSection() {
         if (!window.productData || productPricing) {
             // Initialize the appropriate pricing container
             if (isVariant) {
-                ensureAttributeRowExists();
                 initializeVariantPricing();
             } else {
                 initializeSimplePricing();
@@ -494,70 +414,11 @@ function toggleProductVariantSection() {
     }
 }
 
-document.getElementById('addAttributeBtn')?.addEventListener('click', () => addAttribute());
-document.getElementById('generateVariantsBtn')?.addEventListener('click', () => generateVariants());
 document.getElementById('addRemovedVariantBtn')?.addEventListener('click', () => showRemovedVariantsModal());
 document.getElementById('removeAllVariantsBtn')?.addEventListener('click', () => removeAllVariants());
 
-function ensureAttributeRowExists() {
-    const container = document.getElementById('attributesContainer');
-    if (!container || container.querySelector('[data-id]')) {
-        return;
-    }
 
-    addAttribute();
-}
 
-function addAttribute() {
-    const id = `attr_${++attributeCounter}`;
-    const html = `
-                <div class="card mb-3" data-id="${id}">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <label class="form-label">Attribute</label>
-                                <select class="form-select attr-select" onchange="loadValues('${id}', this.value)">
-                                    <option value="">Select Attribute</option>
-                                    ${Object.keys(dbAttributes).filter(key => !VARIANT_FIELD_ATTRS.includes(dbAttributes[key].name.toLowerCase())).map(key => `<option value="${key}">${dbAttributes[key].name}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="col-md-7">
-                                <label class="form-label">Values</label>
-                                <select class="form-select attribute-value-select" multiple size="4" data-values="${id}">
-                                    <option disabled>Select attribute first</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-    document.getElementById('attributesContainer').insertAdjacentHTML('beforeend', html);
-    updateGenerateButton();
-    updateAttributeOptions();
-}
-
-function updateGenerateButton() {
-    const attrs = getAttributes();
-    document.getElementById('generateVariantsBtn').disabled = !attrs.length || !attrs.every(a => a.values.length);
-}
-
-function getAttributes() {
-    return Array.from(document.querySelectorAll('#attributesContainer .card')).map(card => {
-        const attrKey = card.querySelector('.attr-select').value;
-        if (!attrKey) return null;
-        const attr = dbAttributes[attrKey];
-        const values = Array.from(card.querySelector('[data-values]').selectedOptions)
-            .map(opt => parseInt(opt.value)); // value will be the value ID
-        return attr && values.length ? {id: attr.id, key: attrKey, values} : null;
-    }).filter(Boolean);
-}
-
-function generateCombinations(attrs) {
-    return attrs.reduce((acc, attr) => acc.flatMap(combo => attr.values.map(val => ({
-        ...combo,
-        [attr.id]: val // attr.id is attribute ID, val is value ID
-    }))), [{}]);
-}
 
 function generateSKU(attrs) {
     // attrs is an object like { 1: 101, 2: 201 } (attributeId: valueId)
@@ -573,14 +434,6 @@ function generateSKU(attrs) {
 }
 
 const attrIdMap = {};
-
-// Attributes managed as per-variant fields — excluded from the combination generator selector
-const VARIANT_FIELD_ATTRS = ['size', 'capacity', 'weight'];
-
-function unitSelect(variantId, field, selected, options) {
-    const opts = options.map(u => `<option value="${u}" ${u === selected ? 'selected' : ''}>${u}</option>`).join('');
-    return `<select class="input-group-text form-select ps-2 pe-1" style="max-width:70px" onchange="updateVariant('${variantId}','${field}',this.value)">${opts}</select>`;
-}
 
 function renderVariantSeoSection(v) {
     const twitterCard = v.twitter_card || '';
@@ -698,7 +551,53 @@ function renderVariantSeoSection(v) {
     `;
 }
 
-function renderVariants() {
+function buildVariantAttrPickerHTML(variantId, attrs) {
+    // Build one row per existing attribute pair, plus an "Add Attribute" button
+    const attrKeys = Object.keys(dbAttributes);
+    const rows = Object.entries(attrs).map(([attrId, valueId]) => {
+        const matchedKey = attrKeys.find(k => String(dbAttributes[k].id) === String(attrId)) || '';
+        const attrOpts = attrKeys.map(k =>
+            `<option value="${k}" ${k === matchedKey ? 'selected' : ''}>${dbAttributes[k].name}</option>`
+        ).join('');
+        const valOpts = matchedKey
+            ? dbAttributes[matchedKey].values.map(v =>
+                `<option value="${v.id}" ${String(v.id) === String(valueId) ? 'selected' : ''}>${v.name}</option>`
+              ).join('')
+            : '';
+        const rowId = `vattr_${variantId}_${attrId}`;
+        return `
+            <div class="d-flex gap-2 align-items-center mb-2 variant-attr-row" data-row-id="${rowId}" data-attr-key="${matchedKey}">
+                <select class="form-select form-select-sm flex-fill vattr-key-select"
+                        onchange="onVariantAttrKeyChange('${variantId}','${rowId}',this.value)">
+                    <option value="">— Attribute —</option>
+                    ${attrOpts}
+                </select>
+                <select class="form-select form-select-sm flex-fill vattr-val-select"
+                        onchange="syncVariantAttrRows('${variantId}')" ${!matchedKey ? 'disabled' : ''}>
+                    <option value="">— Value —</option>
+                    ${valOpts}
+                </select>
+                <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 px-2"
+                        onclick="removeVariantAttrRow('${variantId}','${rowId}')">
+                    <i class="ti ti-minus"></i>
+                </button>
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="variant-attrs-section mb-3" data-variant-id="${variantId}">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label mb-0 fw-semibold">Attributes</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="addVariantAttrRow('${variantId}')">
+                    <i class="ti ti-plus me-1"></i>Add
+                </button>
+            </div>
+            <div class="variant-attr-rows">${rows}</div>
+        </div>`;
+}
+
+function ensureAttrIdMap() {
     Object.keys(dbAttributes).forEach(attrKey => {
         const attr = dbAttributes[attrKey];
         attrIdMap[attr.id] = {
@@ -706,25 +605,20 @@ function renderVariants() {
             values: Object.fromEntries(attr.values.map(v => [v.id, v.name]))
         };
     });
+}
+
+function renderVariants() {
+    ensureAttrIdMap();
     document.getElementById('variantsList').innerHTML = variants.map(v =>
         `<div class="col-md-6" data-id="${v.id}">
         <div class="card border h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="card-title mb-0">
-                        ${Object.entries(v.attributes).map(([attrId, valueId]) => {
-            const attr = attrIdMap[attrId];
-            const attrName = attr ? attr.name : attrId;
-            const valueName = attr && attr.values[valueId] ? attr.values[valueId] : valueId;
-            const options = ["bg-primary-lt", "bg-teal-lt", "bg-warning-lt"];
-            const randomIndex = Math.floor(Math.random() * options.length);
-            return `<span class="badge ${options[randomIndex]} me-1">${attrName}: ${valueName}</span>`;
-        }).join('')}
-                    </h6>
+                <div class="d-flex justify-content-end mb-2">
                     <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="removeVariant('${v.id}')">
                         <i class="ti ti-trash fs-2"></i>
                     </button>
                 </div>
+                ${buildVariantAttrPickerHTML(v.id, v.attributes)}
                 <div class="row g-3">
                     <div class="col-12">
                         <label class="form-label">Title</label>
@@ -736,51 +630,12 @@ function renderVariants() {
                             <small class="form-hint">Recommended: 1200 x 1200 px. Max upload size: 2 MB.</small>
                         </div>
                     <div class="col-6">
-                        <label class="form-label">Capacity</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="${v.capacity || ''}" onchange="updateVariant('${v.id}', 'capacity', this.value)">
-                            ${unitSelect(v.id, 'capacity_unit', v.capacity_unit || 'ml', ['ml','l','oz','g','kg'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Weight</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="${v.weight}" onchange="updateVariant('${v.id}', 'weight', this.value)">
-                            ${unitSelect(v.id, 'weight_unit', v.weight_unit || 'kg', ['g','kg','ml','oz','lb'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Height</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="${v.height}" onchange="updateVariant('${v.id}', 'height', this.value)">
-                            ${unitSelect(v.id, 'height_unit', v.height_unit || 'cm', ['mm','cm','inch','m'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Breadth</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="${v.breadth}" onchange="updateVariant('${v.id}', 'breadth', this.value)">
-                            ${unitSelect(v.id, 'breadth_unit', v.breadth_unit || 'cm', ['mm','cm','inch','m'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Length</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="${v.length}" onchange="updateVariant('${v.id}', 'length', this.value)">
-                            ${unitSelect(v.id, 'length_unit', v.length_unit || 'cm', ['mm','cm','inch','m'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
                         <label class="form-label">Availability</label>
                         <select class="form-select" onchange="updateVariant('${v.id}', 'availability', this.value)">
                             <option value="" ${v.availability === '' ? 'selected' : ''}>Select</option>
                             <option value="yes" ${v.availability == 1 ? 'selected' : ''}>Yes</option>
                             <option value="no" ${v.availability == 0 ? 'selected' : ''}>No</option>
                         </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Barcode</label>
-                        <input type="text" class="form-control" value="${v.barcode}" onchange="updateVariant('${v.id}', 'barcode', this.value)">
                     </div>
                     <div class="col-12">
                         <div class="form-check">
@@ -1217,7 +1072,7 @@ function updateAttributeOptions() {
         const currentValue = select.value;
         select.innerHTML = `
                     <option value="">Select Attribute</option>
-                    ${Object.keys(dbAttributes).filter(attr => !VARIANT_FIELD_ATTRS.includes(dbAttributes[attr].name.toLowerCase())).map(attr => {
+                    ${Object.keys(dbAttributes).map(attr => {
             const isDisabled = selectedAttributes.includes(attr) && attr !== currentValue;
             return `<option value="${attr}" ${isDisabled ? 'disabled' : ''} ${attr === currentValue ? 'selected' : ''}>${dbAttributes[attr].name}</option>`;
         }).join('')}
@@ -1290,107 +1145,38 @@ function restoreVariant(id) {
 }
 
 function addCustomVariant() {
-    // Find the Color attribute key
-    const colorKey = Object.keys(dbAttributes).find(key => dbAttributes[key].name.toLowerCase() === 'color');
-    const colorAttr = colorKey ? dbAttributes[colorKey] : null;
-    const colorValueOptions = colorAttr
-        ? colorAttr.values.map(v => `<option value="${v.id}">${v.name}</option>`).join('')
-        : '';
-
     const id = `v_custom_${Date.now()}`;
     const variant = {
         id,
         attributes: {},
         title: '',
-        capacity: '', capacity_unit: 'ml',
-        weight: '', weight_unit: 'kg',
-        height: '', height_unit: 'cm',
-        breadth: '', breadth_unit: 'cm',
-        length: '', length_unit: 'cm',
         availability: '',
-        barcode: '',
         is_default: '',
         is_indexable: true,
-        seo_title: '',
-        seo_description: '',
-        seo_keywords: '',
-        og_title: '',
-        og_description: '',
-        og_image: '',
-        twitter_title: '',
-        twitter_description: '',
-        twitter_card: '',
-        twitter_image: '',
-        schema_mode: 'auto',
-        schema_json_ld: '',
+        seo_title: '', seo_description: '', seo_keywords: '',
+        og_title: '', og_description: '', og_image: '',
+        twitter_title: '', twitter_description: '', twitter_card: '', twitter_image: '',
+        schema_mode: 'auto', schema_json_ld: '',
     };
     variants.push(variant);
 
-    // Build the card HTML directly and append — same structure as renderVariants but with attribute builder
     const html = `<div class="col-md-6" data-id="${id}">
         <div class="card border h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="card-title mb-0 text-muted fst-italic">Custom Variant</h6>
+                <div class="d-flex justify-content-end mb-2">
                     <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="removeVariant('${id}')">
                         <i class="ti ti-trash fs-2"></i>
                     </button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Color</label>
-                    <div class="custom-variant-attrs" data-variant-id="${id}">
-                        <div class="custom-attr-row">
-                            <input type="hidden" class="custom-attr-select" value="${colorKey || ''}">
-                            <select class="form-select custom-attr-value-select" onchange="syncCustomVariantAttrs('${id}')">
-                                <option value="">— Select Color —</option>
-                                ${colorValueOptions}
-                            </select>
-                        </div>
-                    </div>
-                </div>
+                ${buildVariantAttrPickerHTML(id, {})}
                 <div class="row g-3">
                     <div class="col-12">
                         <label class="form-label">Title</label>
-                        <input type="text" class="form-control variant-title-input" data-variant-id="${id}" placeholder="e.g. Meesho Printed 2 Inch 80m" value="" oninput="handleVariantTitleInput('${id}', this.value)">
+                        <input type="text" class="form-control variant-title-input" data-variant-id="${id}" placeholder="e.g. Red 500ml" value="" oninput="handleVariantTitleInput('${id}', this.value)">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Variant Image</label>
                         <input type="file" name="variant_image${id}" class="form-control variant-image-input" data-image-url="" accept="image/*" onchange="updateVariant('${id}', 'variant_image', this.value)">
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Capacity</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="" onchange="updateVariant('${id}', 'capacity', this.value)">
-                            ${unitSelect(id, 'capacity_unit', 'ml', ['ml','l','oz','g','kg'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Weight</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="" onchange="updateVariant('${id}', 'weight', this.value)">
-                            ${unitSelect(id, 'weight_unit', 'kg', ['g','kg','ml','oz','lb'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Height</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="" onchange="updateVariant('${id}', 'height', this.value)">
-                            ${unitSelect(id, 'height_unit', 'cm', ['mm','cm','inch','m'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Breadth</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="" onchange="updateVariant('${id}', 'breadth', this.value)">
-                            ${unitSelect(id, 'breadth_unit', 'cm', ['mm','cm','inch','m'])}
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Length</label>
-                        <div class="input-group">
-                            <input type="number" class="form-control" min="0" placeholder="optional" value="" onchange="updateVariant('${id}', 'length', this.value)">
-                            ${unitSelect(id, 'length_unit', 'cm', ['mm','cm','inch','m'])}
-                        </div>
                     </div>
                     <div class="col-6">
                         <label class="form-label">Availability</label>
@@ -1399,10 +1185,6 @@ function addCustomVariant() {
                             <option value="yes">Yes</option>
                             <option value="no">No</option>
                         </select>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Barcode</label>
-                        <input type="text" class="form-control" value="" onchange="updateVariant('${id}', 'barcode', this.value)">
                     </div>
                     <div class="col-12">
                         <div class="form-check">
@@ -1418,74 +1200,72 @@ function addCustomVariant() {
 
     document.getElementById('variantsList').insertAdjacentHTML('beforeend', html);
     document.getElementById('variantsContainer').classList.remove('d-none');
-
-    // Init FilePond for the new image input
     initializeFilePond(`variant_image${id}`, ['image/*'], '2MB');
     initializeVariantSeoKeywordInputs();
-
-    // Update pricing UI
     updateVariantPricing();
 }
 
-// Load values into a custom attribute row's value select
-function loadCustomAttrValues(attrSelect) {
-    const row = attrSelect.closest('.custom-attr-row');
-    const valueSelect = row.querySelector('.custom-attr-value-select');
-    const attrKey = attrSelect.value;
-    if (!attrKey) {
-        valueSelect.innerHTML = '<option value="">— Value —</option>';
-        valueSelect.disabled = true;
-        return;
-    }
-    valueSelect.innerHTML = '<option value="">— Value —</option>' +
-        dbAttributes[attrKey].values.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
-    valueSelect.disabled = false;
+// ── Per-variant attribute picker helpers ─────────────────────────────────────
 
-    // Update variant attributes when value changes
-    const variantId = attrSelect.closest('.custom-variant-attrs').dataset.variantId;
-    valueSelect.onchange = () => syncCustomVariantAttrs(variantId);
-}
+let variantAttrRowCounter = 0;
 
-// Add another attribute row to a custom variant
-function addCustomAttrRow(btn, variantId) {
-    const container = btn.closest('.custom-variant-attrs');
-    const attrOptions = Object.keys(dbAttributes)
-        .filter(key => !VARIANT_FIELD_ATTRS.includes(dbAttributes[key].name.toLowerCase()))
-        .map(key => `<option value="${key}">${dbAttributes[key].name}</option>`)
+function addVariantAttrRow(variantId) {
+    const section = document.querySelector(`.variant-attrs-section[data-variant-id="${variantId}"]`);
+    if (!section) return;
+    const rowId = `vattr_${variantId}_new_${++variantAttrRowCounter}`;
+    const attrOpts = Object.keys(dbAttributes)
+        .map(k => `<option value="${k}">${dbAttributes[k].name}</option>`)
         .join('');
-
-    const rowHtml = `<div class="row g-2 mb-2 align-items-end custom-attr-row">
-        <div class="col-5">
-            <select class="form-select form-select-sm custom-attr-select" onchange="loadCustomAttrValues(this)">
+    const rowHtml = `
+        <div class="d-flex gap-2 align-items-center mb-2 variant-attr-row" data-row-id="${rowId}" data-attr-key="">
+            <select class="form-select form-select-sm flex-fill vattr-key-select"
+                    onchange="onVariantAttrKeyChange('${variantId}','${rowId}',this.value)">
                 <option value="">— Attribute —</option>
-                ${attrOptions}
+                ${attrOpts}
             </select>
-        </div>
-        <div class="col-5">
-            <select class="form-select form-select-sm custom-attr-value-select" disabled>
+            <select class="form-select form-select-sm flex-fill vattr-val-select" disabled
+                    onchange="syncVariantAttrRows('${variantId}')">
                 <option value="">— Value —</option>
             </select>
-        </div>
-        <div class="col-2">
-            <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="this.closest('.custom-attr-row').remove(); syncCustomVariantAttrs('${variantId}')">
+            <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 px-2"
+                    onclick="removeVariantAttrRow('${variantId}','${rowId}')">
                 <i class="ti ti-minus"></i>
             </button>
-        </div>
-    </div>`;
-    container.insertAdjacentHTML('beforeend', rowHtml);
+        </div>`;
+    section.querySelector('.variant-attr-rows').insertAdjacentHTML('beforeend', rowHtml);
 }
 
-// Sync all attribute selects for a custom variant back into variants[]
-function syncCustomVariantAttrs(variantId) {
-    const container = document.querySelector(`.custom-variant-attrs[data-variant-id="${variantId}"]`);
-    if (!container) return;
+function removeVariantAttrRow(variantId, rowId) {
+    const row = document.querySelector(`.variant-attr-row[data-row-id="${rowId}"]`);
+    if (row) row.remove();
+    syncVariantAttrRows(variantId);
+}
+
+function onVariantAttrKeyChange(variantId, rowId, newAttrKey) {
+    const row = document.querySelector(`.variant-attr-row[data-row-id="${rowId}"]`);
+    if (!row) return;
+    row.dataset.attrKey = newAttrKey;
+    const valSelect = row.querySelector('.vattr-val-select');
+    if (!newAttrKey || !dbAttributes[newAttrKey]) {
+        valSelect.innerHTML = '<option value="">— Value —</option>';
+        valSelect.disabled = true;
+    } else {
+        valSelect.innerHTML = '<option value="">— Value —</option>' +
+            dbAttributes[newAttrKey].values.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+        valSelect.disabled = false;
+    }
+    syncVariantAttrRows(variantId);
+}
+
+function syncVariantAttrRows(variantId) {
+    const section = document.querySelector(`.variant-attrs-section[data-variant-id="${variantId}"]`);
+    if (!section) return;
     const attrs = {};
-    container.querySelectorAll('.custom-attr-row').forEach(row => {
-        const attrKey = row.querySelector('.custom-attr-select').value;
-        const valueId = parseInt(row.querySelector('.custom-attr-value-select').value);
-        if (attrKey && valueId) {
-            const attrId = dbAttributes[attrKey]?.id;
-            if (attrId) attrs[attrId] = valueId;
+    section.querySelectorAll('.variant-attr-row').forEach(row => {
+        const attrKey = row.querySelector('.vattr-key-select')?.value;
+        const valueId = row.querySelector('.vattr-val-select')?.value;
+        if (attrKey && valueId && dbAttributes[attrKey]) {
+            attrs[dbAttributes[attrKey].id] = parseInt(valueId);
         }
     });
     const variant = variants.find(v => v.id === variantId);
@@ -1857,59 +1637,6 @@ function fetchStores() {
     return storesPromise;
 }
 
-function generateVariants() {
-    const attrs = getAttributes();
-    const newCombinations = generateCombinations(attrs);
-    const mainProductTitle = getMainProductTitle();
-    removedVariants = [];
-    // Create a map of existing variants by their attribute combination
-    const existingVariants = new Map();
-    variants.forEach(variant => {
-        const key = JSON.stringify(variant.attributes);
-        existingVariants.set(key, variant);
-    });
-
-    // Generate new variants, preserving existing data where possible
-    variants = newCombinations.map((combo, i) => {
-        const key = JSON.stringify(combo);
-        const existing = existingVariants.get(key);
-
-        if (existing) {
-            if (!existing.title && mainProductTitle) {
-                existing.title = mainProductTitle;
-            }
-            // Keep existing variant with its data
-            return existing;
-        } else {
-            // Create new variant
-            return {
-                id: `v_${Date.now()}_${i}`,
-                attributes: combo,
-                title: mainProductTitle,
-                capacity: '', capacity_unit: 'ml',
-                weight: '', weight_unit: 'kg',
-                height: '', height_unit: 'cm',
-                breadth: '', breadth_unit: 'cm',
-                length: '', length_unit: 'cm',
-                availability: '',
-                barcode: '',
-                is_default: ''
-            };
-        }
-    });
-
-    // Ensure first generated variant is selected as default.
-    variants.forEach((variant, index) => {
-        variant.is_default = index === 0;
-    });
-
-    renderVariants();
-    document.getElementById('variantsContainer').classList.remove('d-none');
-
-    // Update pricing UI for variants
-    updateVariantPricing();
-}
-
 // Fetch product pricing data
 function fetchProductPricing(productId) {
     return axios.get(`${base_url}/${panel}/products/${productId}/pricing`)
@@ -2072,6 +1799,7 @@ function initializeVariantPricing() {
 
 // Update pricing UI for variants
 function updateVariantPricing() {
+    ensureAttrIdMap();
     const container = document.getElementById('storePricingAccordion');
     fetchStores().then(stores => {
         if (stores === null || stores.length === 0 || variants.length === 0) {
@@ -2178,8 +1906,8 @@ function updateVariantPricing() {
                     : '<span class="text-muted small">Variant</span>');
 
                 return `
-                                                <tr class="variant-pricing-row" data-store-id="${store.id}" data-store-state-code="${storeStateCode}" data-store-gst-code="${storeGstCode}">
-                                                    <td>
+                                                <tr class="variant-pricing-row" data-store-id="${store.id}" data-store-state-code="${storeStateCode}" data-store-gst-code="${storeGstCode}" data-variant-id="${variantId}">
+                                                    <td class="variant-label-cell">
                                                         ${variantTitleText ? `<div class="fw-semibold text-dark mb-1">${variantTitleText}</div>` : ''}
                                                         <div>${variantLabelHtml}</div>
                                                     </td>
@@ -2231,6 +1959,38 @@ function updateVariantPricing() {
     });
 }
 
+/**
+ * Refresh only the label cells in the variant pricing table to reflect
+ * the current attributes/title state — without rebuilding the whole table
+ * (which would wipe entered prices).
+ */
+function refreshVariantPricingLabels() {
+    ensureAttrIdMap();
+    syncVariantsFromDOM();
+    document.querySelectorAll('#storePricingAccordion .variant-pricing-row[data-variant-id]').forEach(row => {
+        const variantId = row.dataset.variantId;
+        const variant = variants.find(v => String(v.id) === String(variantId));
+        if (!variant) return;
+
+        const badgesHtml = Object.entries(variant.attributes).map(([attrId, valueId]) => {
+            const attr = attrIdMap[attrId];
+            const attrName = attr ? attr.name : attrId;
+            const valueName = attr && attr.values[valueId] ? attr.values[valueId] : valueId;
+            return `<span class="badge bg-primary-subtle text-primary me-1">${attrName}: ${valueName}</span>`;
+        }).join('');
+
+        const titleText = (variant.title || '').trim();
+        const labelHtml = badgesHtml || (titleText
+            ? `<span class="badge bg-primary-subtle text-primary me-1">${titleText}</span>`
+            : '<span class="text-muted small">No attributes set</span>');
+
+        const cell = row.querySelector('.variant-label-cell');
+        if (cell) {
+            cell.innerHTML = (titleText ? `<div class="fw-semibold text-dark mb-1">${titleText}</div>` : '')
+                + `<div>${labelHtml}</div>`;
+        }
+    });
+}
 
 function syncVariantsFromDOM() {
     // Find the checked default radio first
@@ -2258,11 +2018,8 @@ function syncVariantsFromDOM() {
             }
         });
 
-        // Sync custom variant color attribute from dropdown
-        const customAttrsContainer = card.querySelector(`.custom-variant-attrs[data-variant-id="${id}"]`);
-        if (customAttrsContainer) {
-            syncCustomVariantAttrs(id);
-        }
+        // Sync per-variant attribute picker rows into variant.attributes
+        syncVariantAttrRows(id);
 
         // Sync is_default from the checked radio
         if (checkedDefaultId !== null) {
@@ -2285,18 +2042,7 @@ function addVariantInputsToForm() {
         const newVariant = {
             id: variant.id,
             title: variant.title || '',
-            capacity: variant.capacity || '',
-            capacity_unit: variant.capacity_unit || 'ml',
-            weight: variant.weight || '',
-            weight_unit: variant.weight_unit || 'kg',
-            breadth: variant.breadth || '',
-            breadth_unit: variant.breadth_unit || 'cm',
-            length: variant.length || '',
-            length_unit: variant.length_unit || 'cm',
-            height: variant.height || '',
-            height_unit: variant.height_unit || 'cm',
             availability: variant.availability || '',
-            barcode: variant.barcode || '',
             is_default: variant.is_default || '',
             attributes: [],
             metadata: {

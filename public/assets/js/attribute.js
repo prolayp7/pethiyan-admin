@@ -351,7 +351,7 @@ document.addEventListener('show.bs.modal', function (event) {
     if (event.target.id === 'attribute-value-create-update-modal') {
         const triggerButton = event.relatedTarget;
         const attributeValueId = triggerButton.getAttribute('data-id');
-        let url = `${base_url}/${panel}/attribute/values/${attributeValueId}/edit`;
+        let url = `${base_url}/${panel}/attributes/values/${attributeValueId}/edit`;
 
         const form = document.querySelector('.attribute-value-form');
         const modalTitle = document.querySelector('#attribute-value-create-update-modal .modal-title');
@@ -430,7 +430,7 @@ document.addEventListener('show.bs.modal', function (event) {
                         additionalGroups.forEach(group => group.remove());
 
                         // Change form action to update route
-                        form.setAttribute('action', `${base_url}/${panel}/attribute/values/${attributeValueId}`);
+                        form.setAttribute('action', `${base_url}/${panel}/attributes/values/${attributeValueId}`);
 
                         // Add method input for PATCH request
                         let methodInput = form.querySelector('input[name="_method"]');
@@ -494,7 +494,7 @@ document.addEventListener('show.bs.modal', function (event) {
             }
 
             // Set action for create
-            form.setAttribute('action', `${base_url}/${panel}/attribute/values`);
+            form.setAttribute('action', `${base_url}/${panel}/attributes/values`);
             modalTitle.textContent = 'Create New Attribute Value';
             submitButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-2"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg> Create New Attribute Value';
         }
@@ -514,7 +514,7 @@ document.addEventListener('click', function (event) {
     handleDelete(event, '.delete-attribute-create-update', `/${panel}/attributes/`, 'You are about to delete this Attribute.');
 
     // delete attribute value
-    handleDelete(event, '.delete-attribute-value-create-update', `/${panel}/attribute/values/`, 'You are about to delete this Attribute Value.');
+    handleDelete(event, '.delete-attribute-value-create-update', `/${panel}/attributes/values/`, 'You are about to delete this Attribute Value.');
 });
 
 $(document).ready(function () {

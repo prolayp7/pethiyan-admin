@@ -34,11 +34,15 @@ class GlobalAttributeController extends Controller
     public function __construct()
     {
         $user = auth()->user();
-        $seller = $user?->seller();
-        $this->sellerId = $seller ? $seller->id : 0;
-        if ($this->getPanel() === 'seller') {
-            $user = auth()->user();
-            $this->editPermission = $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_EDIT()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
+        if ($this->getPanel() === 'admin') {
+            $this->sellerId       = 1; // Pethiyan default seller
+            $this->editPermission   = true;
+            $this->deletePermission = true;
+            $this->createPermission = true;
+        } elseif ($this->getPanel() === 'seller') {
+            $seller = $user?->seller();
+            $this->sellerId = $seller ? $seller->id : 0;
+            $this->editPermission   = $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_EDIT())   || $user->hasRole(DefaultSystemRolesEnum::SELLER());
             $this->deletePermission = $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_DELETE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
             $this->createPermission = $this->hasPermission(SellerPermissionEnum::ATTRIBUTE_CREATE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
         }
@@ -86,11 +90,15 @@ class GlobalAttributeController extends Controller
         try {
             $this->authorize('create', GlobalProductAttribute::class);
 
-            $seller = auth()->user()->seller();
-            if (!$seller) {
-                return ApiResponseType::sendJsonResponse(false, __('labels.seller_not_found'), null);
+            if ($this->getPanel() === 'admin') {
+                $validated['seller_id'] = 1;
+            } else {
+                $seller = auth()->user()->seller();
+                if (!$seller) {
+                    return ApiResponseType::sendJsonResponse(false, __('labels.seller_not_found'), null);
+                }
+                $validated['seller_id'] = $seller->id;
             }
-            $validated['seller_id'] = $seller->id;
             $attribute = GlobalProductAttribute::create($validated);
             return ApiResponseType::sendJsonResponse(
                 true,
@@ -199,12 +207,8 @@ class GlobalAttributeController extends Controller
             $columns = ['id', 'title', 'swatche_type', 'created_at'];
             $orderColumn = $columns[$orderColumnIndex] ?? 'id';
 
-            $seller = auth()->user()->seller();
-            if (!$seller) {
-                return ApiResponseType::sendJsonResponse(success: false, message: __('labels.seller_not_found'), data: []);
-            }
             $query = GlobalProductAttribute::query();
-            $query->where('seller_id', $seller->id);
+            $query->where('seller_id', $this->sellerId);
             $totalRecords = $query->count();
             // Search filter
             if (!empty($searchValue)) {
@@ -231,7 +235,7 @@ class GlobalAttributeController extends Controller
                             'id' => $attribute->id,
                             'title' => $attribute->title,
                             'swatche_type' => $attribute->swatche_type,
-                            'values_count' => $attribute->values()->count(),
+                            'values_count' => '<a href="#" class="badge bg-blue-lt text-blue view-attr-values" data-attr-id="' . $attribute->id . '" data-attr-title="' . e($attribute->title) . '">' . $attribute->values()->count() . '</a>',
                             'created_at' => $attribute->created_at->format('Y-m-d'),
                             'action' => view('partials.actions', [
                                 'modelName' => 'attribute-create-update',

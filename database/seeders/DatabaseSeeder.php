@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             MenuSeeder::class,
             StoreSeeder::class,
+            GlobalAttributesSeeder::class,
         ]);
 //        super_admin
 //        try {

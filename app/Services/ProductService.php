@@ -10,7 +10,6 @@ use App\Events\Product\ProductAfterUpdate;
 use App\Events\Product\ProductStatusAfterUpdate;
 use App\Http\Resources\User\ReviewResource;
 use App\Models\Category;
-use App\Models\GlobalProductAttribute;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\ProductVariantAttribute;
@@ -166,25 +165,9 @@ class ProductService
                 $variant = $this->findMatchingVariant($existingVariants, $variantData, $newVariantIds);
             }
             if ($variant) {
-                // Update existing variant
-                //                    !empty($variantData['weight']) ? (float)$variantData['weight'] : null
-//!empty($variantData['height']) ? (float)$variantData['height'] : null
-//!empty($variantData['breadth']) ? (float)$variantData['breadth'] : null
-//!empty($variantData['length']) ? (float)$variantData['length'] : null
                 $variant->update([
                     'title' => !empty($variantData['title']) ? $variantData['title'] : null,
-                    'capacity' => $this->normalizeDimensionValue($variantData['capacity'] ?? null),
-                    'capacity_unit' => $this->normalizeUnitValue($variantData['capacity_unit'] ?? null, 'ml'),
-                    'weight' => $this->normalizeDimensionValue($variantData['weight'] ?? null),
-                    'weight_unit' => $this->normalizeUnitValue($variantData['weight_unit'] ?? null, 'kg'),
-                    'height' => $this->normalizeDimensionValue($variantData['height'] ?? null),
-                    'height_unit' => $this->normalizeUnitValue($variantData['height_unit'] ?? null, 'cm'),
-                    'breadth' => $this->normalizeDimensionValue($variantData['breadth'] ?? null),
-                    'breadth_unit' => $this->normalizeUnitValue($variantData['breadth_unit'] ?? null, 'cm'),
-                    'length' => $this->normalizeDimensionValue($variantData['length'] ?? null),
-                    'length_unit' => $this->normalizeUnitValue($variantData['length_unit'] ?? null, 'cm'),
                     'availability' => $variantData['availability'] === 'no' ? false : true,
-                    'barcode' => !empty($variantData['barcode']) ? $variantData['barcode'] : null,
                     'is_default' => $variantData['is_default'] == 'on' ? true : false,
                     'metadata' => array_merge($variant->metadata ?? [], $variantData['metadata'] ?? []),
                 ]);
@@ -203,18 +186,7 @@ class ProductService
                     'uuid' => (string)Str::uuid(),
                     'product_id' => $product->id,
                     'title' => !empty($variantData['title']) ? $variantData['title'] : null,
-                    'capacity' => $this->normalizeDimensionValue($variantData['capacity'] ?? null),
-                    'capacity_unit' => $this->normalizeUnitValue($variantData['capacity_unit'] ?? null, 'ml'),
-                    'weight' => $this->normalizeDimensionValue($variantData['weight'] ?? null),
-                    'weight_unit' => $this->normalizeUnitValue($variantData['weight_unit'] ?? null, 'kg'),
-                    'height' => $this->normalizeDimensionValue($variantData['height'] ?? null),
-                    'height_unit' => $this->normalizeUnitValue($variantData['height_unit'] ?? null, 'cm'),
-                    'breadth' => $this->normalizeDimensionValue($variantData['breadth'] ?? null),
-                    'breadth_unit' => $this->normalizeUnitValue($variantData['breadth_unit'] ?? null, 'cm'),
-                    'length' => $this->normalizeDimensionValue($variantData['length'] ?? null),
-                    'length_unit' => $this->normalizeUnitValue($variantData['length_unit'] ?? null, 'cm'),
                     'availability' => $variantData['availability'] === 'no' ? false : true,
-                    'barcode' => !empty($variantData['barcode']) ? $variantData['barcode'] : null,
                     'is_default' => $variantData['is_default'] == 'on' ? true : false,
                     'metadata' => $variantData['metadata'] ?? null,
                 ]);
@@ -345,17 +317,6 @@ class ProductService
             'product_id' => $product->id,
             'title' => $product->title,
             'slug' => $product->slug,
-            'capacity' => $this->normalizeDimensionValue($request['capacity'] ?? null),
-            'capacity_unit' => $this->normalizeUnitValue($request['capacity_unit'] ?? null, 'ml'),
-            'weight' => $this->normalizeDimensionValue($request['weight'] ?? null),
-            'weight_unit' => $this->normalizeUnitValue($request['weight_unit'] ?? null, 'kg'),
-            'height' => $this->normalizeDimensionValue($request['height'] ?? null),
-            'height_unit' => $this->normalizeUnitValue($request['height_unit'] ?? null, 'cm'),
-            'breadth' => $this->normalizeDimensionValue($request['breadth'] ?? null),
-            'breadth_unit' => $this->normalizeUnitValue($request['breadth_unit'] ?? null, 'cm'),
-            'length' => $this->normalizeDimensionValue($request['length'] ?? null),
-            'length_unit' => $this->normalizeUnitValue($request['length_unit'] ?? null, 'cm'),
-            'barcode' => !empty($request['barcode']) ? $request['barcode'] : null,
             'availability' => 1,
             'is_default' => true,
         ];
@@ -366,7 +327,7 @@ class ProductService
             $variant = ProductVariant::create($variantData);
         }
 
-        $this->syncSimpleVariantColorAttribute($product, $variant, $request);
+        $this->syncSimpleVariantAttributes($product, $variant, $request);
 
         if (!empty($pricingData['store_pricing'])) {
             // Delete existing store pricing if updating
@@ -379,51 +340,42 @@ class ProductService
         }
     }
 
-    private function syncSimpleVariantColorAttribute(Product $product, ProductVariant $variant, $request): void
+    private function syncSimpleVariantAttributes(Product $product, ProductVariant $variant, $request): void
     {
-        $selectedColorValueId = $request['color_value_id'] ?? null;
-        $selectedColorValueId = !empty($selectedColorValueId) ? (int)$selectedColorValueId : null;
+        $json = $request['simple_attributes_json'] ?? null;
+        $incoming = [];
 
-        $colorAttribute = GlobalProductAttribute::where('seller_id', $product->seller_id)
-            ->whereRaw('LOWER(title) = ?', ['color'])
-            ->first();
-
-        if (!$colorAttribute) {
-            return;
-        }
-
-        $existingColorAttr = ProductVariantAttribute::where('product_variant_id', $variant->id)
-            ->where('global_attribute_id', $colorAttribute->id)
-            ->first();
-
-        if (!$selectedColorValueId) {
-            if ($existingColorAttr) {
-                $existingColorAttr->forceDelete();
+        if (!empty($json)) {
+            $parsed = json_decode($json, true);
+            if (is_array($parsed)) {
+                foreach ($parsed as $entry) {
+                    $attrId  = isset($entry['attribute_id'])  ? (int) $entry['attribute_id']  : null;
+                    $valueId = isset($entry['value_id'])       ? (int) $entry['value_id']       : null;
+                    if ($attrId && $valueId) {
+                        $incoming[$attrId] = $valueId;
+                    }
+                }
             }
-            return;
         }
 
-        $isValidColorValue = $colorAttribute->values()
-            ->where('id', $selectedColorValueId)
-            ->exists();
+        // Remove any attributes that are no longer submitted
+        ProductVariantAttribute::where('product_variant_id', $variant->id)
+            ->whereNotIn('global_attribute_id', array_keys($incoming))
+            ->forceDelete();
 
-        if (!$isValidColorValue) {
-            throw new \InvalidArgumentException('Selected color is not valid for this seller.');
+        // Upsert each submitted attribute
+        foreach ($incoming as $attrId => $valueId) {
+            ProductVariantAttribute::updateOrCreate(
+                [
+                    'product_variant_id'      => $variant->id,
+                    'global_attribute_id'     => $attrId,
+                ],
+                [
+                    'product_id'                   => $product->id,
+                    'global_attribute_value_id'    => $valueId,
+                ]
+            );
         }
-
-        if ($existingColorAttr) {
-            $existingColorAttr->update([
-                'global_attribute_value_id' => $selectedColorValueId,
-            ]);
-            return;
-        }
-
-        ProductVariantAttribute::create([
-            'product_id' => $product->id,
-            'product_variant_id' => $variant->id,
-            'global_attribute_id' => $colorAttribute->id,
-            'global_attribute_value_id' => $selectedColorValueId,
-        ]);
     }
 
     private function createVariantAttributes(int $productId, int $variantId, array $attributes): void
@@ -529,20 +481,6 @@ class ProductService
         return in_array($raw, $allowed, true) ? $raw : null;
     }
 
-    private function normalizeDimensionValue($value): ?float
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $raw = trim((string) $value);
-        if ($raw === '' || !is_numeric($raw)) {
-            return null;
-        }
-
-        return (float) $raw;
-    }
-
     private function normalizeHsnCode($value): ?string
     {
         if ($value === null) {
@@ -551,12 +489,6 @@ class ProductService
 
         $raw = trim((string) $value);
         return $raw === '' ? null : $raw;
-    }
-
-    private function normalizeUnitValue($value, string $default): string
-    {
-        $raw = trim((string) ($value ?? ''));
-        return $raw !== '' ? $raw : $default;
     }
 
     /**

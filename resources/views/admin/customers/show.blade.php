@@ -437,8 +437,13 @@
     // ── Toggle status ─────────────────────────────────────────────────────
     document.getElementById('toggleStatusBtn')?.addEventListener('click', () => {
         fetch(`${baseUrl}/toggle-status`, {
-            method: 'PATCH',
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ _method: 'PATCH' }),
         })
         .then(r => r.json())
         .then(() => location.reload());

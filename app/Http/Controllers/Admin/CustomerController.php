@@ -162,13 +162,30 @@ class CustomerController extends Controller
     // Show (detail page)
     // ──────────────────────────────────────────────────────────────────────────
 
-    public function show(int $id): View
+    public function show(Request $request, int $id): View|JsonResponse
     {
         if (!$this->hasPermission(AdminPermissionEnum::CUSTOMER_VIEW())) {
+            if ($request->expectsJson()) {
+                return ApiResponseType::sendJsonResponse(false, 'labels.permission_denied', [], 403);
+            }
+
             abort(403, trans('labels.permission_denied'));
         }
 
         $customer = $this->customerQuery()->findOrFail($id);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id'     => $customer->id,
+                    'name'   => $customer->name,
+                    'email'  => $customer->email,
+                    'mobile' => $customer->mobile,
+                    'status' => (bool) $customer->status,
+                ],
+            ]);
+        }
 
         $editPermission   = $this->hasPermission(AdminPermissionEnum::CUSTOMER_EDIT());
         $deletePermission = $this->hasPermission(AdminPermissionEnum::CUSTOMER_DELETE());
@@ -263,6 +280,7 @@ class CustomerController extends Controller
 
         $customer = $this->customerQuery()->findOrFail($id);
         $customer->update(['status' => !$customer->status]);
+        $customer->refresh();
 
         return ApiResponseType::sendJsonResponse(
             success: true,

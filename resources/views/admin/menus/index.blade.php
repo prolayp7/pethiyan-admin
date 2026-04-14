@@ -135,113 +135,152 @@
 
 @push('scripts')
 <script>
-(function () {
-    'use strict';
+document.addEventListener('DOMContentLoaded', function () {
+    (function () {
+        'use strict';
 
-    const table   = $('#menus-table');
-    let editingId = null;
-    let deleteId  = null;
+        const table   = $('#menus-table');
+        let editingId = null;
+        let deleteId  = null;
 
-    // ── Refresh ───────────────────────────────────────────────────────────
-    $('#refresh').on('click', () => table.DataTable().ajax.reload());
+        // ── Refresh ───────────────────────────────────────────────────────────
+        $('#refresh').on('click', () => table.DataTable().ajax.reload());
 
-    // ── Open CREATE modal ─────────────────────────────────────────────────
-    $('#menu-modal').on('show.bs.modal', function (e) {
-        if (!editingId) {
-            $('#menu-modal-title').text('Create Menu');
-            $('#menu-name').val('');
-            $('#menu-slug').val('');
-            $('#menu-location').val('header');
-            $('#menu-description').val('');
-            $('#menu-is-active').prop('checked', true);
-        }
-    }).on('hidden.bs.modal', function () {
-        editingId = null;
-    });
-
-    // ── Open EDIT modal ───────────────────────────────────────────────────
-    $(document).on('click', '.menu-edit-btn', function () {
-        const id  = $(this).data('id');
-        const url = $(this).data('url');
-        editingId = id;
-        $.get(url, function (res) {
-            if (!res.success) return toastError(res.message);
-            const m = res.data;
-            $('#menu-modal-title').text('Edit Menu');
-            $('#menu-name').val(m.name);
-            $('#menu-slug').val(m.slug);
-            $('#menu-location').val(m.location ?? 'header');
-            $('#menu-description').val(m.description ?? '');
-            $('#menu-is-active').prop('checked', m.is_active);
-            new bootstrap.Modal(document.getElementById('menu-modal')).show();
+        // ── Open CREATE modal ─────────────────────────────────────────────────
+        $('#menu-modal').on('show.bs.modal', function (e) {
+            if (!editingId) {
+                $('#menu-modal-title').text('Create Menu');
+                $('#menu-name').val('');
+                $('#menu-slug').val('');
+                $('#menu-location').val('header');
+                $('#menu-description').val('');
+                $('#menu-is-active').prop('checked', true);
+            }
+        }).on('hidden.bs.modal', function () {
+            editingId = null;
         });
-    });
 
-    // ── Save (create or update) ───────────────────────────────────────────
-    $('#menu-save-btn').on('click', function () {
-        const payload = {
-            name:        $('#menu-name').val().trim(),
-            slug:        $('#menu-slug').val().trim(),
-            location:    $('#menu-location').val(),
-            description: $('#menu-description').val().trim(),
-            is_active:   $('#menu-is-active').is(':checked') ? 1 : 0,
-            _token:      '{{ csrf_token() }}',
-        };
+        // ── Open EDIT modal ───────────────────────────────────────────────────
+        $(document).on('click', '.menu-edit-btn', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
 
-        if (!payload.name) { toastError('Name is required.'); return; }
+            const $button = $(event.target).closest('.menu-edit-btn');
+            const id      = $button.data('id');
+            const url     = $button.data('url');
+            if (!id || !url) {
+                return toastError('Unable to determine menu edit URL.');
+            }
 
-        const url    = editingId ? '{{ route("admin.menus.index") }}/' + editingId : '{{ route("admin.menus.store") }}';
-        const method = editingId ? 'POST' : 'POST';
+            editingId = id;
+            $.ajax({
+                url:      url,
+                method:   'GET',
+                dataType: 'json',
+                headers:  { Accept: 'application/json' },
+            }).done(function (res) {
+                if (!res.success) {
+                    return toastError(res.message || 'Unable to load menu details.');
+                }
+                const m = res.data;
+                $('#menu-modal-title').text('Edit Menu');
+                $('#menu-name').val(m.name);
+                $('#menu-slug').val(m.slug);
+                $('#menu-location').val(m.location ?? 'header');
+                $('#menu-description').val(m.description ?? '');
+                $('#menu-is-active').prop('checked', m.is_active);
+                new bootstrap.Modal(document.getElementById('menu-modal')).show();
+            }).fail(function () {
+                toastError('Unable to load menu details.');
+            });
+        });
 
-        $.ajax({ url, method, data: payload })
-            .done(res => {
+        // ── Save (create or update) ───────────────────────────────────────────
+        const $menuSaveBtn = $('#menu-save-btn');
+        const menuSaveBtnText = $menuSaveBtn.text().trim();
+
+        function setMenuSaveLoadingState(isLoading) {
+            if (isLoading) {
+                $menuSaveBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...');
+            } else {
+                $menuSaveBtn.prop('disabled', false).text(menuSaveBtnText);
+            }
+        }
+
+        $('#menu-save-btn').on('click', function () {
+            const payload = {
+                name:        $('#menu-name').val().trim(),
+                slug:        $('#menu-slug').val().trim(),
+                location:    $('#menu-location').val(),
+                description: $('#menu-description').val().trim(),
+                is_active:   $('#menu-is-active').is(':checked') ? 1 : 0,
+                _token:      '{{ csrf_token() }}',
+            };
+
+            if (!payload.name) {
+                toastError('Name is required.');
+                return;
+            }
+
+            const url    = editingId ? '{{ route("admin.menus.index") }}/' + editingId : '{{ route("admin.menus.store") }}';
+            const method = editingId ? 'POST' : 'POST';
+
+            setMenuSaveLoadingState(true);
+
+            $.ajax({ url, method, data: payload })
+                .done(res => {
+                    if (!res.success) {
+                        toastError(res.message || 'Unable to save menu.');
+                        return;
+                    }
+                    toastSuccess(res.message);
+                    bootstrap.Modal.getInstance(document.getElementById('menu-modal')).hide();
+                    table.DataTable().ajax.reload();
+                })
+                .fail(() => toastError('Request failed.'))
+                .always(() => setMenuSaveLoadingState(false));
+        });
+
+        // ── Toggle active ─────────────────────────────────────────────────────
+        $(document).on('change', '.menu-toggle-active', function () {
+            const url = $(this).data('url');
+            $.ajax({ url, method: 'PATCH', data: { _token: '{{ csrf_token() }}' } })
+                .done(res => { if (!res.success) toastError(res.message); })
+                .fail(() => { this.checked = !this.checked; toastError('Request failed.'); });
+        });
+
+        // ── Delete ────────────────────────────────────────────────────────────
+        $(document).on('click', '.menu-delete-btn', function () {
+            deleteId = $(this).data('id');
+            new bootstrap.Modal(document.getElementById('delete-menu-modal')).show();
+        });
+
+        $('#confirm-delete-menu-btn').on('click', function () {
+            if (!deleteId) return;
+            $.ajax({
+                url:    '{{ route("admin.menus.index") }}/' + deleteId,
+                method: 'DELETE',
+                data:   { _token: '{{ csrf_token() }}' },
+            }).done(res => {
+                bootstrap.Modal.getInstance(document.getElementById('delete-menu-modal')).hide();
                 if (!res.success) { toastError(res.message); return; }
                 toastSuccess(res.message);
-                bootstrap.Modal.getInstance(document.getElementById('menu-modal')).hide();
                 table.DataTable().ajax.reload();
-            })
-            .fail(() => toastError('Request failed.'));
-    });
+            }).fail(() => toastError('Request failed.'));
+        });
 
-    // ── Toggle active ─────────────────────────────────────────────────────
-    $(document).on('change', '.menu-toggle-active', function () {
-        const url = $(this).data('url');
-        $.ajax({ url, method: 'PATCH', data: { _token: '{{ csrf_token() }}' } })
-            .done(res => { if (!res.success) toastError(res.message); })
-            .fail(() => { this.checked = !this.checked; toastError('Request failed.'); });
-    });
-
-    // ── Delete ────────────────────────────────────────────────────────────
-    $(document).on('click', '.menu-delete-btn', function () {
-        deleteId = $(this).data('id');
-        new bootstrap.Modal(document.getElementById('delete-menu-modal')).show();
-    });
-
-    $('#confirm-delete-menu-btn').on('click', function () {
-        if (!deleteId) return;
-        $.ajax({
-            url:    '{{ route("admin.menus.index") }}/' + deleteId,
-            method: 'DELETE',
-            data:   { _token: '{{ csrf_token() }}' },
-        }).done(res => {
-            bootstrap.Modal.getInstance(document.getElementById('delete-menu-modal')).hide();
-            if (!res.success) { toastError(res.message); return; }
-            toastSuccess(res.message);
-            table.DataTable().ajax.reload();
-        }).fail(() => toastError('Request failed.'));
-    });
-
-    // ── Helpers ───────────────────────────────────────────────────────────
-    function toastSuccess(msg) {
-        if (typeof Toastify !== 'undefined') {
-            Toastify({ text: msg, backgroundColor: '#2fb344', duration: 3000, gravity: 'top', position: 'right' }).showToast();
+        // ── Helpers ───────────────────────────────────────────────────────────
+        function toastSuccess(msg) {
+            if (typeof Toastify !== 'undefined') {
+                Toastify({ text: msg, backgroundColor: '#2fb344', duration: 3000, gravity: 'top', position: 'right' }).showToast();
+            }
         }
-    }
-    function toastError(msg) {
-        if (typeof Toastify !== 'undefined') {
-            Toastify({ text: msg, backgroundColor: '#d63939', duration: 4000, gravity: 'top', position: 'right' }).showToast();
+        function toastError(msg) {
+            if (typeof Toastify !== 'undefined') {
+                Toastify({ text: msg, backgroundColor: '#d63939', duration: 4000, gravity: 'top', position: 'right' }).showToast();
+            }
         }
-    }
-})();
+    })();
+});
 </script>
 @endpush

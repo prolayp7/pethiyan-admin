@@ -155,6 +155,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::put('/{id}',                                   [CustomerController::class, 'update'])->name('update');
             Route::delete('/{id}',                                [CustomerController::class, 'destroy'])->name('destroy');
             Route::patch('/{id}/toggle-status',                   [CustomerController::class, 'toggleStatus'])->name('toggle-status');
+            Route::post('/{id}/toggle-status',                    [CustomerController::class, 'toggleStatus']);
             // Addresses
             Route::get('/{id}/addresses',                         [CustomerController::class, 'addresses'])->name('addresses');
             Route::post('/{id}/addresses',                        [CustomerController::class, 'storeAddress'])->name('addresses.store');

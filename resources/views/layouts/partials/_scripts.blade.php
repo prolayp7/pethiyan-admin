@@ -13,6 +13,20 @@
 </script>
 
 <script src="{{hyperAsset('assets/theme/js/tabler.min.js')}}" defer></script>
+<script>
+    const hydrateBootstrap = () => {
+        if (!window.bootstrap && window.tabler?.bootstrap) {
+            window.bootstrap = window.tabler.bootstrap;
+        }
+    };
+    hydrateBootstrap();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hydrateBootstrap);
+    } else {
+        hydrateBootstrap();
+    }
+    window.addEventListener('load', hydrateBootstrap);
+</script>
 {{--<script src="{{asset('assets/theme/js/style.min.js')}}" defer></script>--}}
 
 

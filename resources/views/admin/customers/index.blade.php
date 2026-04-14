@@ -82,6 +82,10 @@
         </div>
     </div>
 
+    {{-- Hidden triggers (avoids needing the bootstrap global in JS) --}}
+    <button id="triggerCustomerModal" data-bs-toggle="modal" data-bs-target="#customerModal" style="display:none" aria-hidden="true"></button>
+    <button id="triggerDeleteCustomerModal" data-bs-toggle="modal" data-bs-target="#deleteCustomerModal" style="display:none" aria-hidden="true"></button>
+
     {{-- ── Add / Edit Customer Modal ─────────────────────────────────────── --}}
     <div class="modal modal-blur fade" id="customerModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
@@ -171,7 +175,43 @@
 (function () {
     const table       = window.LaravelDataTables?.['customers-table'];
     const csrfToken   = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    const bootstrapModal = globalThis.bootstrap?.Modal;
     let   deleteId    = null;
+
+    function showModal(modalId, triggerId) {
+        const modalElement = document.getElementById(modalId);
+        if (!modalElement) return;
+
+        if (bootstrapModal) {
+            bootstrapModal.getOrCreateInstance(modalElement).show();
+            return;
+        }
+
+        document.getElementById(triggerId)?.click();
+    }
+
+    function hideModal(modalId) {
+        const modalElement = document.getElementById(modalId);
+        if (!modalElement) return;
+
+        if (bootstrapModal) {
+            bootstrapModal.getInstance(modalElement)?.hide();
+            return;
+        }
+
+        modalElement.querySelector('[data-bs-dismiss="modal"]')?.click();
+    }
+
+    function parseJsonResponse(response) {
+        return response.json().then((payload) => {
+            if (!response.ok) {
+                const errorMessage = payload?.message || 'Request failed.';
+                throw new Error(errorMessage);
+            }
+
+            return payload;
+        });
+    }
 
     // ── Refresh ──────────────────────────────────────────────────────────
     document.getElementById('refresh')?.addEventListener('click', () => {
@@ -191,8 +231,9 @@
         fetch(`{{ url('/admin/customers') }}/${id}`, {
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         })
-        .then(r => r.json())
-        .then(res => openModal(res.data ?? res));
+        .then(parseJsonResponse)
+        .then(res => openModal(res.data ?? res))
+        .catch(err => alert(err.message || 'Unable to load customer details.'));
     });
 
     // ── Delete customer (delegated) ──────────────────────────────────────
@@ -200,7 +241,7 @@
         const btn = e.target.closest('[data-customer-delete]');
         if (!btn) return;
         deleteId = btn.dataset.customerDelete;
-        new bootstrap.Modal(document.getElementById('deleteCustomerModal')).show();
+        showModal('deleteCustomerModal', 'triggerDeleteCustomerModal');
     });
 
     document.getElementById('confirmDeleteCustomer')?.addEventListener('click', () => {
@@ -209,11 +250,12 @@
             method: 'DELETE',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         })
-        .then(r => r.json())
-        .then(res => {
-            bootstrap.Modal.getInstance(document.getElementById('deleteCustomerModal'))?.hide();
+        .then(parseJsonResponse)
+        .then(() => {
+            hideModal('deleteCustomerModal');
             window.LaravelDataTables?.['customers-table']?.draw(false);
-        });
+        })
+        .catch(err => alert(err.message || 'Unable to delete customer.'));
     });
 
     // ── Toggle status (delegated) ─────────────────────────────────────────
@@ -222,11 +264,29 @@
         if (!btn) return;
         const id = btn.dataset.customerToggle;
         fetch(`{{ url('/admin/customers') }}/${id}/toggle-status`, {
-            method: 'PATCH',
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ _method: 'PATCH' }),
         })
-        .then(r => r.json())
-        .then(() => window.LaravelDataTables?.['customers-table']?.draw(false));
+        .then(parseJsonResponse)
+        .then(() => {
+            if (typeof window.DatatableUtils?.refreshDatatable === 'function') {
+                window.DatatableUtils.refreshDatatable('customers-table');
+                return;
+            }
+
+            if (table?.ajax?.reload) {
+                table.ajax.reload(null, false);
+                return;
+            }
+
+            window.LaravelDataTables?.['customers-table']?.draw(false);
+        })
+        .catch(err => alert(err.message || 'Unable to update customer status.'));
     });
 
     // ── Modal helpers ─────────────────────────────────────────────────────
@@ -243,7 +303,7 @@
         document.getElementById('customerPassword').required = !isEdit;
         document.getElementById('passwordLabel').classList.toggle('required', !isEdit);
         document.getElementById('passwordHint').classList.toggle('d-none', !isEdit);
-        new bootstrap.Modal(document.getElementById('customerModal')).show();
+        showModal('customerModal', 'triggerCustomerModal');
     }
 
     // ── Form submit ───────────────────────────────────────────────────────
@@ -272,15 +332,16 @@
             },
             body: JSON.stringify(body),
         })
-        .then(r => r.json())
+        .then(parseJsonResponse)
         .then(res => {
             if (res.success === false) {
                 alert(Object.values(res.data ?? {}).flat().join('\n') || res.message);
                 return;
             }
-            bootstrap.Modal.getInstance(document.getElementById('customerModal'))?.hide();
+            hideModal('customerModal');
             window.LaravelDataTables?.['customers-table']?.draw(false);
-        });
+        })
+        .catch(err => alert(err.message || 'Unable to save customer.'));
     });
 })();
 </script>

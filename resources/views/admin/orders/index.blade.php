@@ -55,6 +55,9 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
+                                        <input type="text" class="form-control" id="promoFilter" placeholder="Promo code…" style="width:140px">
+                                    </div>
+                                    <div class="col-auto">
                                         <button class="btn btn-outline-primary" id="refresh">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

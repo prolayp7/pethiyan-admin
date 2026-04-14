@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\User\PromoApiController;
 use App\Http\Controllers\Api\User\UserApiController;
 use App\Http\Controllers\Api\User\WalletApiController;
 use App\Http\Controllers\Api\BrowsingHistoryApiController;
+use App\Http\Controllers\Api\BuyAgainApiController;
 use App\Http\Controllers\Api\User\WishlistApiController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\Payments\EasepayController;
@@ -130,6 +131,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [BrowsingHistoryApiController::class, 'index']);
             Route::post('/', [BrowsingHistoryApiController::class, 'store']);
         });
+
+        // Buy again — products from past delivered orders
+        Route::get('buy-again', [BuyAgainApiController::class, 'index']);
 
         // Wishlist routes
         Route::prefix('wishlists')->name('wishlists.')->group(function () {

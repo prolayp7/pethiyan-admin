@@ -62,6 +62,7 @@ class OrderController extends Controller
             ['data' => 'order_date', 'name' => 'order_date', 'title' => __('labels.order_date'), 'orderable' => false, 'searchable' => false],
             ['data' => 'order_details', 'name' => 'order_details', 'title' => __('labels.order_details'), 'orderable' => false, 'searchable' => false],
             ['data' => 'product_details', 'name' => 'product_details', 'title' => __('labels.product_details'), 'orderable' => false, 'searchable' => false],
+            ['data' => 'promo', 'name' => 'promo', 'title' => 'Promo', 'orderable' => false, 'searchable' => false],
             ['data' => 'status', 'name' => 'status', 'title' => __('labels.status'), 'orderable' => false, 'searchable' => false],
             ['data' => 'actions', 'name' => 'actions', 'title' => __('labels.actions'), 'orderable' => false, 'searchable' => false],
         ];
@@ -83,6 +84,7 @@ class OrderController extends Controller
         $status = $request->get('status');
         $paymentType = $request->get('payment_type');
         $dateRange = $request->get('range');
+        $promoCode = trim($request->get('promo_code', ''));
 
         $orderColumnIndex = $request->get('order')[0]['column'] ?? 0;
         $orderDirection = $request->get('order')[0]['dir'] ?? 'desc';
@@ -138,6 +140,13 @@ class OrderController extends Controller
             if ($fromDate) {
                 $query->where('created_at', '>=', $fromDate);
             }
+        }
+
+        // Filter by promo code
+        if (!empty($promoCode)) {
+            $query->whereHas('sellerOrder.order', function ($q) use ($promoCode) {
+                $q->where('promo_code', 'like', "%$promoCode%");
+            });
         }
 
         // Search functionality
@@ -248,6 +257,12 @@ class OrderController extends Controller
                         <p class='m-0 fw-medium'>" . __('labels.quantity') . ": " . e((string)($orderItem?->quantity ?? 0)) . "</p>
                         <p class='m-0 fw-medium'>" . __('labels.item_sub_total') . ": " . $this->currencyService->format($orderItem?->subtotal ?? 0) . "</p>
                         </div>",
+            'promo' => $orderPromo > 0
+                ? "<div class='text-center'>
+                     <span class='badge bg-green-lt text-uppercase fw-bold'>" . e($order?->promo_code ?? '') . "</span>
+                     <div class='text-danger small mt-1'>−" . $this->currencyService->format($orderPromo) . "</div>
+                   </div>"
+                : "<span class='text-muted'>—</span>",
             'status' => view('partials.order-status', [
                 'status' => $orderItem?->status ?? OrderItemStatusEnum::PENDING(),
             ])->render(),

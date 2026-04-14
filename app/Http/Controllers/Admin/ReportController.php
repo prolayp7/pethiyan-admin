@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderPromoLine;
 use App\Models\Product;
 use App\Models\User;
 use Carbon\Carbon;
@@ -38,6 +39,11 @@ class ReportController extends Controller
     public function customers(): View
     {
         return view('admin.reports.customers');
+    }
+
+    public function promos(): View
+    {
+        return view('admin.reports.promos');
     }
 
     // ── Data endpoints ─────────────────────────────────────────────────────
@@ -148,6 +154,53 @@ class ReportController extends Controller
         return response()->json([
             'registrations' => $registrations,
             'summary'       => $summary,
+        ]);
+    }
+
+    /**
+     * Promo code performance report.
+     */
+    public function promosData(Request $request): JsonResponse
+    {
+        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
+        $to   = Carbon::parse($request->input('to',   now()->toDateString()))->endOfDay();
+
+        // Per-code breakdown from order_promo_line joined with orders
+        $byCode = OrderPromoLine::whereBetween('order_promo_line.created_at', [$from, $to])
+            ->join('orders', 'orders.id', '=', 'order_promo_line.order_id')
+            ->select(
+                'order_promo_line.promo_code',
+                DB::raw('COUNT(DISTINCT order_promo_line.order_id) as uses'),
+                DB::raw('SUM(order_promo_line.discount_amount) as total_discount'),
+                DB::raw('AVG(order_promo_line.discount_amount) as avg_discount'),
+                DB::raw('SUM(orders.subtotal) as gross_revenue'),
+                DB::raw('MAX(order_promo_line.cashback_flag) as is_cashback')
+            )
+            ->groupBy('order_promo_line.promo_code')
+            ->orderByDesc('uses')
+            ->get();
+
+        $summary = [
+            'total_promo_orders'   => OrderPromoLine::whereBetween('order_promo_line.created_at', [$from, $to])->distinct('order_id')->count('order_id'),
+            'total_discount_given' => OrderPromoLine::whereBetween('order_promo_line.created_at', [$from, $to])->sum('discount_amount'),
+            'unique_codes_used'    => OrderPromoLine::whereBetween('order_promo_line.created_at', [$from, $to])->distinct('promo_code')->count('promo_code'),
+        ];
+
+        // Daily discount trend
+        $daily = OrderPromoLine::whereBetween('order_promo_line.created_at', [$from, $to])
+            ->select(
+                DB::raw('DATE(order_promo_line.created_at) as date'),
+                DB::raw('COUNT(DISTINCT order_promo_line.order_id) as orders'),
+                DB::raw('SUM(order_promo_line.discount_amount) as discount')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return response()->json([
+            'summary' => $summary,
+            'by_code' => $byCode,
+            'daily'   => $daily,
         ]);
     }
 }

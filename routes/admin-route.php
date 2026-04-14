@@ -345,6 +345,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/orders/data',    [ReportController::class, 'ordersData'])->name('orders.data');
             Route::get('/products/data',  [ReportController::class, 'productsData'])->name('products.data');
             Route::get('/customers/data', [ReportController::class, 'customersData'])->name('customers.data');
+            Route::get('/promos',         [ReportController::class, 'promos'])->name('promos');
+            Route::get('/promos/data',    [ReportController::class, 'promosData'])->name('promos.data');
         });
 
         // Hero Section

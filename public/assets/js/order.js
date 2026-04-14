@@ -14,6 +14,13 @@ $(document).ready(function () {
     $('#rangeFilter, #statusFilter, #paymentFilter').on('change', function () {
         table.ajax.reload(updateOrderCount, false);
     });
+    let promoFilterTimer;
+    $('#promoFilter').on('input', function () {
+        clearTimeout(promoFilterTimer);
+        promoFilterTimer = setTimeout(function () {
+            table.ajax.reload(updateOrderCount, false);
+        }, 400);
+    });
     $('#refresh').on('click', function () {
         table.ajax.reload(updateOrderCount, false);
     });
@@ -28,6 +35,7 @@ $(document).ready(function () {
         data.range = $('#rangeFilter').val();
         data.status = $('#statusFilter').val();
         data.payment_type = $('#paymentFilter').val();
+        data.promo_code = $('#promoFilter').val();
     });
 
     // Capture order ID when accept/reject/preparing buttons are clicked

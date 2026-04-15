@@ -25,6 +25,7 @@ class UserResource extends JsonResource
             'referral_code' => $this->referral_code,
             'friends_code' => $this->friends_code,
             'reward_points' => $this->reward_points,
+            'gstin' => $this->gstin,
             'profile_image' => $this->profile_image,
             'email_verified_at' => $this->email_verified_at?->format('Y-m-d H:i:s'),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),

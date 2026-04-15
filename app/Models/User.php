@@ -43,6 +43,7 @@ class User extends Authenticatable implements HasMedia
         'iso_2',
         'country',
         'mobile_verified_at',
+        'gstin',
     ];
 
     protected function casts(): array
@@ -62,6 +63,7 @@ class User extends Authenticatable implements HasMedia
             'access_panel' => GuardNameEnum::class,
             'iso_2' => 'string',
             'country' => 'string',
+            'gstin' => 'string',
         ];
     }
 

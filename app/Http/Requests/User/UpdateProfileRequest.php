@@ -34,6 +34,12 @@ class UpdateProfileRequest extends FormRequest
                 'mimes:jpeg,png,jpg,webp',
                 'max:2048', // 2MB
             ],
+            'gstin' => [
+                'nullable',
+                'string',
+                'size:15',
+                'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/',
+            ],
         ];
     }
 
@@ -47,6 +53,8 @@ class UpdateProfileRequest extends FormRequest
         return [
             'name.required' => 'The name field is required.',
             'name.string' => 'The name must be a string.',
+            'gstin.size' => 'GSTIN must be exactly 15 characters long.',
+            'gstin.regex' => 'The GSTIN format is invalid. It should be like 07AAAAA0000A1Z5.',
         ];
     }
 

@@ -615,7 +615,10 @@ function renderVariants() {
         `<div class="col-md-6" data-id="${v.id}">
         <div class="card border h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-2">
+                <div class="d-flex justify-content-end mb-2 gap-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm p-1" title="Copy Variant" onclick="copyVariant('${v.id}')">
+                        <i class="ti ti-copy fs-2"></i>
+                    </button>
                     <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="removeVariant('${v.id}')">
                         <i class="ti ti-trash fs-2"></i>
                     </button>
@@ -1079,6 +1082,43 @@ function removeVariant(id) {
     }
 }
 
+function copyVariant(id) {
+    // Force-sync current DOM attribute rows into the variants array before reading
+    syncVariantAttrRowsById(id);
+
+    const source = variants.find(v => String(v.id) === String(id));
+    if (!source) return;
+
+    const newId = `v_copy_${Date.now()}`;
+    const copy = Object.assign({}, source, {
+        id: newId,
+        is_default: false
+    });
+    copy.attributes = JSON.parse(JSON.stringify(source.attributes || {}));
+
+    const sourceIndex = variants.findIndex(v => String(v.id) === String(id));
+    variants.splice(sourceIndex + 1, 0, copy);
+
+    renderVariants();
+    updateVariantPricing();
+}
+
+// Like syncVariantAttrRows but accepts both string and numeric IDs safely
+function syncVariantAttrRowsById(variantId) {
+    const section = document.querySelector(`.variant-attrs-section[data-variant-id="${variantId}"]`);
+    if (!section) return;
+    const attrs = {};
+    section.querySelectorAll('.variant-attr-row').forEach(row => {
+        const attrKey = row.querySelector('.vattr-key-select')?.value;
+        const valueId = row.querySelector('.vattr-val-select')?.value;
+        if (attrKey && valueId && dbAttributes[attrKey]) {
+            attrs[dbAttributes[attrKey].id] = parseInt(valueId);
+        }
+    });
+    const variant = variants.find(v => String(v.id) === String(variantId));
+    if (variant) variant.attributes = attrs;
+}
+
 function updateAttributeOptions() {
     // Get all currently selected attributes
     const selectedAttributes = Array.from(document.querySelectorAll('.attr-select'))
@@ -1183,7 +1223,10 @@ function addCustomVariant() {
     const html = `<div class="col-md-6" data-id="${id}">
         <div class="card border h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-2">
+                <div class="d-flex justify-content-end mb-2 gap-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm p-1" title="Copy Variant" onclick="copyVariant('${id}')">
+                        <i class="ti ti-copy fs-2"></i>
+                    </button>
                     <button type="button" class="btn btn-outline-danger btn-sm p-1" onclick="removeVariant('${id}')">
                         <i class="ti ti-trash fs-2"></i>
                     </button>

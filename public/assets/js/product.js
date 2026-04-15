@@ -1354,19 +1354,6 @@ function renderSimpleVariant() {
         <div class="card border">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-12">
-                        <label class="form-label">Variant Title <small class="text-muted">(optional)</small></label>
-                        <input type="text" class="form-control variant-title-input" data-variant-id="${v.id}"
-                               value="${v.title}" placeholder="Leave blank to use product title"
-                               oninput="handleVariantTitleInput('${v.id}', this.value)">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Variant Image</label>
-                        <input type="file" name="variant_image${v.id}" class="form-control variant-image-input"
-                               data-image-url="${v.image || ''}" accept="image/*"
-                               onchange="updateVariant('${v.id}', 'variant_image', this.value)">
-                        <small class="form-hint">Recommended: 1200 x 1200 px. Max upload size: 2 MB.</small>
-                    </div>
                     <div class="col-6">
                         <label class="form-label">Weight</label>
                         <div class="input-group">
@@ -1397,10 +1384,7 @@ function renderSimpleVariant() {
         </div>
     `;
 
-    // Initialize FilePond for variant image inputs
-    container.querySelectorAll('.variant-image-input').forEach(input => {
-        initializeFilePond(input.getAttribute('name'), ['image/*'], '2MB');
-    });
+    // Initialize FilePond for SEO image inputs
     container.querySelectorAll('.variant-og-image-input').forEach(input => {
         initializeFilePond(input.getAttribute('name'), ['image/*'], '4MB');
     });

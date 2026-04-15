@@ -303,6 +303,13 @@
                 </label>
             </div>
             <div class="mb-3">
+                <label class="form-label">Display Scope</label>
+                <label class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="footerSeoHomepageOnly" value="1" {{ !empty($settings['footerSeoHomepageOnly']) ? 'checked' : '' }}>
+                    <span class="form-check-label">Show only on the Home page (uncheck to show on every page)</span>
+                </label>
+            </div>
+            <div class="mb-3">
                 <label class="form-label">Main Heading</label>
                 <input type="text" class="form-control" name="footerSeoTitle" placeholder="e.g. Pethiyan: Premium Packaging Solutions for Modern Brands" value="{{ $settings['footerSeoTitle'] ?? '' }}">
             </div>

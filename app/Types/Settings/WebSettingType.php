@@ -70,6 +70,7 @@ class WebSettingType implements SettingInterface
     public string $googleTagManagerId = '';
     public string $facebookPixelId = '';
     public bool $footerSeoEnabled = true;
+    public bool $footerSeoHomepageOnly = false;
     public string $footerSeoTitle = '';
     public string $footerSeoIntro = '';
     public string $footerSeoSectionsJson = '';
@@ -152,6 +153,7 @@ class WebSettingType implements SettingInterface
             'googleTagManagerId' => 'nullable|string|max:50',
             'facebookPixelId' => 'nullable|string|max:50',
             'footerSeoEnabled' => 'nullable|boolean',
+            'footerSeoHomepageOnly' => 'nullable|boolean',
             'footerSeoTitle' => 'nullable|string|max:255',
             'footerSeoIntro' => 'nullable|string',
             'footerSeoSectionsJson' => 'nullable|string',

@@ -326,6 +326,31 @@ function initializeEditMode() {
     }
     // Initialize simple product fields if product type is 'simple'
     else if (window.productData.type === 'simple' && window.productData.variant) {
+        const sv = window.productData.variant;
+        variants = [{
+            id: String(sv.id),
+            attributes: {},
+            title: sv.title || '',
+            image: sv.image || '',
+            availability: sv.availability || '',
+            is_default: 'on',
+            weight: sv.weight ?? '',
+            weight_unit: sv.weight_unit || 'g',
+            is_indexable: sv.metadata?.is_indexable ?? sv.is_indexable ?? true,
+            seo_title: sv.metadata?.seo_title || sv.seo_title || '',
+            seo_description: sv.metadata?.seo_description || sv.seo_description || '',
+            seo_keywords: sv.metadata?.seo_keywords || sv.seo_keywords || '',
+            og_title: sv.metadata?.og_title || sv.og_title || '',
+            og_description: sv.metadata?.og_description || sv.og_description || '',
+            og_image: normalizeStorageUrl(sv.og_image || sv.metadata?.og_image || ''),
+            twitter_title: sv.metadata?.twitter_title || sv.twitter_title || '',
+            twitter_description: sv.metadata?.twitter_description || sv.twitter_description || '',
+            twitter_card: sv.metadata?.twitter_card || sv.twitter_card || '',
+            twitter_image: normalizeStorageUrl(sv.twitter_image || sv.metadata?.twitter_image || ''),
+            schema_mode: sv.metadata?.schema_mode || sv.schema_mode || 'auto',
+            schema_json_ld: sv.metadata?.schema_json_ld || sv.schema_json_ld || '',
+        }];
+        renderSimpleVariant();
         // Fetch and initialize store pricing
         if (window.productData.product && window.productData.product.id) {
             fetchProductPricing(window.productData.product.id);
@@ -391,14 +416,31 @@ toggleProductVariantSection()
 function toggleProductVariantSection() {
     let value = productType?.value
     const isVariant = value === 'variant';
+    const isSimple = value === 'simple';
 
     // Update pricing containers based on a product type
     if (value) {
         document.getElementById('variationsSection').classList.toggle('d-none', !isVariant);
-        document.getElementById('simpleProductSection').classList.toggle('d-none', isVariant);
+        document.getElementById('simpleProductSection').classList.toggle('d-none', !isSimple);
         // Show/hide the appropriate pricing containers
         document.getElementById('simplePricingContainer').classList.toggle('d-none', isVariant);
         document.getElementById('variantPricingContainer').classList.toggle('d-none', !isVariant);
+
+        // When switching to simple: render the single variant form
+        if (isSimple) {
+            // Only reset variants if switching interactively (not edit mode init)
+            if (!window.productData || window.productData.type !== 'simple') {
+                variants = [];
+            }
+            renderSimpleVariant();
+        }
+
+        // When switching to variant: clear the simple variant data
+        if (isVariant && !window.productData) {
+            variants = [];
+            const simpleSection = document.getElementById('simpleProductSection');
+            if (simpleSection) simpleSection.innerHTML = '';
+        }
 
         // Only initialize pricing if we're not in edit mode or if pricing data is already loaded
         if (!window.productData || productPricing) {
@@ -1282,6 +1324,91 @@ function addCustomVariant() {
     initializeFilePond(`variant_image${id}`, ['image/*'], '2MB');
     initializeVariantSeoKeywordInputs();
     updateVariantPricing();
+}
+
+function renderSimpleVariant() {
+    const container = document.getElementById('simpleProductSection');
+    if (!container) return;
+
+    // Create one variant if none exists yet (create mode)
+    if (variants.length === 0) {
+        variants.push({
+            id: 'v_simple',
+            attributes: {},
+            title: '',
+            image: '',
+            availability: '',
+            is_default: 'on',
+            weight: '',
+            weight_unit: 'g',
+            is_indexable: true,
+            seo_title: '', seo_description: '', seo_keywords: '',
+            og_title: '', og_description: '', og_image: '',
+            twitter_title: '', twitter_description: '', twitter_card: '', twitter_image: '',
+            schema_mode: 'auto', schema_json_ld: '',
+        });
+    }
+
+    const v = variants[0];
+    container.innerHTML = `
+        <div class="card border">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Variant Title <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control variant-title-input" data-variant-id="${v.id}"
+                               value="${v.title}" placeholder="Leave blank to use product title"
+                               oninput="handleVariantTitleInput('${v.id}', this.value)">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Variant Image</label>
+                        <input type="file" name="variant_image${v.id}" class="form-control variant-image-input"
+                               data-image-url="${v.image || ''}" accept="image/*"
+                               onchange="updateVariant('${v.id}', 'variant_image', this.value)">
+                        <small class="form-hint">Recommended: 1200 x 1200 px. Max upload size: 2 MB.</small>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Weight</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" min="0" step="any"
+                                   placeholder="e.g. 500"
+                                   value="${v.weight ?? ''}"
+                                   onchange="updateVariant('${v.id}', 'weight', this.value)">
+                            <select class="form-select" style="max-width:90px;" onchange="updateVariant('${v.id}', 'weight_unit', this.value)">
+                                <option value="g"  ${(v.weight_unit||'g')==='g'  ? 'selected' : ''}>g</option>
+                                <option value="kg" ${(v.weight_unit||'g')==='kg' ? 'selected' : ''}>kg</option>
+                                <option value="mg" ${(v.weight_unit||'g')==='mg' ? 'selected' : ''}>mg</option>
+                                <option value="lb" ${(v.weight_unit||'g')==='lb' ? 'selected' : ''}>lb</option>
+                                <option value="oz" ${(v.weight_unit||'g')==='oz' ? 'selected' : ''}>oz</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Availability</label>
+                        <select class="form-select" onchange="updateVariant('${v.id}', 'availability', this.value)">
+                            <option value="" ${v.availability === '' ? 'selected' : ''}>Select</option>
+                            <option value="yes" ${v.availability == 1 || v.availability === 'yes' ? 'selected' : ''}>Yes</option>
+                            <option value="no" ${v.availability == 0 && v.availability !== '' || v.availability === 'no' ? 'selected' : ''}>No</option>
+                        </select>
+                    </div>
+                    ${renderVariantSeoSection(v)}
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Initialize FilePond for variant image inputs
+    container.querySelectorAll('.variant-image-input').forEach(input => {
+        initializeFilePond(input.getAttribute('name'), ['image/*'], '2MB');
+    });
+    container.querySelectorAll('.variant-og-image-input').forEach(input => {
+        initializeFilePond(input.getAttribute('name'), ['image/*'], '4MB');
+    });
+    container.querySelectorAll('.variant-twitter-image-input').forEach(input => {
+        initializeFilePond(input.getAttribute('name'), ['image/*'], '4MB');
+    });
+    hydrateVariantSeoFields();
+    initializeVariantSeoKeywordInputs();
 }
 
 // ── Per-variant attribute picker helpers ─────────────────────────────────────

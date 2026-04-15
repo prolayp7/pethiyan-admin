@@ -183,6 +183,7 @@ class CustomerController extends Controller
                     'email'  => $customer->email,
                     'mobile' => $customer->mobile,
                     'status' => (bool) $customer->status,
+                    'gstin'  => $customer->gstin,
                 ],
             ]);
         }
@@ -209,6 +210,7 @@ class CustomerController extends Controller
             'mobile'   => 'nullable|string|max:20',
             'password' => ['required', Password::min(8)],
             'status'   => 'nullable|boolean',
+            'gstin'    => ['nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/'],
         ]);
 
         $customer = User::create([
@@ -217,6 +219,7 @@ class CustomerController extends Controller
             'mobile'       => $validated['mobile'] ?? null,
             'password'     => Hash::make($validated['password']),
             'status'       => $validated['status'] ?? true,
+            'gstin'        => $validated['gstin'] ?? null,
             'access_panel' => null,
         ]);
 
@@ -246,6 +249,7 @@ class CustomerController extends Controller
             'mobile'   => 'nullable|string|max:20',
             'password' => ['nullable', Password::min(8)],
             'status'   => 'nullable|boolean',
+            'gstin'    => ['nullable', 'string', 'size:15', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/'],
         ]);
 
         $data = [
@@ -253,6 +257,7 @@ class CustomerController extends Controller
             'email'  => $validated['email'],
             'mobile' => $validated['mobile'] ?? $customer->mobile,
             'status' => $validated['status'] ?? $customer->status,
+            'gstin'  => array_key_exists('gstin', $validated) ? ($validated['gstin'] ?? null) : $customer->gstin,
         ];
 
         if (!empty($validated['password'])) {

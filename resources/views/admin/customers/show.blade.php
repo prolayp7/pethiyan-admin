@@ -18,6 +18,17 @@
 @endphp
 
 @section('admin-content')
+<div class="mb-3">
+    <a href="{{ route('admin.customers.index') }}" class="btn btn-outline-secondary btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" class="icon me-1">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/>
+        </svg>
+        {{ __('labels.customers') }}
+    </a>
+</div>
 <div class="row row-cards">
 
     {{-- ── Profile card ──────────────────────────────────────────────────── --}}
@@ -54,7 +65,8 @@
                         data-name="{{ $customer->name }}"
                         data-email="{{ $customer->email }}"
                         data-mobile="{{ $customer->mobile }}"
-                        data-status="{{ $customer->status ? 1 : 0 }}">
+                        data-status="{{ $customer->status ? 1 : 0 }}"
+                        data-gstin="{{ $customer->gstin ?? '' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                          stroke-linejoin="round" class="icon">
@@ -79,6 +91,12 @@
                         <div class="col text-secondary">{{ __('labels.registered') }}</div>
                         <div class="col-auto fw-medium">{{ $customer->created_at?->format('d M Y') }}</div>
                     </div>
+                    @if($customer->gstin)
+                    <div class="row py-2">
+                        <div class="col text-secondary">GSTIN</div>
+                        <div class="col-auto fw-medium font-monospace">{{ $customer->gstin }}</div>
+                    </div>
+                    @endif
                     <div class="row py-2">
                         <div class="col text-secondary">{{ __('labels.total_orders') }}</div>
                         <div class="col-auto fw-medium" id="orderCountBadge">—</div>
@@ -114,7 +132,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>{{ __('labels.order') }}</th>
-                                <th>{{ __('labels.payment') }}</th>
+                                <th>{{ __('labels.payment_method') }}</th>
                                 <th>{{ __('labels.payment_status') }}</th>
                                 <th>{{ __('labels.status') }}</th>
                                 <th>{{ __('labels.total') }}</th>
@@ -200,6 +218,12 @@
                             <option value="1">{{ __('labels.active') }}</option>
                             <option value="0">{{ __('labels.inactive') }}</option>
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">GSTIN</label>
+                        <input type="text" class="form-control text-uppercase" id="editGstin" name="gstin"
+                               maxlength="15" placeholder="e.g. 07AAAAA0000A1Z5">
+                        <small class="form-hint">15-character GST Identification Number (optional)</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -401,10 +425,11 @@
     // ── Edit customer ─────────────────────────────────────────────────────
     document.getElementById('editCustomerBtn')?.addEventListener('click', (e) => {
         const btn = e.currentTarget;
-        document.getElementById('editName').value   = btn.dataset.name   ?? '';
-        document.getElementById('editEmail').value  = btn.dataset.email  ?? '';
-        document.getElementById('editMobile').value = btn.dataset.mobile ?? '';
-        document.getElementById('editStatus').value = btn.dataset.status ?? '1';
+        document.getElementById('editName').value    = btn.dataset.name   ?? '';
+        document.getElementById('editEmail').value   = btn.dataset.email  ?? '';
+        document.getElementById('editMobile').value  = btn.dataset.mobile ?? '';
+        document.getElementById('editStatus').value  = btn.dataset.status ?? '1';
+        document.getElementById('editGstin').value   = btn.dataset.gstin  ?? '';
         document.getElementById('editPassword').value = '';
         new bootstrap.Modal(document.getElementById('editCustomerModal')).show();
     });
@@ -417,6 +442,7 @@
             mobile:   document.getElementById('editMobile').value,
             status:   document.getElementById('editStatus').value,
             password: document.getElementById('editPassword').value || undefined,
+            gstin:    document.getElementById('editGstin').value.trim().toUpperCase() || null,
         };
         fetch(baseUrl, {
             method: 'PUT',

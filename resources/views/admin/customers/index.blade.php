@@ -126,6 +126,12 @@
                                     <option value="0">{{ __('labels.inactive') }}</option>
                                 </select>
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">GSTIN</label>
+                                <input type="text" class="form-control text-uppercase" id="customerGstin" name="gstin"
+                                       maxlength="15" placeholder="e.g. 07AAAAA0000A1Z5">
+                                <small class="form-hint">15-character GST Identification Number (optional)</small>
+                            </div>
                         </div>
 
                         {{-- ── Address Section: NEW customer (collapsed toggle) ── --}}
@@ -568,6 +574,7 @@
         document.getElementById('customerEmail').value       = customer?.email  ?? '';
         document.getElementById('customerMobile').value      = customer?.mobile ?? '';
         document.getElementById('customerStatus').value      = customer?.status != null ? (customer.status ? '1' : '0') : '1';
+        document.getElementById('customerGstin').value       = customer?.gstin  ?? '';
         document.getElementById('customerPassword').value    = '';
         document.getElementById('customerPassword').required = !isEdit;
         document.getElementById('passwordLabel').classList.toggle('required', !isEdit);
@@ -602,6 +609,7 @@
             mobile:   document.getElementById('customerMobile').value,
             status:   document.getElementById('customerStatus').value,
             password: document.getElementById('customerPassword').value || undefined,
+            gstin:    document.getElementById('customerGstin').value.trim().toUpperCase() || null,
         };
 
         const saveBtn = document.getElementById('customerSaveBtn');

@@ -86,6 +86,7 @@ return [
     'support_email' => 'Support Email',
     'support_email_placeholder' => 'Enter support email',
     'address' => 'Address',
+    'addresses' => 'Addresses',
     'address_placeholder' => 'Enter address',
     'short_description' => 'Short Description',
     'short_description_placeholder' => 'Enter short description',

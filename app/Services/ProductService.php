@@ -169,6 +169,8 @@ class ProductService
                     'title' => !empty($variantData['title']) ? $variantData['title'] : null,
                     'availability' => $variantData['availability'] === 'no' ? false : true,
                     'is_default' => $variantData['is_default'] == 'on' ? true : false,
+                    'weight' => isset($variantData['weight']) && $variantData['weight'] !== null && $variantData['weight'] !== '' ? $variantData['weight'] : null,
+                    'weight_unit' => $variantData['weight_unit'] ?? 'g',
                     'metadata' => array_merge($variant->metadata ?? [], $variantData['metadata'] ?? []),
                 ]);
 
@@ -188,6 +190,8 @@ class ProductService
                     'title' => !empty($variantData['title']) ? $variantData['title'] : null,
                     'availability' => $variantData['availability'] === 'no' ? false : true,
                     'is_default' => $variantData['is_default'] == 'on' ? true : false,
+                    'weight' => isset($variantData['weight']) && $variantData['weight'] !== null && $variantData['weight'] !== '' ? $variantData['weight'] : null,
+                    'weight_unit' => $variantData['weight_unit'] ?? 'g',
                     'metadata' => $variantData['metadata'] ?? null,
                 ]);
 

@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'why_choose_us', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'why_choose_us'])
 
 @section('title', 'Why Choose Us Settings')
 

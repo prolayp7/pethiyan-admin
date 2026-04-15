@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'highlight_ticker', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'highlight_ticker'])
 
 @section('title', 'Highlight Ticker Settings')
 

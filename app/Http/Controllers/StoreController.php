@@ -225,7 +225,8 @@ class StoreController extends Controller
         $bankAccountTypes = BankAccountTypeEnum::values();
         $setting = Setting::find(SettingTypeEnum::AUTHENTICATION());
         $googleApiKey = $setting->value['googleApiKey'] ?? null;
-        return view($this->panelView('stores.form'), compact('bankAccountTypes', 'googleApiKey'));
+        $states = State::orderBy('name')->get(['id', 'name', 'state_code', 'gst_code']);
+        return view($this->panelView('stores.form'), compact('bankAccountTypes', 'googleApiKey', 'states'));
     }
 
     public function store(StoreStoreRequest $request): JsonResponse
@@ -294,7 +295,8 @@ class StoreController extends Controller
         $bankAccountTypes = BankAccountTypeEnum::values();
         $setting = Setting::find(SettingTypeEnum::AUTHENTICATION());
         $googleApiKey = $setting->value['googleApiKey'] ?? null;
-        return view($this->panelView('stores.form'), compact('bankAccountTypes', 'store', 'googleApiKey'));
+        $states = State::orderBy('name')->get(['id', 'name', 'state_code', 'gst_code']);
+        return view($this->panelView('stores.form'), compact('bankAccountTypes', 'store', 'googleApiKey', 'states'));
     }
 
     public function show($id): View

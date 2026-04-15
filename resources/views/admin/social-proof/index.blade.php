@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'social_proof', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'social_proof'])
 
 @section('title', 'Social Proof – Testimonials')
 

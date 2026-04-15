@@ -120,8 +120,21 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label required">{{ __('labels.state') }}</label>
-                                    <input type="text" class="form-control" name="state" id="state"
-                                           placeholder="{{ __('labels.enter_state') }}"
+                                    <select class="form-select" name="state_id" id="state_id_select"
+                                            onchange="onStateChange(this)">
+                                        <option value="">— Select State —</option>
+                                        @foreach($states as $s)
+                                            <option value="{{ $s->id }}"
+                                                    data-name="{{ $s->name }}"
+                                                    data-code="{{ $s->state_code }}"
+                                                    data-gst="{{ $s->gst_code }}"
+                                                    {{ old('state_id', $store->state_id ?? null) == $s->id ? 'selected' : '' }}>
+                                                {{ $s->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    {{-- hidden field keeps the text value required by validation --}}
+                                    <input type="hidden" name="state" id="state"
                                            value="{{ old('state', $store->state ?? '') }}"/>
                                 </div>
                                 <div class="mb-3">
@@ -169,15 +182,15 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label">GST State Name</label>
-                                        <input type="text" class="form-control" name="state_name"
-                                               placeholder="e.g. Maharashtra"
+                                        <input type="text" class="form-control" name="state_name" id="gst_state_name"
+                                               placeholder="Auto-filled from state"
                                                value="{{ old('state_name', $store->state_name ?? '') }}"/>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label">State Code</label>
-                                        <input type="text" class="form-control" name="state_code"
+                                        <input type="text" class="form-control" name="state_code" id="gst_state_code"
                                                maxlength="5"
-                                               placeholder="e.g. MH"
+                                               placeholder="Auto-filled from state"
                                                value="{{ old('state_code', $store->state_code ?? '') }}"/>
                                     </div>
                                     <div class="col-md-3 d-flex align-items-end">
@@ -218,6 +231,31 @@
             margin-bottom: 8px;
         }
     </style>
+
+    <script>
+        function onStateChange(select) {
+            const opt = select.options[select.selectedIndex];
+            const name = opt.dataset.name || '';
+            const code = opt.dataset.code || '';
+
+            // keep hidden "state" text field in sync (required by validation)
+            document.getElementById('state').value = name;
+
+            // auto-fill GST fields if they are still empty or were previously auto-filled
+            const gstName = document.getElementById('gst_state_name');
+            const gstCode = document.getElementById('gst_state_code');
+            if (gstName) gstName.value = name;
+            if (gstCode) gstCode.value = code;
+        }
+
+        // On page load, ensure hidden state field is populated when editing
+        document.addEventListener('DOMContentLoaded', function () {
+            const sel = document.getElementById('state_id_select');
+            if (sel && sel.value && !document.getElementById('state').value) {
+                onStateChange(sel);
+            }
+        });
+    </script>
 @endsection
 
 @push('scripts')

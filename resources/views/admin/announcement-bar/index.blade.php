@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'announcement_bar', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'announcement_bar'])
 
 @section('title', 'Top Bars / Ticker Settings')
 

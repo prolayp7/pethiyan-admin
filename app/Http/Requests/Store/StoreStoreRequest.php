@@ -32,6 +32,7 @@ class StoreStoreRequest extends FormRequest
             'address' => 'required|string|max:500',
             'landmark' => 'required|string|max:255',
             'city' => 'required|string|max:100',
+            'state_id' => 'nullable|exists:states,id',
             'state' => 'required|string|max:100',
             'zipcode' => 'required|string|max:20',
             'latitude' => 'required|numeric|between:-90,90',

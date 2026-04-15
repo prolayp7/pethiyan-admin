@@ -243,7 +243,7 @@ class GlobalAttributeController extends Controller
                                 'title' => $attribute->title,
                                 'mode' => 'model_view',
                                 'editPermission' => $this->editPermission,
-                                'deletePermission' => $this->deletePermission
+                                'deletePermission' => false, // delete disabled
                             ])->render(),
                         ];
                     })

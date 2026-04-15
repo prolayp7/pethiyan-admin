@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'hero_section', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'hero_section'])
 
 @section('title', 'Hero Section')
 

@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'newsletter_section', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'newsletter_section'])
 
 @section('title', 'Newsletter Section Settings')
 

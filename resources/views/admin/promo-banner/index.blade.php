@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'promo_banner', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'promo_banner'])
 
 @section('title', 'Promo Banner Settings')
 

@@ -351,6 +351,8 @@ function initializeVariantData() {
             image: serverVariant.image || '',
             availability: serverVariant.availability || '',
             is_default: serverVariant.is_default || '',
+            weight: serverVariant.weight ?? '',
+            weight_unit: serverVariant.weight_unit || 'g',
             is_indexable: serverVariant.metadata?.is_indexable ?? serverVariant.is_indexable ?? true,
             seo_title: serverVariant.metadata?.seo_title || serverVariant.seo_title || '',
             seo_description: serverVariant.metadata?.seo_description || serverVariant.seo_description || '',
@@ -629,6 +631,22 @@ function renderVariants() {
                             <input type="file" name="variant_image${v.id}" class="form-control variant-image-input" data-image-url="${v.image || ''}" accept="image/*" onchange="updateVariant('${v.id}', 'variant_image', this.value)">
                             <small class="form-hint">Recommended: 1200 x 1200 px. Max upload size: 2 MB.</small>
                         </div>
+                    <div class="col-6">
+                        <label class="form-label">Weight</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" min="0" step="any"
+                                   placeholder="e.g. 500"
+                                   value="${v.weight ?? ''}"
+                                   onchange="updateVariant('${v.id}', 'weight', this.value)">
+                            <select class="form-select" style="max-width:90px;" onchange="updateVariant('${v.id}', 'weight_unit', this.value)">
+                                <option value="g"  ${(v.weight_unit||'g')==='g'  ? 'selected' : ''}>g</option>
+                                <option value="kg" ${(v.weight_unit||'g')==='kg' ? 'selected' : ''}>kg</option>
+                                <option value="mg" ${(v.weight_unit||'g')==='mg' ? 'selected' : ''}>mg</option>
+                                <option value="lb" ${(v.weight_unit||'g')==='lb' ? 'selected' : ''}>lb</option>
+                                <option value="oz" ${(v.weight_unit||'g')==='oz' ? 'selected' : ''}>oz</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="col-6">
                         <label class="form-label">Availability</label>
                         <select class="form-select" onchange="updateVariant('${v.id}', 'availability', this.value)">
@@ -1152,6 +1170,8 @@ function addCustomVariant() {
         title: '',
         availability: '',
         is_default: '',
+        weight: '',
+        weight_unit: 'g',
         is_indexable: true,
         seo_title: '', seo_description: '', seo_keywords: '',
         og_title: '', og_description: '', og_image: '',
@@ -1177,6 +1197,22 @@ function addCustomVariant() {
                     <div class="col-12">
                         <label class="form-label">Variant Image</label>
                         <input type="file" name="variant_image${id}" class="form-control variant-image-input" data-image-url="" accept="image/*" onchange="updateVariant('${id}', 'variant_image', this.value)">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Weight</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" min="0" step="any"
+                                   placeholder="e.g. 500"
+                                   value=""
+                                   onchange="updateVariant('${id}', 'weight', this.value)">
+                            <select class="form-select" style="max-width:90px;" onchange="updateVariant('${id}', 'weight_unit', this.value)">
+                                <option value="g"  selected>g</option>
+                                <option value="kg">kg</option>
+                                <option value="mg">mg</option>
+                                <option value="lb">lb</option>
+                                <option value="oz">oz</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="col-6">
                         <label class="form-label">Availability</label>
@@ -2239,6 +2275,8 @@ function addVariantInputsToForm() {
             title: variant.title || '',
             availability: variant.availability || '',
             is_default: variant.is_default || '',
+            weight: variant.weight !== '' && variant.weight !== null && variant.weight !== undefined ? variant.weight : null,
+            weight_unit: variant.weight_unit || 'g',
             attributes: [],
             metadata: {
                 is_indexable: variant.is_indexable !== false,

@@ -1,4 +1,4 @@
-@extends('layouts.admin.app', ['page' => 'featured_products_section', 'sub_page' => ''])
+@extends('layouts.admin.app', ['page' => 'home_section', 'sub_page' => 'featured_products_section'])
 
 @section('title', 'Featured Products Settings')
 

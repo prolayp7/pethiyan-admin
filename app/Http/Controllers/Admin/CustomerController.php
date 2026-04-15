@@ -327,9 +327,17 @@ class CustomerController extends Controller
 
         $data = $addresses->map(function ($addr) use ($customerId, $editPermission, $deletePermission) {
             return [
-                'id'           => $addr->id,
-                'address_type' => ucfirst($addr->address_type ?? 'other'),
-                'full_address' => implode(', ', array_filter([
+                'id'            => $addr->id,
+                'address_type'  => strtolower($addr->address_type ?? 'other'),
+                'address_line1' => $addr->address_line1 ?? '',
+                'address_line2' => $addr->address_line2 ?? '',
+                'city'          => $addr->city          ?? '',
+                'state'         => $addr->state         ?? '',
+                'zipcode'       => $addr->zipcode       ?? '',
+                'country'       => $addr->country       ?? '',
+                'mobile'        => $addr->mobile        ?? '',
+                'landmark'      => $addr->landmark      ?? '',
+                'full_address'  => implode(', ', array_filter([
                     $addr->address_line1,
                     $addr->address_line2,
                     $addr->city,
@@ -337,8 +345,7 @@ class CustomerController extends Controller
                     $addr->zipcode,
                     $addr->country,
                 ])),
-                'mobile'       => e($addr->mobile ?? ''),
-                'action'       => view('admin.customers.partials.address-actions', [
+                'action'        => view('admin.customers.partials.address-actions', [
                     'address'         => $addr,
                     'customerId'      => $customerId,
                     'editPermission'  => $editPermission,

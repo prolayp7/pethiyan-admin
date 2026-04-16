@@ -146,7 +146,7 @@
         ?: data_get($order, 'gstin')
         ?: data_get($order, 'user.gstin')
         ?: '';
-    $displayStoreTaxNumber = function ($store): string {
+    $displayStoreTaxNumber = function ($store): ?string {
         $taxNumber = data_get($store, 'tax_number');
         if (filled($taxNumber)) {
             return (string) $taxNumber;
@@ -157,7 +157,7 @@
             return (string) $taxName;
         }
 
-        return 'N/A';
+        return null;
     };
     $formatWeight = function ($weight, $unit): ?string {
         if ($weight === null || $weight === '') {
@@ -254,14 +254,17 @@
     <div class="section-title">Order Summary</div>
 
     @foreach($sellerOrder as $vendor)
-        @php $store = $vendor['items'][0]['orderItem']['store'] ?? null; @endphp
+        @php
+            $store = $vendor['items'][0]['orderItem']['store'] ?? null;
+            $storeTaxNumber = $store ? $displayStoreTaxNumber($store) : null;
+        @endphp
 
         <h5>
             Sold by: {{ $store['name'] ?? ($vendor['seller']['stores'][0]['name'] ?? 'N/A') }}
             @if($store && !empty($store['gstin']))
                 &nbsp;|&nbsp; GSTIN: <strong>{{ $store['gstin'] }}</strong>
-            @elseif($store)
-                &nbsp;|&nbsp; {{ $displayStoreTaxNumber($store) }}
+            @elseif($storeTaxNumber)
+                &nbsp;|&nbsp; {{ $storeTaxNumber }}
             @endif
             @if($store && !empty($store['state_code']))
                 &nbsp;|&nbsp; State: {{ $store['state_name'] ?? $store['state'] ?? '' }} ({{ $store['state_code'] }})

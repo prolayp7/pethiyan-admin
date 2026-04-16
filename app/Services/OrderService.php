@@ -1221,6 +1221,8 @@ class OrderService
                 'admin_note' => $incomingAdminNote !== '' ? $incomingAdminNote : null,
             ]);
 
+            $this->syncOrderItemsStatusForAdmin($order, $data['status']);
+
             if ($isCodOrder && ($newPaymentStatus !== $currentPaymentStatus || $incomingAdminNote !== $currentAdminNote)) {
                 OrderPaymentTransaction::updateOrCreate(
                     ['transaction_id' => 'cod-order-' . $order->id],
@@ -1266,6 +1268,57 @@ class OrderService
                 'data' => ['error' => $e->getMessage()],
             ];
         }
+    }
+
+    private function syncOrderItemsStatusForAdmin(Order $order, string $orderStatus): void
+    {
+        $mappedItemStatus = $this->mapAdminOrderStatusToOrderItemStatus($orderStatus);
+
+        if ($mappedItemStatus === null) {
+            return;
+        }
+
+        $terminalStatuses = [
+            OrderItemStatusEnum::REJECTED(),
+            OrderItemStatusEnum::REFUNDED(),
+            OrderItemStatusEnum::RETURNED(),
+            OrderItemStatusEnum::CANCELLED(),
+            OrderItemStatusEnum::FAILED(),
+        ];
+
+        $order->loadMissing('items');
+
+        foreach ($order->items as $orderItem) {
+            if ($orderItem->status === $mappedItemStatus) {
+                continue;
+            }
+
+            if (in_array($orderItem->status, $terminalStatuses, true) && $mappedItemStatus !== $orderItem->status) {
+                continue;
+            }
+
+            $orderItem->update(['status' => $mappedItemStatus]);
+        }
+    }
+
+    private function mapAdminOrderStatusToOrderItemStatus(string $orderStatus): ?string
+    {
+        return match ($orderStatus) {
+            OrderStatusEnum::PENDING() => OrderItemStatusEnum::PENDING(),
+            OrderStatusEnum::AWAITING_STORE_RESPONSE() => OrderItemStatusEnum::AWAITING_STORE_RESPONSE(),
+            OrderStatusEnum::PARTIALLY_ACCEPTED(),
+            OrderStatusEnum::ACCEPTED_BY_SELLER() => OrderItemStatusEnum::ACCEPTED(),
+            OrderStatusEnum::PREPARING(),
+            OrderStatusEnum::READY_FOR_PICKUP() => OrderItemStatusEnum::PREPARING(),
+            OrderStatusEnum::ASSIGNED(),
+            OrderStatusEnum::OUT_FOR_DELIVERY(),
+            OrderStatusEnum::COLLECTED() => OrderItemStatusEnum::COLLECTED(),
+            OrderStatusEnum::DELIVERED() => OrderItemStatusEnum::DELIVERED(),
+            OrderStatusEnum::REJECTED_BY_SELLER() => OrderItemStatusEnum::REJECTED(),
+            OrderStatusEnum::CANCELLED() => OrderItemStatusEnum::CANCELLED(),
+            OrderStatusEnum::FAILED() => OrderItemStatusEnum::FAILED(),
+            default => null,
+        };
     }
 
     private

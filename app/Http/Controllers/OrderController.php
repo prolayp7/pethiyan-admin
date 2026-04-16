@@ -342,7 +342,7 @@ class OrderController extends Controller
                 'items.variant',
                 'items.store',
                 'promoLine',
-                'paymentTransactions' => fn($query) => $query->latest(),
+                'paymentTransactions' => fn($query) => $query->latest()->with(['settlements']),
             ])
                 ->findOrFail($id);
         }

@@ -130,6 +130,10 @@ class OrderResource extends JsonResource
                         ->sortByDesc('updated_at')
                         ->values()
                         ->map(function ($transaction) {
+                            $latestSettlement = $transaction->relationLoaded('settlements')
+                                ? $transaction->settlements->sortByDesc('updated_at')->first()
+                                : null;
+
                             return [
                                 'id' => $transaction->id,
                                 'transaction_id' => $transaction->transaction_id,
@@ -138,6 +142,21 @@ class OrderResource extends JsonResource
                                 'message' => $transaction->message,
                                 'amount' => $transaction->amount,
                                 'currency' => $transaction->currency,
+                                'gateway_event' => data_get($transaction->payment_details, 'event'),
+                                'failure_code' => data_get($transaction->payment_details, 'failure.error_code'),
+                                'failure_description' => data_get($transaction->payment_details, 'failure.error_description'),
+                                'failure_reason' => data_get($transaction->payment_details, 'failure.error_reason'),
+                                'failure_source' => data_get($transaction->payment_details, 'failure.error_source'),
+                                'failure_step' => data_get($transaction->payment_details, 'failure.error_step'),
+                                'payment_details' => is_array($transaction->payment_details) ? $transaction->payment_details : [],
+                                'latest_settlement' => $latestSettlement ? [
+                                    'status' => $latestSettlement->status,
+                                    'event_name' => $latestSettlement->event_name,
+                                    'settlement_reference' => $latestSettlement->settlement_reference,
+                                    'utr' => $latestSettlement->utr,
+                                    'settled_at' => $latestSettlement->settled_at?->format('M d, Y h:i A'),
+                                    'updated_at' => $latestSettlement->updated_at?->format('M d, Y h:i A'),
+                                ] : null,
                                 'updated_at' => $transaction->updated_at?->format('M d, Y h:i A'),
                             ];
                         })

@@ -147,6 +147,10 @@ class SettingController extends Controller
                 $payload = array_merge($existingValues, $payload);
             }
 
+            if ($type === SettingTypeEnum::PAYMENT()) {
+                $payload = $this->ensureRazorpayWebhookSecretForDomain($request, $payload);
+            }
+
             // Partial section save: merge submitted fields with existing values so
             // saving one section does not reset all other sections to defaults.
             $section = $request->input('_section');
@@ -318,6 +322,10 @@ class SettingController extends Controller
                 return redirect()->route('admin.settings.show', ['setting' => SettingTypeEnum::SYSTEM()]);
             }
 
+            if ($variable === SettingTypeEnum::PAYMENT()) {
+                $this->ensureRazorpayWebhookSecretForDomain(request(), persist: true);
+            }
+
             $transformedSetting = $this->settingService->getSettingByVariable($variable);
 
             if (!$transformedSetting) {
@@ -421,11 +429,67 @@ class SettingController extends Controller
         }
 
         $isValid = now()->timestamp <= ((int) $unlockedAt + (self::PAYMENT_UNLOCK_TTL_MINUTES * 60));
+
         if (!$isValid) {
             $request->session()->forget(self::PAYMENT_UNLOCK_SESSION_KEY);
         }
 
         return $isValid;
+    }
+
+    private function ensureRazorpayWebhookSecretForDomain(Request $request, array $paymentValues = [], bool $persist = false): array
+    {
+        $defaults = get_object_vars(new PaymentSettingType());
+        $setting = Setting::find(SettingTypeEnum::PAYMENT());
+        $storedValues = is_array($setting?->value) ? $setting->value : [];
+        $values = array_merge($defaults, $storedValues, $paymentValues);
+
+        $currentDomain = $this->resolveWebhookSecretDomain($request);
+        $storedSecret = trim((string) ($values['razorpayWebhookSecret'] ?? ''));
+        $storedDomain = strtolower(trim((string) ($values['razorpayWebhookSecretDomain'] ?? '')));
+
+        $shouldGenerateSecret = $storedSecret === '' || ($currentDomain !== '' && $storedDomain !== $currentDomain);
+        $shouldPersist = false;
+
+        if ($shouldGenerateSecret) {
+            $values['razorpayWebhookSecret'] = $this->generateRazorpayWebhookSecret();
+            $values['razorpayWebhookSecretDomain'] = $currentDomain;
+            $shouldPersist = true;
+        } elseif ($currentDomain !== '' && $storedDomain !== $currentDomain) {
+            $values['razorpayWebhookSecretDomain'] = $currentDomain;
+            $shouldPersist = true;
+        }
+
+        if ($persist && $shouldPersist) {
+            Setting::updateOrCreate(
+                ['variable' => SettingTypeEnum::PAYMENT()],
+                ['value' => json_encode($values)]
+            );
+        }
+
+        return $values;
+    }
+
+    private function resolveWebhookSecretDomain(Request $request): string
+    {
+        $candidateUrls = [
+            (string) config('app.frontendUrl', ''),
+            (string) config('app.url', ''),
+        ];
+
+        foreach ($candidateUrls as $candidateUrl) {
+            $host = parse_url($candidateUrl, PHP_URL_HOST);
+            if (!empty($host)) {
+                return strtolower((string) $host);
+            }
+        }
+
+        return strtolower((string) $request->getHost());
+    }
+
+    private function generateRazorpayWebhookSecret(): string
+    {
+        return 'rzpwhsec_' . strtolower(bin2hex(random_bytes(24)));
     }
 
     public function unlockAuthenticationSettings(Request $request): JsonResponse

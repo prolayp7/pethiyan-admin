@@ -56,6 +56,7 @@ class PaymentSettingResource extends JsonResource
                 'stripeWebhookSecretKey' => $this->value['stripeWebhookSecretKey'] ?? '',
                 'razorpaySecretKey' => $this->value['razorpaySecretKey'] ?? '',
                 'razorpayWebhookSecret' => $this->value['razorpayWebhookSecret'] ?? '',
+                'razorpayWebhookSecretDomain' => $this->value['razorpayWebhookSecretDomain'] ?? '',
                 'paystackSecretKey' => $this->value['paystackSecretKey'] ?? '',
                 'paystackCurrencyCode' => $this->value['paystackCurrencyCode'] ?? '',
                 'paystackWebhookSecret' => $this->value['paystackWebhookSecret'] ?? '',

@@ -340,6 +340,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/orders',    [ReportController::class, 'orders'])->name('orders');
             Route::get('/products',  [ReportController::class, 'products'])->name('products');
             Route::get('/customers', [ReportController::class, 'customers'])->name('customers');
+            Route::get('/payments',  [ReportController::class, 'payments'])->name('payments');
             // Data endpoints
             Route::get('/sales/data',     [ReportController::class, 'salesData'])->name('sales.data');
             Route::get('/orders/data',    [ReportController::class, 'ordersData'])->name('orders.data');
@@ -347,6 +348,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/customers/data', [ReportController::class, 'customersData'])->name('customers.data');
             Route::get('/promos',         [ReportController::class, 'promos'])->name('promos');
             Route::get('/promos/data',    [ReportController::class, 'promosData'])->name('promos.data');
+            Route::get('/payments/summary', [ReportController::class, 'paymentsSummary'])->name('payments.summary');
+            Route::get('/payments/transactions/datatable', [ReportController::class, 'paymentTransactionsDatatable'])->name('payments.transactions.datatable');
+            Route::get('/payments/refunds/datatable', [ReportController::class, 'paymentRefundsDatatable'])->name('payments.refunds.datatable');
+            Route::get('/payments/disputes/datatable', [ReportController::class, 'paymentDisputesDatatable'])->name('payments.disputes.datatable');
+            Route::get('/payments/settlements/datatable', [ReportController::class, 'paymentSettlementsDatatable'])->name('payments.settlements.datatable');
+            Route::get('/payments/webhook-logs/datatable', [ReportController::class, 'paymentWebhookLogsDatatable'])->name('payments.webhook-logs.datatable');
+            Route::get('/payments/transactions/export', [ReportController::class, 'exportTransactions'])->name('payments.transactions.export');
+            Route::get('/payments/refunds/export', [ReportController::class, 'exportRefunds'])->name('payments.refunds.export');
+            Route::get('/payments/disputes/export', [ReportController::class, 'exportDisputes'])->name('payments.disputes.export');
+            Route::get('/payments/settlements/export', [ReportController::class, 'exportSettlements'])->name('payments.settlements.export');
+            Route::get('/payments/webhook-logs/export', [ReportController::class, 'exportWebhookLogs'])->name('payments.webhook-logs.export');
         });
 
         // Hero Section

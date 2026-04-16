@@ -26,6 +26,7 @@ class PaymentSettingType implements SettingInterface
     public string $razorpayKeyId = "";
     public string $razorpaySecretKey = "";
     public string $razorpayWebhookSecret = "";
+    public string $razorpayWebhookSecretDomain = "";
     public bool $paystackPayment = false;
     public string $paystackPaymentMode = "";
     public string $paystackPublicKey = "";
@@ -68,7 +69,8 @@ class PaymentSettingType implements SettingInterface
             'razorpayPaymentMode' => ['required_if:razorpayPayment,1', new Enum(PaymentModeEnum::class)],
             'razorpayKeyId' => 'required_if:razorpayPayment,1',
             'razorpaySecretKey' => 'required_if:razorpayPayment,1',
-            'razorpayWebhookSecret' => 'required_if:razorpayPayment,1',
+            'razorpayWebhookSecret' => 'nullable|string',
+            'razorpayWebhookSecretDomain' => 'nullable|string',
             'paystackPayment' => 'nullable|boolean',
             'paystackPaymentMode' => ['required_if:paystackPayment,true', new Enum(PaymentModeEnum::class)],
             'paystackPublicKey' => 'required_if:paystackPayment,true',
@@ -114,7 +116,6 @@ class PaymentSettingType implements SettingInterface
             'razorpayPaymentMode.enum' => 'The selected ' . __('labels.razorpay_payment_mode') . ' is invalid.',
             'razorpayKeyId.required_if' => __('labels.razorpay_key_id') . ' is required when ' . __('labels.enable_razorpay_payment') . ' is enabled.',
             'razorpaySecretKey.required_if' => __('labels.razorpay_secret_key') . ' is required when ' . __('labels.enable_razorpay_payment') . ' is enabled.',
-            'razorpayWebhookSecret.required_if' => __('labels.razorpay_webhook_secret') . ' is required when ' . __('labels.enable_razorpay_payment') . ' is enabled.',
             'paystackPaymentMode.required_if' => __('labels.paystack_payment_mode') . ' is required when ' . __('labels.enable_paystack_payment') . ' is enabled.',
             'paystackPaymentMode.enum' => 'The selected ' . __('labels.paystack_payment_mode') . ' is invalid.',
             'paystackPublicKey.required_if' => __('labels.paystack_public_key') . ' is required when ' . __('labels.enable_paystack_payment') . ' is enabled.',

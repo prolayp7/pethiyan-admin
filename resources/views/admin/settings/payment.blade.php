@@ -20,6 +20,25 @@
 
 @php
     $isUnlocked = (bool) ($paymentSettingsUnlocked ?? false);
+    $razorpayWebhookUrl = url('/api/webhook/razorpay');
+    $razorpayWebhookSecretDomain = $settings['razorpayWebhookSecretDomain'] ?? parse_url($razorpayWebhookUrl, PHP_URL_HOST);
+    $razorpayWebhookEvents = [
+        'payment.authorized',
+        'payment.captured',
+        'payment.failed',
+        'order.paid',
+        'settlement.processed',
+        'settlement.failed',
+        'refund.created',
+        'refund.processed',
+        'refund.failed',
+        'payment.dispute.created',
+        'payment.dispute.under_review',
+        'payment.dispute.won',
+        'payment.dispute.lost',
+        'payment.dispute.closed',
+        'payment.dispute.action_required',
+    ];
     $maskValue = static function (?string $value): string {
         $value = trim((string) $value);
         if ($value === '') {
@@ -145,16 +164,45 @@
                                             <div class="mb-3">
                                                 <label class="form-label required">{{ __('labels.razorpay_webhook_secret') }}</label>
                                                 <div class="input-group">
-                                                    <input type="password" class="form-control sensitive-field revealable-field" id="razorpayWebhookSecret" name="razorpayWebhookSecret"
-                                                           placeholder="{{ __('labels.razorpay_webhook_secret_placeholder') }}"
-                                                           value="{{ $isUnlocked ? ($settings['razorpayWebhookSecret'] ?? '') : $maskValue($settings['razorpayWebhookSecret'] ?? '') }}"/>
-                                                    <button class="btn btn-outline-secondary toggle-visibility-btn" type="button" data-target="#razorpayWebhookSecret" title="Show/Hide">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="18" height="18" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                                                            <path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/>
-                                                            <path d="M22 12c-2.5 4 -5.5 6 -10 6s-7.5 -2 -10 -6c2.5 -4 5.5 -6 10 -6s7.5 2 10 6"/>
-                                                        </svg>
-                                                    </button>
+                                                    <input type="text" class="form-control font-monospace" id="razorpayWebhookSecret" value="{{ $settings['razorpayWebhookSecret'] ?? '' }}" readonly />
+                                                    <button class="btn btn-outline-secondary copy-to-clipboard-btn" type="button" data-copy-target="#razorpayWebhookSecret">{{ __('labels.copy_secret') }}</button>
+                                                </div>
+                                                <div class="form-hint mt-2">
+                                                    {{ __('labels.webhook_secret_generated_for_domain') }}:
+                                                    <strong>{{ $razorpayWebhookSecretDomain ?: __('labels.not_configured') }}</strong>.
+                                                    {{ __('labels.webhook_secret_read_only_help') }}
+                                                </div>
+                                            </div>
+                                            <div class="alert alert-info mb-0">
+                                                <div class="row g-3 align-items-start">
+                                                    <div class="col-12 col-xl-4">
+                                                        <div class="fw-semibold mb-2">{{ __('labels.webhook_configuration') }}</div>
+                                                        <p class="text-muted mb-0">{{ __('labels.razorpay_webhook_setup_help') }}</p>
+                                                    </div>
+                                                    <div class="col-12 col-xl-4">
+                                                        <label class="form-label">{{ __('labels.webhook_endpoint_url') }}</label>
+                                                        <div class="d-flex flex-column flex-md-row gap-2 mb-2">
+                                                            <input type="text" class="form-control" id="razorpayWebhookUrl" value="{{ $razorpayWebhookUrl }}" readonly>
+                                                            <button class="btn btn-outline-secondary copy-to-clipboard-btn" type="button" data-copy-target="#razorpayWebhookUrl" style="white-space: nowrap;">{{ __('labels.copy_url') }}</button>
+                                                        </div>
+                                                        <div class="small text-muted text-break">
+                                                            {{ $razorpayWebhookUrl }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-12 col-xl-4">
+                                                        <div class="form-hint mb-0">
+                                                            {{ __('labels.webhook_secret_status') }}:
+                                                            <strong>{{ !empty($settings['razorpayWebhookSecret']) ? __('labels.configured') : __('labels.not_configured') }}</strong>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <div class="small fw-semibold mb-2">{{ __('labels.razorpay_supported_webhook_events') }}</div>
+                                                        <div class="d-flex flex-wrap gap-2">
+                                                            @foreach($razorpayWebhookEvents as $eventName)
+                                                                <span class="badge bg-azure-lt">{{ $eventName }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -297,6 +345,7 @@
             const easepayFields  = document.getElementById('easepayFields');
             const sensitiveFields = document.querySelectorAll('.sensitive-field');
             const visibilityButtons = document.querySelectorAll('.toggle-visibility-btn');
+            const copyButtons = document.querySelectorAll('.copy-to-clipboard-btn');
             const paymentSubmitBtn = document.getElementById('payment-submit-btn');
             const paymentUnlockBtn = document.getElementById('payment-unlock-btn');
             const paymentLockBtn = document.getElementById('payment-lock-btn');
@@ -371,6 +420,24 @@
                     const input = selector ? document.querySelector(selector) : null;
                     if (!input) return;
                     input.type = input.type === 'password' ? 'text' : 'password';
+                });
+            });
+
+            copyButtons.forEach((button) => {
+                button.addEventListener('click', async () => {
+                    const selector = button.getAttribute('data-copy-target');
+                    const input = selector ? document.querySelector(selector) : null;
+                    if (!input) return;
+                    try {
+                        await navigator.clipboard.writeText(input.value);
+                        button.textContent = 'Copied';
+                        window.setTimeout(() => {
+                            button.textContent = @json(__('labels.copy_url'));
+                        }, 1200);
+                    } catch (error) {
+                        input.select();
+                        document.execCommand('copy');
+                    }
                 });
             });
 

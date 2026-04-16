@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderPaymentTransaction;
+use App\Models\PaymentWebhookLog;
 use App\Models\PaymentRefund;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
@@ -108,6 +109,17 @@ class EasepayController extends Controller
     public function handleWebhook(Request $request): JsonResponse
     {
         $payload = $request->all();
+        $webhookLog = PaymentWebhookLog::create([
+            'gateway' => PaymentTypeEnum::EASEPAY(),
+            'event_name' => strtolower((string) ($payload['status'] ?? 'callback')),
+            'delivery_id' => $payload['easepayid'] ?? ($payload['txnid'] ?? null),
+            'status' => 'received',
+            'signature_valid' => false,
+            'http_status' => 102,
+            'request_headers' => $request->headers->all(),
+            'raw_payload' => $payload,
+        ]);
+
         Log::info('[Easepay] Webhook received', ['txnid' => $payload['txnid'] ?? null]);
 
         DB::beginTransaction();
@@ -115,9 +127,19 @@ class EasepayController extends Controller
             // Verify hash
             if (!$this->easepayService->verifyResponseHash($payload)) {
                 Log::warning('[Easepay] Webhook hash mismatch', $payload);
+                $webhookLog->update([
+                    'status' => 'rejected',
+                    'http_status' => 400,
+                    'message' => 'Invalid hash',
+                ]);
                 DB::rollBack();
                 return response()->json(['error' => 'Invalid hash'], 400);
             }
+
+            $webhookLog->update([
+                'signature_valid' => true,
+                'status' => 'processing',
+            ]);
 
             $status       = strtolower($payload['status']  ?? '');
             $paymentType  = strtolower($payload['udf1']    ?? 'order_payment');
@@ -126,12 +148,18 @@ class EasepayController extends Controller
 
             // Easebuzz refund webhook — status is 'refund' or 'refund_bounced'
             if (in_array($status, ['refund', 'refund_bounced'])) {
-                $this->handleRefundWebhook($status, $payload, $txnid, $easepayTxnId);
+                $this->handleRefundWebhook($status, $payload, $txnid, $easepayTxnId, $webhookLog);
             } elseif ($paymentType === 'wallet_recharge') {
                 $this->handleWalletWebhook($status, $payload, $easepayTxnId);
             } else {
-                $this->handleOrderWebhook($status, $payload, $txnid, $easepayTxnId);
+                $this->handleOrderWebhook($status, $payload, $txnid, $easepayTxnId, $webhookLog);
             }
+
+            $webhookLog->update([
+                'status' => 'processed',
+                'http_status' => 200,
+                'processed_at' => now(),
+            ]);
 
             DB::commit();
             return response()->json(['status' => 'success'], 200);
@@ -139,6 +167,11 @@ class EasepayController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('[Easepay] Webhook exception: ' . $e->getMessage());
+            $webhookLog->update([
+                'status' => 'failed',
+                'http_status' => 500,
+                'message' => $e->getMessage(),
+            ]);
             return response()->json(['error' => 'Server Error'], 500);
         }
     }
@@ -199,13 +232,13 @@ class EasepayController extends Controller
     // Private helpers
     // -------------------------------------------------------------------------
 
-    private function handleOrderWebhook(string $status, array $payload, string $txnid, string $easepayTxnId): void
+    private function handleOrderWebhook(string $status, array $payload, string $txnid, string $easepayTxnId, ?PaymentWebhookLog $webhookLog = null): void
     {
         $orderId = (int)($payload['udf2'] ?? 0);
 
         if ($status === 'success') {
             // Record or update the transaction
-            OrderPaymentTransaction::updateOrCreate(
+            $transaction = OrderPaymentTransaction::updateOrCreate(
                 ['transaction_id' => $easepayTxnId],
                 [
                     'order_id'       => $orderId ?: null,
@@ -219,6 +252,11 @@ class EasepayController extends Controller
                     'payment_details' => $payload,
                 ]
             );
+
+            $webhookLog?->update([
+                'order_payment_transaction_id' => $transaction->id,
+                'order_id' => $orderId ?: null,
+            ]);
 
             if ($orderId) {
                 Order::capturePayment($orderId);
@@ -236,6 +274,11 @@ class EasepayController extends Controller
                     'payment_details' => $payload,
                 ]);
             }
+
+            $webhookLog?->update([
+                'order_payment_transaction_id' => $transaction?->id,
+                'order_id' => $orderId ?: $transaction?->order_id,
+            ]);
 
             if ($orderId) {
                 Order::paymentFailed($orderId);
@@ -275,7 +318,7 @@ class EasepayController extends Controller
      * Status is 'refund' (processed) or 'refund_bounced' (failed).
      * Easebuzz re-sends the original txnid; the easepayid field holds the refund reference.
      */
-    private function handleRefundWebhook(string $status, array $payload, string $txnid, string $easepayRefundId): void
+    private function handleRefundWebhook(string $status, array $payload, string $txnid, string $easepayRefundId, ?PaymentWebhookLog $webhookLog = null): void
     {
         // Find original payment transaction by txnid
         $transaction = OrderPaymentTransaction::where('transaction_id', $txnid)->first();
@@ -296,6 +339,11 @@ class EasepayController extends Controller
                 'raw_payload'                  => $payload,
             ]
         );
+
+        $webhookLog?->update([
+            'order_payment_transaction_id' => $transaction?->id,
+            'order_id' => $transaction?->order_id,
+        ]);
 
         if ($refundStatus === 'processed' && $transaction) {
             $transaction->update([

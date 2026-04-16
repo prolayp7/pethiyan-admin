@@ -254,6 +254,11 @@ return [
                     'sub_route'  => 'admin.reports.customers',
                     'sub_title'  => 'Customers Report',
                 ],
+                'payment_monitor' => [
+                    'sub_active' => 'payment_monitor',
+                    'sub_route'  => 'admin.reports.payments',
+                    'sub_title'  => 'labels.payment_monitor',
+                ],
             ],
         ],        
         'support_tickets' => [

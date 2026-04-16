@@ -11,6 +11,8 @@ use App\Models\OrderItem;
 use App\Models\OrderPaymentTransaction;
 use App\Models\PaymentDispute;
 use App\Models\PaymentRefund;
+use App\Models\PaymentSettlement;
+use App\Models\PaymentWebhookLog;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Services\SettingService;
@@ -20,6 +22,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Razorpay\Api\Api;
 
 class RazorpayController extends Controller
@@ -47,23 +50,51 @@ class RazorpayController extends Controller
     {
         $payload = $request->getContent();
         $signature = $request->header('X-Razorpay-Signature');
+        $headers = $request->headers->all();
+        $webhookLog = null;
 
         Log::info("Razorpay Webhook Payload: " . $payload);
 
         DB::beginTransaction();
         try {
+            $data = json_decode($payload, true) ?: [];
+            $event = $data['event'] ?? null;
+
+            $webhookLog = PaymentWebhookLog::create([
+                'gateway' => PaymentTypeEnum::RAZORPAY(),
+                'event_name' => $event,
+                'delivery_id' => $request->header('X-Razorpay-Event-Id'),
+                'status' => 'received',
+                'signature_valid' => false,
+                'http_status' => 102,
+                'request_headers' => $headers,
+                'raw_payload' => $data,
+            ]);
+
             if (!$this->isValidSignature($payload, $signature)) {
                 Log::error("Invalid Razorpay Webhook signature.");
+                $webhookLog->update([
+                    'status' => 'rejected',
+                    'http_status' => 400,
+                    'message' => 'Invalid signature',
+                ]);
                 return response()->json(['error' => 'Invalid signature'], 400);
             }
 
-            $data = json_decode($payload, true);
-            $event = $data['event'] ?? null;
+            $webhookLog->update([
+                'signature_valid' => true,
+                'status' => 'processing',
+            ]);
 
             // Dispute events have a different payload structure
             if (str_starts_with($event, 'payment.dispute.')) {
                 $disputeEntity = $data['payload']['dispute']['entity'] ?? [];
-                $this->handleDisputeEvent($event, $disputeEntity, $data['payload']);
+                $this->handleDisputeEvent($event, $disputeEntity, $data['payload'], $webhookLog);
+                $webhookLog->update([
+                    'status' => 'processed',
+                    'http_status' => 200,
+                    'processed_at' => now(),
+                ]);
                 DB::commit();
                 return response()->json(['status' => 'success'], 200);
             }
@@ -71,7 +102,24 @@ class RazorpayController extends Controller
             // Refund lifecycle events
             if (in_array($event, ['refund.created', 'refund.failed'])) {
                 $refundEntity = $data['payload']['refund']['entity'] ?? [];
-                $this->handleRefundLifecycleEvent($event, $refundEntity, $data['payload']);
+                $this->handleRefundLifecycleEvent($event, $refundEntity, $data['payload'], $webhookLog);
+                $webhookLog->update([
+                    'status' => 'processed',
+                    'http_status' => 200,
+                    'processed_at' => now(),
+                ]);
+                DB::commit();
+                return response()->json(['status' => 'success'], 200);
+            }
+
+            if (str_starts_with((string) $event, 'settlement.')) {
+                $settlementEntity = $data['payload']['settlement']['entity'] ?? [];
+                $this->handleSettlementEvent($event, $settlementEntity, $data['payload'], $webhookLog);
+                $webhookLog->update([
+                    'status' => 'processed',
+                    'http_status' => 200,
+                    'processed_at' => now(),
+                ]);
                 DB::commit();
                 return response()->json(['status' => 'success'], 200);
             }
@@ -82,16 +130,34 @@ class RazorpayController extends Controller
             // refund.processed still goes through the existing payment-entity path
             if ($event === 'refund.processed') {
                 $refundEntity = $data['payload']['refund']['entity'] ?? [];
-                $this->handleRefundLifecycleEvent($event, $refundEntity, $data['payload']);
+                $this->handleRefundLifecycleEvent($event, $refundEntity, $data['payload'], $webhookLog);
                 $transaction = $this->findTransaction($paymentType, $paymentEntity);
                 $this->handleRefund($paymentType, $transaction, $paymentEntity);
+                $webhookLog->update([
+                    'order_payment_transaction_id' => $transaction?->id,
+                    'order_id' => $transaction?->order_id,
+                    'status' => 'processed',
+                    'http_status' => 200,
+                    'processed_at' => now(),
+                ]);
                 DB::commit();
                 return response()->json(['status' => 'success'], 200);
             }
 
             $transaction = $this->findTransaction($paymentType, $paymentEntity);
 
+            $webhookLog->update([
+                'order_payment_transaction_id' => $transaction?->id,
+                'order_id' => $transaction?->order_id,
+            ]);
+
             $this->processEvent($event, $paymentType, $paymentEntity, $transaction);
+
+            $webhookLog->update([
+                'status' => 'processed',
+                'http_status' => 200,
+                'processed_at' => now(),
+            ]);
 
             DB::commit();
             return response()->json(['status' => 'success'], 200);
@@ -99,6 +165,11 @@ class RazorpayController extends Controller
         } catch (Exception $e) {
             DB::rollBack();
             Log::error("Razorpay Webhook Error: " . $e->getMessage());
+            $webhookLog?->update([
+                'status' => 'failed',
+                'http_status' => 500,
+                'message' => $e->getMessage(),
+            ]);
             return response()->json(['error' => 'Server Error'], 500);
         }
     }
@@ -345,7 +416,7 @@ class RazorpayController extends Controller
                 break;
 
             case 'payment.failed':
-                $this->handlePaymentFailed($paymentType, $transaction, $event);
+                $this->handlePaymentFailed($paymentType, $paymentEntity, $transaction, $event);
                 break;
 
             default:
@@ -435,7 +506,7 @@ class RazorpayController extends Controller
         OrderPaymentTransaction::saveTransaction(data: $paymentEntity, paymentId: $paymentId, paymentMethod: PaymentTypeEnum::RAZORPAY(), paymentStatus: PaymentStatusEnum::COMPLETED());
     }
 
-    private function handleDisputeEvent(string $event, array $disputeEntity, array $fullPayload): void
+    private function handleDisputeEvent(string $event, array $disputeEntity, array $fullPayload, ?PaymentWebhookLog $webhookLog = null): void
     {
         $disputeId  = $disputeEntity['id'] ?? null;
         $paymentId  = $disputeEntity['payment_id'] ?? ($fullPayload['payment']['entity']['id'] ?? null);
@@ -479,6 +550,11 @@ class RazorpayController extends Controller
             ]
         );
 
+        $webhookLog?->update([
+            'order_payment_transaction_id' => $transaction?->id,
+            'order_id' => $transaction?->order_id,
+        ]);
+
         Log::info("Razorpay dispute [{$status}]", [
             'dispute_id' => $disputeId,
             'payment_id' => $paymentId,
@@ -486,7 +562,7 @@ class RazorpayController extends Controller
         ]);
     }
 
-    private function handleRefundLifecycleEvent(string $event, array $refundEntity, array $fullPayload): void
+    private function handleRefundLifecycleEvent(string $event, array $refundEntity, array $fullPayload, ?PaymentWebhookLog $webhookLog = null): void
     {
         $refundId  = $refundEntity['id'] ?? null;
         $paymentId = $refundEntity['payment_id'] ?? null;
@@ -522,6 +598,11 @@ class RazorpayController extends Controller
             ]
         );
 
+        $webhookLog?->update([
+            'order_payment_transaction_id' => $transaction?->id,
+            'order_id' => $transaction?->order_id,
+        ]);
+
         // On failure, log prominently so it can be investigated
         if ($status === 'failed') {
             Log::error("Razorpay refund FAILED", [
@@ -538,27 +619,197 @@ class RazorpayController extends Controller
         }
     }
 
-    private function handlePaymentFailed(string $paymentType, $transaction = null, string $event = ''): void
+    private function handleSettlementEvent(string $event, array $settlementEntity, array $fullPayload, ?PaymentWebhookLog $webhookLog = null): void
     {
-        if ($transaction === null) {
+        $settlementId = $settlementEntity['id'] ?? null;
+
+        if (!$settlementId) {
+            Log::warning('Razorpay settlement event missing settlement ID', ['event' => $event]);
             return;
         }
 
+        $paymentId = $this->extractSettlementPaymentId($settlementEntity, $fullPayload);
+        $transaction = $paymentId
+            ? OrderPaymentTransaction::where('transaction_id', $paymentId)->first()
+            : null;
+
+        $status = $this->deriveSettlementStatus($event, $settlementEntity);
+        $settledAt = $this->resolveSettlementTimestamp($settlementEntity);
+
+        PaymentSettlement::updateOrCreate(
+            ['razorpay_settlement_id' => $settlementId],
+            [
+                'razorpay_payment_id' => $paymentId,
+                'order_payment_transaction_id' => $transaction?->id,
+                'order_id' => $transaction?->order_id,
+                'amount' => isset($settlementEntity['amount']) ? (($settlementEntity['amount'] ?? 0) / 100) : 0,
+                'currency' => $settlementEntity['currency'] ?? 'INR',
+                'status' => $status,
+                'event_name' => $event,
+                'settlement_reference' => $settlementEntity['entity_id']
+                    ?? $settlementEntity['settlement_reference']
+                    ?? $settlementEntity['reference_id']
+                    ?? null,
+                'utr' => $settlementEntity['utr'] ?? null,
+                'settled_at' => $settledAt,
+                'raw_payload' => $fullPayload,
+            ]
+        );
+
+        $webhookLog?->update([
+            'order_payment_transaction_id' => $transaction?->id,
+            'order_id' => $transaction?->order_id,
+        ]);
+
+        if ($transaction) {
+            $paymentDetails = is_array($transaction->payment_details) ? $transaction->payment_details : [];
+            $paymentDetails['settlement'] = [
+                'event' => $event,
+                'status' => $status,
+                'settlement_id' => $settlementId,
+                'settlement_reference' => $settlementEntity['entity_id']
+                    ?? $settlementEntity['settlement_reference']
+                    ?? $settlementEntity['reference_id']
+                    ?? null,
+                'utr' => $settlementEntity['utr'] ?? null,
+                'settled_at' => $settledAt?->toDateTimeString(),
+            ];
+            $transaction->update(['payment_details' => $paymentDetails]);
+        }
+
+        Log::info("Razorpay settlement [{$status}]", [
+            'settlement_id' => $settlementId,
+            'payment_id' => $paymentId,
+            'order_id' => $transaction?->order_id,
+        ]);
+    }
+
+    private function handlePaymentFailed(string $paymentType, array $paymentEntity, $transaction = null, string $event = ''): void
+    {
         if ($paymentType === 'wallet_recharge') {
+            if ($transaction === null) {
+                return;
+            }
+
             $transaction->update([
                 'status' => PaymentStatusEnum::FAILED(),
                 'message' => $event,
             ]);
             Log::info('Wallet Recharge Failed', ['payment_id' => $transaction->id]);
         } elseif ($paymentType === 'order_payment') {
+            $transaction = $this->resolveOrderPaymentTransactionForWebhook($paymentEntity, $transaction);
+
+            if ($transaction === null) {
+                Log::warning('Order payment failed webhook could not be linked to a transaction', [
+                    'payment_id' => $paymentEntity['id'] ?? null,
+                    'event' => $event,
+                ]);
+                return;
+            }
+
+            $paymentDetails = is_array($transaction->payment_details) ? $transaction->payment_details : [];
+            $paymentDetails = array_merge($paymentDetails, [
+                'event' => $event,
+                'last_webhook_received_at' => now()->toDateTimeString(),
+                'failure' => [
+                    'error_code' => $paymentEntity['error_code'] ?? null,
+                    'error_description' => $paymentEntity['error_description'] ?? null,
+                    'error_reason' => $paymentEntity['error_reason'] ?? null,
+                    'error_source' => $paymentEntity['error_source'] ?? null,
+                    'error_step' => $paymentEntity['error_step'] ?? null,
+                    'status' => $paymentEntity['status'] ?? null,
+                ],
+                'payload' => $paymentEntity,
+            ]);
+
             $transaction->update([
                 'payment_status' => PaymentStatusEnum::FAILED(),
-                'message' => $event,
+                'message' => $this->formatPaymentFailureMessage($paymentEntity, $event),
+                'payment_details' => $paymentDetails,
             ]);
 
             Order::paymentFailed($transaction->order_id);
             OrderItem::paymentFailed($transaction->order_id);
-            Log::info('Order Payment Failed', ['order_id' => $transaction->order_id]);
+            Log::info('Order Payment Failed', [
+                'order_id' => $transaction->order_id,
+                'payment_id' => $paymentEntity['id'] ?? null,
+                'error_code' => $paymentEntity['error_code'] ?? null,
+                'error_reason' => $paymentEntity['error_reason'] ?? null,
+            ]);
         }
+    }
+
+    private function resolveOrderPaymentTransactionForWebhook(array $paymentEntity, $transaction = null): ?OrderPaymentTransaction
+    {
+        if ($transaction instanceof OrderPaymentTransaction) {
+            return $transaction;
+        }
+
+        $paymentId = $paymentEntity['id'] ?? null;
+        $userId = $paymentEntity['notes']['user_id'] ?? null;
+
+        if (!$paymentId || !$userId) {
+            return null;
+        }
+
+        return OrderPaymentTransaction::updateOrCreate(
+            ['transaction_id' => $paymentId],
+            [
+                'uuid' => OrderPaymentTransaction::where('transaction_id', $paymentId)->value('uuid') ?? (string) \Illuminate\Support\Str::uuid(),
+                'order_id' => $paymentEntity['notes']['order_id'] ?? null,
+                'user_id' => $userId,
+                'amount' => isset($paymentEntity['amount']) ? ($paymentEntity['amount'] / 100) : 0,
+                'currency' => $paymentEntity['currency'] ?? 'INR',
+                'payment_method' => PaymentTypeEnum::RAZORPAY(),
+                'payment_status' => PaymentStatusEnum::PENDING(),
+                'message' => 'Webhook received before order linkage',
+                'payment_details' => $paymentEntity,
+            ]
+        );
+    }
+
+    private function formatPaymentFailureMessage(array $paymentEntity, string $event): string
+    {
+        $parts = array_filter([
+            $paymentEntity['error_description'] ?? null,
+            $paymentEntity['error_reason'] ?? null,
+            $paymentEntity['error_code'] ?? null,
+        ]);
+
+        if (!empty($parts)) {
+            return implode(' | ', $parts);
+        }
+
+        return $event;
+    }
+
+    private function extractSettlementPaymentId(array $settlementEntity, array $fullPayload): ?string
+    {
+        return $settlementEntity['payment_id']
+            ?? data_get($fullPayload, 'payment.entity.id')
+            ?? data_get($fullPayload, 'payment.id')
+            ?? data_get($fullPayload, 'items.0.entity.payment_id')
+            ?? null;
+    }
+
+    private function deriveSettlementStatus(string $event, array $settlementEntity): string
+    {
+        return $settlementEntity['status']
+            ?? Str::afterLast($event, '.')
+            ?: 'processed';
+    }
+
+    private function resolveSettlementTimestamp(array $settlementEntity): ?\Carbon\Carbon
+    {
+        $timestamp = $settlementEntity['settled_at']
+            ?? $settlementEntity['processed_at']
+            ?? $settlementEntity['created_at']
+            ?? null;
+
+        if (!$timestamp) {
+            return null;
+        }
+
+        return \Carbon\Carbon::createFromTimestamp((int) $timestamp);
     }
 }

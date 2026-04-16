@@ -268,6 +268,12 @@
                                             <div class="datagrid-title">{{ __('labels.updated_at') }}</div>
                                             <div class="datagrid-content">{{ $latestTransaction['updated_at'] }}</div>
                                         </div>
+                                        @if(!empty($latestTransaction['gateway_event']))
+                                            <div class="datagrid-item">
+                                                <div class="datagrid-title">{{ __('labels.gateway_event') }}</div>
+                                                <div class="datagrid-content">{{ $latestTransaction['gateway_event'] }}</div>
+                                            </div>
+                                        @endif
                                     </div>
                                     <div>
                                         <div class="datagrid-title">{{ __('labels.latest_gateway_message') }}</div>
@@ -275,6 +281,78 @@
                                             <textarea class="form-control" rows="3" readonly disabled>{{ $latestTransaction['message'] ?? __('labels.no_payment_message_available') }}</textarea>
                                         </div>
                                     </div>
+                                    @if(!empty($latestTransaction['failure_description']) || !empty($latestTransaction['failure_reason']) || !empty($latestTransaction['failure_code']) || !empty($latestTransaction['failure_source']) || !empty($latestTransaction['failure_step']))
+                                        <div class="mt-3">
+                                            <div class="datagrid-title">{{ __('labels.gateway_failure_details') }}</div>
+                                            <div class="datagrid mt-2">
+                                                @if(!empty($latestTransaction['failure_description']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.failure_description') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['failure_description'] }}</div>
+                                                    </div>
+                                                @endif
+                                                @if(!empty($latestTransaction['failure_reason']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.failure_reason') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['failure_reason'] }}</div>
+                                                    </div>
+                                                @endif
+                                                @if(!empty($latestTransaction['failure_code']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.failure_code') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['failure_code'] }}</div>
+                                                    </div>
+                                                @endif
+                                                @if(!empty($latestTransaction['failure_source']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.failure_source') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['failure_source'] }}</div>
+                                                    </div>
+                                                @endif
+                                                @if(!empty($latestTransaction['failure_step']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.failure_step') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['failure_step'] }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endif
+                                    @if(!empty($latestTransaction['latest_settlement']))
+                                        <div class="mt-3">
+                                            <div class="datagrid-title">{{ __('labels.latest_settlement') }}</div>
+                                            <div class="datagrid mt-2">
+                                                <div class="datagrid-item">
+                                                    <div class="datagrid-title">{{ __('labels.settlement_status') }}</div>
+                                                    <div class="datagrid-content text-capitalize">{{ Str::headline($latestTransaction['latest_settlement']['status']) }}</div>
+                                                </div>
+                                                @if(!empty($latestTransaction['latest_settlement']['event_name']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.gateway_event') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['latest_settlement']['event_name'] }}</div>
+                                                    </div>
+                                                @endif
+                                                @if(!empty($latestTransaction['latest_settlement']['settlement_reference']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.settlement_reference') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['latest_settlement']['settlement_reference'] }}</div>
+                                                    </div>
+                                                @endif
+                                                @if(!empty($latestTransaction['latest_settlement']['utr']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.settlement_utr') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['latest_settlement']['utr'] }}</div>
+                                                    </div>
+                                                @endif
+                                                @if(!empty($latestTransaction['latest_settlement']['settled_at']))
+                                                    <div class="datagrid-item">
+                                                        <div class="datagrid-title">{{ __('labels.settled_at') }}</div>
+                                                        <div class="datagrid-content">{{ $latestTransaction['latest_settlement']['settled_at'] }}</div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endif
                                 @else
                                     <div class="alert alert-info mb-0">
                                         @if(strtolower((string) $order['payment_method']) === PaymentTypeEnum::COD())

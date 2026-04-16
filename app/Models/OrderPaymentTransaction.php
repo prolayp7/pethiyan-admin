@@ -6,6 +6,7 @@ use App\Enums\PaymentStatusEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class OrderPaymentTransaction extends Model
@@ -69,6 +70,21 @@ class OrderPaymentTransaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function disputes(): HasMany
+    {
+        return $this->hasMany(PaymentDispute::class, 'order_payment_transaction_id');
+    }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(PaymentRefund::class, 'order_payment_transaction_id');
+    }
+
+    public function settlements(): HasMany
+    {
+        return $this->hasMany(PaymentSettlement::class, 'order_payment_transaction_id');
     }
 
     /**

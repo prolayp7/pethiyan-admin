@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
  */
 class Order extends Model
 {
-    protected $appends = ['order_number'];
+    protected $appends = ['order_number', 'invoice_number'];
 
     protected $fillable = [
         'uuid',
@@ -148,9 +148,19 @@ class Order extends Model
 
     public function getOrderNumberAttribute(): string
     {
+        return $this->formatDocumentNumber('PET');
+    }
+
+    public function getInvoiceNumberAttribute(): string
+    {
+        return $this->formatDocumentNumber('INV');
+    }
+
+    private function formatDocumentNumber(string $prefix): string
+    {
         $date = $this->created_at?->format('Ymd') ?? now()->format('Ymd');
 
-        return 'PET' . $date . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+        return $prefix . $date . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -76,7 +76,7 @@ class OrderPlacedMail extends Mailable implements ShouldQueue
             ->setPaper('a4', 'portrait')
             ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false]);
 
-        $filename = 'invoice-' . ($order->uuid ?? $order->id) . '.pdf';
+        $filename = 'invoice-' . ($order->invoice_number ?? $order->order_number ?? $order->uuid ?? $order->id) . '.pdf';
 
         return [
             Attachment::fromData(

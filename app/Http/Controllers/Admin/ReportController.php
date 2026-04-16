@@ -231,7 +231,7 @@ class ReportController extends Controller
         $rows = [];
         $serialNumber = 1;
 
-        Order::with(['user:id,name,email,mobile,gstin', 'items'])
+        Order::with(['user:id,name,email,mobile,company_name,gstin', 'items'])
             ->whereBetween('created_at', [$from, $to])
             ->orderByDesc('id')
             ->chunk(100, function ($orders) use (&$rows, &$serialNumber) {
@@ -250,13 +250,13 @@ class ReportController extends Controller
                         $rows[] = [
                             $serialNumber++,
                             $order->created_at?->format('Y-m-d H:i:s'),
-                            $order->uuid,
+                            $order->invoice_number,
                             $order->order_number,
                             $order->user?->name ?? $order->billing_name,
                             $order->user?->email ?? $order->email,
                             $order->user?->mobile ?? $order->billing_phone,
                             $deliveryAddress,
-                            '',
+                            $order->user?->company_name ?? '',
                             $order->user?->gstin ?? '',
                             $order->shipping_state,
                             $order->shipping_zip,

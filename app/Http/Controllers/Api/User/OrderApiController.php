@@ -352,7 +352,7 @@ class OrderApiController extends Controller
             ->setPaper('a4', 'portrait')
             ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false]);
 
-        $filename = 'invoice-' . ($order->uuid ?? $order->id) . '.pdf';
+        $filename = 'invoice-' . ($order->invoice_number ?? $order->order_number ?? $order->uuid ?? $order->id) . '.pdf';
 
         return $pdf->download($filename);
     }

@@ -171,7 +171,7 @@
 
             {{-- Invoice Meta --}}
             <td style="border:1px solid #ccc; border-radius:4px;">
-                <strong>Invoice #:</strong> {{ $order['uuid'] }}<br>
+                <strong>Invoice #:</strong> {{ $order->invoice_number }}<br>
                 <strong>Order Date:</strong> {{ $order['created_at']->format('d M Y H:i') }}<br>
                 <strong>Payment:</strong> {{ strtoupper(str_replace('_',' ',$order['payment_method'] ?? 'N/A')) }}<br>
                 @if(!empty($order['customer_state']))
@@ -413,7 +413,7 @@
 
                 {{-- Invoice Meta --}}
                 <td style="border:1px solid #ccc; border-radius:4px;">
-                    <strong>Invoice #:</strong> {{ $order['uuid'] }}<br>
+                    <strong>Invoice #:</strong> {{ $order->invoice_number }}<br>
                     <strong>Order Date:</strong> {{ $order['created_at']->format('d M Y H:i') }}<br>
                     <strong>Payment:</strong> {{ strtoupper(str_replace('_',' ',$order['payment_method'] ?? 'N/A')) }}<br>
                     @if(!empty($order['customer_state']))

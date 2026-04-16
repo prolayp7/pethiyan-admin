@@ -119,6 +119,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::prefix('categories')->namespace('Categories')->name('categories.')->group(function () {
             Route::get('/', [CategoryController::class, 'index'])->name('index');
             Route::post('/', [CategoryController::class, 'store'])->name('store');
+            Route::post('/reorder', [CategoryController::class, 'reorder'])->name('reorder');
             Route::get('/{id}/edit', [CategoryController::class, 'show'])->name('edit');
             Route::post('/{id}', [CategoryController::class, 'update'])->name('update');
             Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('delete');

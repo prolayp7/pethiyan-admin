@@ -98,7 +98,7 @@
                         </div>
                         <x-datatable id="categories-table" :columns="$columns"
                                      route="{{ route('admin.categories.datatable') }}"
-                                     :options="['order' => [[0, 'desc']],'pageLength' => 10,]"/>
+                                     :options="['ordering' => false, 'paging' => false, 'info' => false, 'pageLength' => 500]"/>
                     </div>
                 </div>
             </div>
@@ -413,7 +413,163 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
+    (function () {
+        const table = $('#categories-table');
+        const reorderUrl = '{{ route('admin.categories.reorder') }}';
+        let categorySortable = null;
+
+        if (!document.getElementById('category-sort-styles')) {
+            $('head').append(`
+                <style id="category-sort-styles">
+                    .category-sort-cell {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                    }
+
+                    .category-sort-handle {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 24px;
+                        height: 24px;
+                        padding: 0;
+                        border: 1px solid rgba(98, 105, 118, 0.12);
+                        border-radius: 6px;
+                        background: rgba(255, 255, 255, 0.72);
+                        color: #7b8794;
+                        cursor: grab;
+                        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+                        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+                    }
+
+                    .category-sort-handle:hover,
+                    .category-sort-handle:focus-visible {
+                        color: #182433;
+                        background: rgba(32, 107, 196, 0.06);
+                        border-color: rgba(32, 107, 196, 0.16);
+                        box-shadow: 0 0 0 2px rgba(32, 107, 196, 0.07);
+                        outline: none;
+                    }
+
+                    .category-sort-handle:active {
+                        cursor: grabbing;
+                        background: rgba(32, 107, 196, 0.12);
+                        border-color: rgba(32, 107, 196, 0.24);
+                        box-shadow: none;
+                    }
+
+                    .category-sort-handle svg {
+                        opacity: 0.78;
+                    }
+
+                    .category-sort-handle.is-disabled {
+                        cursor: not-allowed;
+                        opacity: 0.45;
+                        pointer-events: none;
+                    }
+
+                    #categories-table tbody tr.sortable-ghost {
+                        opacity: 0.45;
+                    }
+
+                    #categories-table tbody tr.sortable-chosen {
+                        box-shadow: inset 0 0 0 9999px rgba(32, 107, 196, 0.05);
+                    }
+                </style>
+            `);
+        }
+
+        function dataTableInstance() {
+            return $.fn.DataTable.isDataTable('#categories-table') ? table.DataTable() : null;
+        }
+
+        function currentOrder() {
+            return table.find('tbody tr.category-row').map(function () {
+                return Number($(this).data('category-id'));
+            }).get();
+        }
+
+        function refreshSortBadges() {
+            table.find('tbody tr.category-row').each(function (index) {
+                $(this).find('.category-sort-badge').text(index + 1);
+            });
+        }
+
+        function setSortingAvailability(enabled) {
+            table.find('.category-sort-handle').toggleClass('is-disabled', !enabled);
+        }
+
+        function persistOrder() {
+            return $.ajax({
+                url: reorderUrl,
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    order: currentOrder(),
+                },
+            }).done((response) => {
+                if (!response.success) {
+                    toastError(response.message || 'Unable to update category order.');
+                    table.DataTable().ajax.reload(null, false);
+                    return;
+                }
+
+                toastSuccess(response.message || 'Category order updated.');
+            }).fail(() => {
+                toastError('Unable to update category order.');
+                table.DataTable().ajax.reload(null, false);
+            });
+        }
+
+        function initCategorySorting() {
+            const dt = dataTableInstance();
+            const tbody = table.find('tbody').get(0);
+
+            if (categorySortable) {
+                categorySortable.destroy();
+                categorySortable = null;
+            }
+
+            if (!dt || !tbody) {
+                return;
+            }
+
+            const isFiltered = !!dt.search();
+            setSortingAvailability(!isFiltered);
+
+            if (isFiltered || typeof Sortable === 'undefined') {
+                return;
+            }
+
+            categorySortable = Sortable.create(tbody, {
+                animation: 150,
+                handle: '.category-sort-handle',
+                draggable: 'tr.category-row',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function () {
+                    refreshSortBadges();
+                    persistOrder();
+                },
+            });
+        }
+
+        $('#refresh').on('click', function () {
+            const dt = dataTableInstance();
+            if (dt) {
+                dt.ajax.reload();
+            }
+        });
+
+        table.on('draw.dt', function () {
+            refreshSortBadges();
+            initCategorySorting();
+        });
+    })();
+
     (function () {
         const modal = document.getElementById('category-modal');
         if (!modal) {

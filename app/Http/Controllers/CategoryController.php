@@ -60,6 +60,7 @@ class CategoryController extends Controller
         $this->authorize('viewAny', Category::class);
 
         $columns = [
+            ['data' => 'sort_order', 'name' => 'sort_order', 'title' => '', 'orderable' => false, 'searchable' => false],
             ['data' => 'id', 'name' => 'id', 'title' => __('labels.id')],
             ['data' => 'title', 'name' => 'title', 'title' => __('labels.title')],
             ['data' => 'image', 'name' => 'image', 'title' => __('labels.image')],
@@ -103,6 +104,7 @@ class CategoryController extends Controller
             if (empty($request->requires_approval)) {
                 $validated['requires_approval'] = false;
             }
+            $validated['sort_order'] = Category::max('sort_order') + 1;
 
             $category = Category::create($validated);
 
@@ -477,8 +479,8 @@ class CategoryController extends Controller
         $orderColumnIndex = $request->input('order.0.column', 0);
         $orderDirection = $request->input('order.0.dir', 'asc');
 
-        $columns = ['id', 'title', 'description', 'status', 'created_at'];
-        $orderColumn = $columns[$orderColumnIndex] ?? 'id';
+        $columns = ['sort_order', 'id', 'title', 'parent_id', 'status', 'created_at'];
+        $orderColumn = $columns[$orderColumnIndex] ?? 'sort_order';
 
         $query = Category::with('parent');
 
@@ -499,11 +501,18 @@ class CategoryController extends Controller
 
         $data = $query
             ->orderBy($orderColumn, $orderDirection)
+            ->orderBy('id')
             ->skip($start)
             ->take($length)
             ->get()
             ->map(function ($category) {
                 return [
+                    'DT_RowId' => 'category-row-' . $category->id,
+                    'DT_RowClass' => 'category-row',
+                    'DT_RowAttr' => [
+                        'data-category-id' => (string) $category->id,
+                    ],
+                    'sort_order' => $this->renderSortHandle($category),
                     'id' => $category->id,
                     'title' => $category->title,
                     'image' => view('partials.image', ['image' => $category->image ?? "", 'title' => $category->title])->render(),
@@ -530,6 +539,35 @@ class CategoryController extends Controller
             'recordsFiltered' => $filteredRecords,
             'data' => $data,
         ]);
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Category::class);
+
+        if ($this->getPanel() === 'admin' && !$this->editPermission) {
+            return ApiResponseType::sendJsonResponse(false, 'labels.permission_denied', [], 403);
+        }
+
+        $data = $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:categories,id'],
+        ]);
+
+        $order = collect($data['order'])->map(fn ($id) => (int) $id)->values();
+        $existingIds = Category::query()->pluck('id')->map(fn ($id) => (int) $id)->values();
+
+        if ($existingIds->count() !== $order->count() || $existingIds->diff($order)->isNotEmpty() || $order->diff($existingIds)->isNotEmpty()) {
+            return ApiResponseType::sendJsonResponse(false, 'Invalid category order.', [], 422);
+        }
+
+        DB::transaction(function () use ($order) {
+            foreach ($order as $position => $categoryId) {
+                Category::where('id', $categoryId)->update(['sort_order' => $position + 1]);
+            }
+        });
+
+        return ApiResponseType::sendJsonResponse(true, 'Category order updated.');
     }
 
     public function search(Request $request): JsonResponse
@@ -572,5 +610,13 @@ class CategoryController extends Controller
 
         // Return the categories as JSON
         return response()->json($results);
+    }
+
+    private function renderSortHandle($category): string
+    {
+        return sprintf(
+            '<div class="category-sort-cell"><button type="button" class="category-sort-handle" aria-label="Drag to reorder categories" title="Drag to reorder categories"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5h10"/><path d="M10 12h10"/><path d="M10 19h10"/><path d="M4 5h.01"/><path d="M4 12h.01"/><path d="M4 19h.01"/></svg></button><span class="badge bg-secondary-lt category-sort-badge">%d</span></div>',
+            (int) ($category->sort_order ?: 0)
+        );
     }
 }

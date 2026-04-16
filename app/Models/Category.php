@@ -28,6 +28,7 @@ class Category extends Model implements HasMedia
     protected $fillable = [
         'uuid',
         'parent_id',
+        'sort_order',
         'title',
         'slug',
         'description',
@@ -43,6 +44,7 @@ class Category extends Model implements HasMedia
 
     protected $casts = [
         'requires_approval' => 'boolean',
+        'sort_order' => 'integer',
         'commission' => 'decimal:2',
         'background_type' => CategoryBackgroundTypeEnum::class,
         'metadata' => 'array',

@@ -472,8 +472,8 @@ class CategoryController extends Controller
         $this->authorize('viewAny', Category::class);
 
         $draw = $request->input('draw');
-        $start = $request->input('start');
-        $length = $request->input('length');
+        $start = max((int) $request->input('start', 0), 0);
+        $length = (int) $request->input('length', 10);
         $searchValue = $request->input('search.value', '');
 
         $orderColumnIndex = $request->input('order.0.column', 0);
@@ -499,11 +499,14 @@ class CategoryController extends Controller
             $filteredRecords = $query->count();
         }
 
+        $query->orderBy($orderColumn, $orderDirection)
+            ->orderBy('id');
+
+        if ($length !== -1) {
+            $query->skip($start)->take($length);
+        }
+
         $data = $query
-            ->orderBy($orderColumn, $orderDirection)
-            ->orderBy('id')
-            ->skip($start)
-            ->take($length)
             ->get()
             ->map(function ($category) {
                 return [

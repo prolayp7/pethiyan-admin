@@ -166,6 +166,37 @@ class ReportController extends Controller
         ]);
     }
 
+    public function exportSales(Request $request): StreamedResponse
+    {
+        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
+        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+
+        $rows = Order::whereBetween('created_at', [$from, $to])
+            ->where('payment_status', 'completed')
+            ->select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('COUNT(*) as order_count'),
+                DB::raw('SUM(final_total) as revenue')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    $row->date,
+                    $row->order_count,
+                    $row->revenue,
+                ];
+            })
+            ->all();
+
+        return $this->streamCsvDownload(
+            filename: 'sales-report-' . $from->format('Ymd') . '-' . $to->format('Ymd') . '.csv',
+            headers: ['Date', 'Orders', 'Revenue'],
+            rows: $rows,
+        );
+    }
+
     /**
      * Orders grouped by status within [from, to].
      */
@@ -192,6 +223,80 @@ class ReportController extends Controller
         ]);
     }
 
+    public function exportOrders(Request $request): StreamedResponse
+    {
+        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
+        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+
+        $rows = [];
+        $serialNumber = 1;
+
+        Order::with(['user:id,name,email,mobile,gstin', 'items'])
+            ->whereBetween('created_at', [$from, $to])
+            ->orderByDesc('id')
+            ->chunk(100, function ($orders) use (&$rows, &$serialNumber) {
+                foreach ($orders as $order) {
+                    foreach ($order->items as $item) {
+                        $deliveryAddress = collect([
+                            $order->shipping_address_1,
+                            $order->shipping_address_2,
+                            $order->shipping_landmark,
+                            $order->shipping_city,
+                            $order->shipping_state,
+                            $order->shipping_zip,
+                            $order->shipping_country,
+                        ])->filter(fn ($value) => filled($value))->implode(', ');
+
+                        $rows[] = [
+                            $serialNumber++,
+                            $order->created_at?->format('Y-m-d H:i:s'),
+                            $order->uuid,
+                            $order->order_number,
+                            $order->user?->name ?? $order->billing_name,
+                            $order->user?->email ?? $order->email,
+                            $order->user?->mobile ?? $order->billing_phone,
+                            $deliveryAddress,
+                            '',
+                            $order->user?->gstin ?? '',
+                            $order->shipping_state,
+                            $order->shipping_zip,
+                            $item->title ?: ($item->variant_title ?: 'N/A'),
+                            $item->quantity,
+                            $order->subtotal,
+                            $order->delivery_charge,
+                            ($order->promo_discount ?? 0) + ($order->gift_card_discount ?? 0),
+                            $order->final_total,
+                        ];
+                    }
+                }
+            });
+
+        return $this->streamCsvDownload(
+            filename: 'orders-report-' . $from->format('Ymd') . '-' . $to->format('Ymd') . '.csv',
+            headers: [
+                'Sr. No',
+                'Order Date',
+                'Invoice No',
+                'Order Number',
+                'User Name',
+                'User Email',
+                'User Mobile',
+                'Delivery Address',
+                'Company Name',
+                'GST Number',
+                'State',
+                'Pincode',
+                'Product Name',
+                'Quantity',
+                'Sub Total Amount',
+                'Shipping Amount',
+                'Discount Amount',
+                'Total',
+            ],
+            rows: $rows,
+        );
+    }
+
     /**
      * Top selling products by quantity sold within [from, to].
      */
@@ -215,6 +320,44 @@ class ReportController extends Controller
             ->get();
 
         return response()->json(['products' => $topProducts]);
+    }
+
+    public function exportProducts(Request $request): StreamedResponse
+    {
+        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
+        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+        $limit = (int) $request->input('limit', 15);
+
+        $rows = OrderItem::whereBetween('created_at', [$from, $to])
+            ->whereNotIn('status', ['cancelled', 'failed', 'returned'])
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as qty_sold'),
+                DB::raw('SUM(price * quantity) as revenue')
+            )
+            ->groupBy('product_id')
+            ->orderByDesc('qty_sold')
+            ->limit($limit)
+            ->with('product:id,title,slug')
+            ->get()
+            ->values()
+            ->map(function ($row, $index) {
+                return [
+                    $index + 1,
+                    $row->product_id,
+                    $row->product?->title ?? '—',
+                    $row->product?->slug ?? '—',
+                    $row->qty_sold,
+                    $row->revenue,
+                ];
+            })
+            ->all();
+
+        return $this->streamCsvDownload(
+            filename: 'products-report-' . $from->format('Ymd') . '-' . $to->format('Ymd') . '.csv',
+            headers: ['Rank', 'Product ID', 'Product Name', 'Slug', 'Qty Sold', 'Revenue'],
+            rows: $rows,
+        );
     }
 
     /**
@@ -243,6 +386,51 @@ class ReportController extends Controller
             'registrations' => $registrations,
             'summary'       => $summary,
         ]);
+    }
+
+    public function exportCustomers(Request $request): StreamedResponse
+    {
+        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
+        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+
+        $rows = User::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->select('users.id', 'users.name', 'users.email', 'users.mobile', 'users.gstin', 'users.created_at')
+            ->selectSub(
+                Order::query()
+                    ->selectRaw('COUNT(*)')
+                    ->whereColumn('orders.user_id', 'users.id'),
+                'orders_count'
+            )
+            ->selectSub(
+                Order::query()
+                    ->selectRaw('COALESCE(SUM(final_total), 0)')
+                    ->whereColumn('orders.user_id', 'users.id'),
+                'total_spent'
+            )
+            ->orderByDesc('users.created_at')
+            ->get()
+            ->values()
+            ->map(function ($user, $index) {
+                return [
+                    $index + 1,
+                    $user->id,
+                    $user->name,
+                    $user->email,
+                    $user->mobile,
+                    $user->gstin,
+                    $user->created_at?->format('Y-m-d H:i:s'),
+                    $user->orders_count,
+                    $user->total_spent,
+                ];
+            })
+            ->all();
+
+        return $this->streamCsvDownload(
+            filename: 'customers-report-' . $from->format('Ymd') . '-' . $to->format('Ymd') . '.csv',
+            headers: ['Sr. No', 'Customer ID', 'Name', 'Email', 'Mobile', 'GSTIN', 'Registered At', 'Orders Count', 'Total Spent'],
+            rows: $rows,
+        );
     }
 
     /**

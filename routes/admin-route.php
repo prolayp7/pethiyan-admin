@@ -343,9 +343,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/payments',  [ReportController::class, 'payments'])->name('payments');
             // Data endpoints
             Route::get('/sales/data',     [ReportController::class, 'salesData'])->name('sales.data');
+            Route::get('/sales/export',   [ReportController::class, 'exportSales'])->name('sales.export');
             Route::get('/orders/data',    [ReportController::class, 'ordersData'])->name('orders.data');
+            Route::get('/orders/export',  [ReportController::class, 'exportOrders'])->name('orders.export');
             Route::get('/products/data',  [ReportController::class, 'productsData'])->name('products.data');
+            Route::get('/products/export',[ReportController::class, 'exportProducts'])->name('products.export');
             Route::get('/customers/data', [ReportController::class, 'customersData'])->name('customers.data');
+            Route::get('/customers/export',[ReportController::class, 'exportCustomers'])->name('customers.export');
             Route::get('/promos',         [ReportController::class, 'promos'])->name('promos');
             Route::get('/promos/data',    [ReportController::class, 'promosData'])->name('promos.data');
             Route::get('/payments/summary', [ReportController::class, 'paymentsSummary'])->name('payments.summary');

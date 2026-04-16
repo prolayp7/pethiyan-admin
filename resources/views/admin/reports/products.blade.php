@@ -24,13 +24,16 @@
 
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
-                <h4 class="card-title">Top Selling Products</h4>
-                <select class="form-select" id="limitSelect" style="width:100px">
-                    <option value="10">Top 10</option>
-                    <option value="15" selected>Top 15</option>
-                    <option value="25">Top 25</option>
-                    <option value="50">Top 50</option>
-                </select>
+                <h4 class="card-title mb-0">Top Selling Products</h4>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="#" class="btn btn-primary btn-sm" id="downloadProductsCsv">Download CSV</a>
+                    <select class="form-select" id="limitSelect" style="width:100px">
+                        <option value="10">Top 10</option>
+                        <option value="15" selected>Top 15</option>
+                        <option value="25">Top 25</option>
+                        <option value="50">Top 50</option>
+                    </select>
+                </div>
             </div>
             <div class="card-body p-0">
                 <table class="table table-vcenter">
@@ -85,6 +88,21 @@ $(function () {
     loadData();
     $('#applyFilter').on('click', loadData);
     $('#limitSelect').on('change', loadData);
+
+    $('#downloadProductsCsv').on('click', function (event) {
+        event.preventDefault();
+
+        const from = $('#dateFrom').val();
+        const to = $('#dateTo').val();
+        const limit = $('#limitSelect').val();
+        const url = new URL('{{ route('admin.reports.products.export') }}', window.location.origin);
+
+        if (from) url.searchParams.set('from', from);
+        if (to) url.searchParams.set('to', to);
+        if (limit) url.searchParams.set('limit', limit);
+
+        window.location.href = url.toString();
+    });
 });
 </script>
 @endpush

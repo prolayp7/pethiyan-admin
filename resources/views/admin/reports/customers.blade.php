@@ -51,7 +51,10 @@
         </div>
 
         <div class="card">
-            <div class="card-header"><h4 class="card-title">New Registrations per Day</h4></div>
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h4 class="card-title mb-0">New Registrations per Day</h4>
+                <a href="#" class="btn btn-primary btn-sm" id="downloadCustomersCsv">Download CSV</a>
+            </div>
             <div class="card-body">
                 <div id="customersChart" style="height:280px"></div>
             </div>
@@ -92,6 +95,19 @@ $(function () {
     $('#dateTo').val(today);
     loadData();
     $('#applyFilter').on('click', loadData);
+
+    $('#downloadCustomersCsv').on('click', function (event) {
+        event.preventDefault();
+
+        const from = $('#dateFrom').val();
+        const to = $('#dateTo').val();
+        const url = new URL('{{ route('admin.reports.customers.export') }}', window.location.origin);
+
+        if (from) url.searchParams.set('from', from);
+        if (to) url.searchParams.set('to', to);
+
+        window.location.href = url.toString();
+    });
 });
 </script>
 @endpush

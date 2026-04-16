@@ -146,6 +146,19 @@
         ?: data_get($order, 'gstin')
         ?: data_get($order, 'user.gstin')
         ?: '';
+    $displayStoreTaxNumber = function ($store): string {
+        $taxNumber = data_get($store, 'tax_number');
+        if (filled($taxNumber)) {
+            return (string) $taxNumber;
+        }
+
+        $taxName = data_get($store, 'tax_name');
+        if (filled($taxName)) {
+            return (string) $taxName;
+        }
+
+        return 'N/A';
+    };
     $formatWeight = function ($weight, $unit): ?string {
         if ($weight === null || $weight === '') {
             return null;
@@ -248,7 +261,7 @@
             @if($store && !empty($store['gstin']))
                 &nbsp;|&nbsp; GSTIN: <strong>{{ $store['gstin'] }}</strong>
             @elseif($store)
-                &nbsp;|&nbsp; Tax No: {{ $store['tax_number'] ?? 'N/A' }}
+                &nbsp;|&nbsp; Tax No: {{ $displayStoreTaxNumber($store) }}
             @endif
             @if($store && !empty($store['state_code']))
                 &nbsp;|&nbsp; State: {{ $store['state_name'] ?? $store['state'] ?? '' }} ({{ $store['state_code'] }})
@@ -286,13 +299,17 @@
                     $igst       = (float)($oi['igst_amount']    ?? 0);
                     $totalTax   = (float)($oi['total_tax_amount'] ?? ($cgst + $sgst + $igst));
                     $lineTotal  = $taxableAmt + $totalTax;
+                    $productTitle = $item['product']['title'] ?? $item['title'] ?? 'Item';
                     $hsn        = $oi['hsn_code'] ?? ($item['product']['hsn_code'] ?? '—');
-                    $variantTitle = $item['variant']['title'] ?? $item['variant_title'] ?? '';
+                    $variantTitle = trim((string) ($item['variant']['title'] ?? $item['variant_title'] ?? ''));
+                    if ($variantTitle !== '' && strcasecmp($variantTitle, $productTitle) === 0) {
+                        $variantTitle = '';
+                    }
                     $weightLabel = $formatWeight($item['variant']['weight'] ?? null, $item['variant']['weight_unit'] ?? '');
                     $itemMeta = collect([$variantTitle, $weightLabel])->filter(fn ($value) => filled($value))->implode(' | ');
                 @endphp
                 <tr>
-                    <td>{{ $item['product']['title'] ?? $item['title'] ?? 'Item' }}<br>
+                    <td>{{ $productTitle }}<br>
                         @if($itemMeta)
                             <small style="color:#666;">{{ $itemMeta }}</small>
                         @endif

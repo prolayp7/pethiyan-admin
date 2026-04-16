@@ -69,7 +69,7 @@ class OrderController extends Controller
             ['data' => 'order_details', 'name' => 'order_details', 'title' => __('labels.order_details'), 'orderable' => false, 'searchable' => false],
             ['data' => 'product_details', 'name' => 'product_details', 'title' => __('labels.product_details'), 'orderable' => false, 'searchable' => false],
             ['data' => 'promo', 'name' => 'promo', 'title' => 'Promo', 'orderable' => false, 'searchable' => false],
-            ['data' => 'status', 'name' => 'status', 'title' => __('labels.status'), 'orderable' => false, 'searchable' => false],
+            ['data' => 'payment_status', 'name' => 'payment_status', 'title' => __('labels.payment_status'), 'orderable' => false, 'searchable' => false],
             ['data' => 'actions', 'name' => 'actions', 'title' => __('labels.actions'), 'orderable' => false, 'searchable' => false],
         ];
         return view($this->panelView('orders.index'), compact('columns'));
@@ -269,9 +269,7 @@ class OrderController extends Controller
                      <div class='text-danger small mt-1'>−" . $this->currencyService->format($orderPromo) . "</div>
                    </div>"
                 : "<span class='text-muted'>—</span>",
-            'status' => view('partials.order-status', [
-                'status' => $orderItem?->status ?? OrderItemStatusEnum::PENDING(),
-            ])->render(),
+            'payment_status' => $this->renderPaymentStatusBadge((string) ($order?->payment_status ?? PaymentStatusEnum::PENDING())),
             'actions' => view('partials.order-actions', [
                 'panel' => $this->getPanel(),
                 'uuid' => $order?->uuid ?? '',
@@ -283,6 +281,18 @@ class OrderController extends Controller
                 'editPermission' => $this->getPanel() === 'admin' ? false : $this->editPermission,
             ])->render(),
         ];
+    }
+
+    private function renderPaymentStatusBadge(string $paymentStatus): string
+    {
+        $color = match ($paymentStatus) {
+            PaymentStatusEnum::COMPLETED(), 'paid' => 'green',
+            PaymentStatusEnum::FAILED() => 'red',
+            PaymentStatusEnum::REFUNDED(), PaymentStatusEnum::PARTIALLY_REFUNDED() => 'azure',
+            default => 'yellow',
+        };
+
+        return '<span class="badge bg-' . $color . '-lt text-uppercase">' . e(Str::replace('_', ' ', $paymentStatus)) . '</span>';
     }
 
     private function getDateRange($dateRange): ?Carbon

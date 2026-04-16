@@ -123,7 +123,26 @@ class OrderResource extends JsonResource
                 'shipping_country' => $this->shipping_country,
                 'shipping_phone' => $this->shipping_phone,
                 'order_note' => $this['order_note'],
+                'admin_note' => $this->admin_note,
                 'promo_line' => new PromoLineResource($this->whenLoaded('promoLine')),
+                'payment_transactions' => $this->whenLoaded('paymentTransactions', function () {
+                    return $this->paymentTransactions
+                        ->sortByDesc('updated_at')
+                        ->values()
+                        ->map(function ($transaction) {
+                            return [
+                                'id' => $transaction->id,
+                                'transaction_id' => $transaction->transaction_id,
+                                'payment_method' => $transaction->payment_method,
+                                'payment_status' => $transaction->payment_status,
+                                'message' => $transaction->message,
+                                'amount' => $transaction->amount,
+                                'currency' => $transaction->currency,
+                                'updated_at' => $transaction->updated_at?->format('M d, Y h:i A'),
+                            ];
+                        })
+                        ->all();
+                }),
 
                 // Items
                 'items' => $this->whenLoaded('items', function () {

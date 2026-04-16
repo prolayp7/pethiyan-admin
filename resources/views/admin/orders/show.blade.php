@@ -1,4 +1,7 @@
-@php use App\Enums\Order\OrderItemStatusEnum; @endphp
+@php
+    use App\Enums\Order\OrderItemStatusEnum;
+    use App\Enums\Payment\PaymentTypeEnum;
+@endphp
 @extends('layouts.admin.app', ['page' => $menuAdmin['orders']['active'] ?? ""])
 @section('title', __('labels.order_details'))
 
@@ -124,6 +127,55 @@
                                 </div>
                             </div>
                         </div>
+                        @if($canManageOrder)
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h3 class="card-title">{{ __('labels.order_management') }}</h3>
+                                </div>
+                                <div class="card-body">
+                                    @if(!$isCodOrder)
+                                        <div class="alert alert-info">
+                                            {{ __('messages.online_payment_status_managed_by_gateway') }}
+                                        </div>
+                                    @endif
+
+                                    <form method="POST" action="{{ route('admin.orders.manage', $order['id']) }}">
+                                        @csrf
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ __('labels.status') }}</label>
+                                            <select name="status" class="form-select text-capitalize">
+                                                @foreach($orderStatusOptions as $statusOption)
+                                                    <option value="{{ $statusOption }}" {{ old('status', $order['status']) === $statusOption ? 'selected' : '' }}>
+                                                        {{ Str::headline($statusOption) }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ __('labels.payment_status') }}</label>
+                                            <select name="payment_status" class="form-select text-capitalize" {{ $isCodOrder ? '' : 'disabled' }}>
+                                                @foreach($paymentStatusOptions as $paymentStatusOption)
+                                                    <option value="{{ $paymentStatusOption }}" {{ old('payment_status', $order['payment_status']) === $paymentStatusOption ? 'selected' : '' }}>
+                                                        {{ Str::headline($paymentStatusOption) }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            @if(!$isCodOrder)
+                                                <input type="hidden" name="payment_status" value="{{ $order['payment_status'] }}">
+                                            @endif
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ __('labels.admin_note') }}</label>
+                                            <textarea name="admin_note" rows="4" class="form-control" placeholder="{{ __('labels.admin_note_placeholder') }}">{{ old('admin_note', $order['admin_note'] ?? '') }}</textarea>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary">{{ __('labels.save_changes') }}</button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endif
                         @if(!empty($order['order_note']))
                             <div class="card mt-3">
                                 <div class="card-header">
@@ -191,6 +243,50 @@
                                 </address>
                             </div>
                         </div>
+
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h3 class="card-title">{{ __('labels.payment_activity') }}</h3>
+                            </div>
+                            <div class="card-body">
+                                @if(!empty($order['payment_transactions']))
+                                    @php $latestTransaction = $order['payment_transactions'][0]; @endphp
+                                    <div class="datagrid mb-3">
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">{{ __('labels.transaction_id') }}</div>
+                                            <div class="datagrid-content">{{ $latestTransaction['transaction_id'] }}</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">{{ __('labels.payment_method') }}</div>
+                                            <div class="datagrid-content text-capitalize">{{ Str::headline($latestTransaction['payment_method']) }}</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">{{ __('labels.payment_status') }}</div>
+                                            <div class="datagrid-content text-capitalize">{{ Str::replace('_', ' ', $latestTransaction['payment_status']) }}</div>
+                                        </div>
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">{{ __('labels.updated_at') }}</div>
+                                            <div class="datagrid-content">{{ $latestTransaction['updated_at'] }}</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="datagrid-title">{{ __('labels.latest_gateway_message') }}</div>
+                                        <div class="datagrid-content mt-1">
+                                            <textarea class="form-control" rows="3" readonly disabled>{{ $latestTransaction['message'] ?? __('labels.no_payment_message_available') }}</textarea>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-info mb-0">
+                                        @if(strtolower((string) $order['payment_method']) === PaymentTypeEnum::COD())
+                                            {{ __('labels.cod_payment_waiting_for_admin_update') }}
+                                        @else
+                                            {{ __('labels.online_payment_waiting_for_gateway_update') }}
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
                     </div>
                     <!-- Order Items Card -->
                     <div class="col-12 mt-3">

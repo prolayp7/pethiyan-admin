@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Enums\AdminPermissionEnum;
 use App\Enums\DateRangeFilterEnum;
 use App\Enums\DefaultSystemRolesEnum;
 use App\Enums\Order\OrderItemStatusEnum;
+use App\Enums\Order\OrderStatusEnum;
+use App\Enums\Payment\PaymentTypeEnum;
+use App\Enums\PaymentStatusEnum;
 use App\Enums\Product\ProductTypeEnum;
 use App\Enums\SellerPermissionEnum;
 use App\Http\Resources\OrderResource;
@@ -24,11 +28,13 @@ use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -330,7 +336,14 @@ class OrderController extends Controller
                 ->where('seller_id', $seller->id)
                 ->firstOrFail();
         } else {
-            $order = Order::with(['items', 'items.product', 'items.variant', 'items.store', 'promoLine'])
+            $order = Order::with([
+                'items',
+                'items.product',
+                'items.variant',
+                'items.store',
+                'promoLine',
+                'paymentTransactions' => fn($query) => $query->latest(),
+            ])
                 ->findOrFail($id);
         }
         $this->authorize('view', $order);
@@ -339,7 +352,33 @@ class OrderController extends Controller
 
         return view($this->panelView('orders.show'), [
             'order' => $orderData->toArray(request()),
+            'canManageOrder' => $this->canManageAdminOrder(),
+            'orderStatusOptions' => OrderStatusEnum::values(),
+            'paymentStatusOptions' => PaymentStatusEnum::values(),
+            'isCodOrder' => strtolower((string)$order->payment_method) === PaymentTypeEnum::COD(),
         ]);
+    }
+
+    public function updateAdminOrder(Request $request, int $id): RedirectResponse
+    {
+        if ($this->getPanel() === 'seller') {
+            abort(404);
+        }
+
+        $order = Order::findOrFail($id);
+        $this->authorize('view', $order);
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(OrderStatusEnum::values())],
+            'payment_status' => ['nullable', Rule::in(PaymentStatusEnum::values())],
+            'admin_note' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $result = $this->orderService->updateOrderByAdmin($order, $validated, Auth::id());
+
+        return redirect()
+            ->route('admin.orders.show', $order->id)
+            ->with($result['success'] ? 'success' : 'error', $result['message']);
     }
 
     /**
@@ -484,5 +523,14 @@ class OrderController extends Controller
         } catch (AuthorizationException) {
             abort(403, __('messages.unauthorized_action'));
         }
+    }
+
+    private function canManageAdminOrder(): bool
+    {
+        if ($this->getPanel() === 'seller' || !Auth::check()) {
+            return false;
+        }
+
+        return $this->hasPermission(AdminPermissionEnum::ORDER_VIEW());
     }
 }

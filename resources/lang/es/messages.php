@@ -46,6 +46,9 @@ return [
     'order_not_found' => 'Pedido no encontrado',
     'order_retrieved_successfully' => 'Pedido recuperado con éxito',
     'orders_retrieved_successfully' => 'Pedidos recuperados con éxito',
+    'order_status_updated_successfully' => 'Estado del pedido actualizado correctamente',
+    'order_status_update_failed' => 'No se pudo actualizar el estado del pedido',
+    'online_payment_status_managed_by_gateway' => 'El estado del pago en linea se actualiza automaticamente desde el webhook o la verificacion de la pasarela de pago y no puede cambiarse manualmente aqui.',
 
     // Language Names
     'languages' => [

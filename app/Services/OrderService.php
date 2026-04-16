@@ -24,6 +24,7 @@ use App\Models\DeliveryBoyAssignment;
 use App\Models\DeliveryBoyCashTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderPaymentTransaction;
 use App\Models\OrderItemReturn;
 use App\Models\OrderPromoLine;
 use App\Models\Promo;
@@ -1187,6 +1188,84 @@ class OrderService
     function getOrderItemsStatuses(int $orderId): array
     {
         return OrderItem::where('order_id', $orderId)->pluck('status')->toArray();
+    }
+
+    public function updateOrderByAdmin(Order $order, array $data, ?int $adminUserId = null): array
+    {
+        DB::beginTransaction();
+
+        try {
+            $isCodOrder = strtolower((string)$order->payment_method) === PaymentTypeEnum::COD();
+            $currentPaymentStatus = (string)$order->payment_status;
+            $currentAdminNote = (string)($order->admin_note ?? '');
+            $incomingAdminNote = trim((string)($data['admin_note'] ?? ''));
+            $newPaymentStatus = $currentPaymentStatus;
+
+            if ($isCodOrder && !empty($data['payment_status'])) {
+                $newPaymentStatus = $data['payment_status'];
+            }
+
+            if (!$isCodOrder && !empty($data['payment_status']) && $data['payment_status'] !== $currentPaymentStatus) {
+                DB::rollBack();
+
+                return [
+                    'success' => false,
+                    'message' => __('messages.online_payment_status_managed_by_gateway'),
+                    'data' => [],
+                ];
+            }
+
+            $order->update([
+                'status' => $data['status'],
+                'payment_status' => $newPaymentStatus,
+                'admin_note' => $incomingAdminNote !== '' ? $incomingAdminNote : null,
+            ]);
+
+            if ($isCodOrder && ($newPaymentStatus !== $currentPaymentStatus || $incomingAdminNote !== $currentAdminNote)) {
+                OrderPaymentTransaction::updateOrCreate(
+                    ['transaction_id' => 'cod-order-' . $order->id],
+                    [
+                        'uuid' => (string) Str::uuid(),
+                        'order_id' => $order->id,
+                        'user_id' => $order->user_id,
+                        'transaction_id' => 'cod-order-' . $order->id,
+                        'amount' => $order->final_total,
+                        'currency' => $order->currency_code,
+                        'payment_method' => $order->payment_method,
+                        'payment_status' => $newPaymentStatus,
+                        'message' => $incomingAdminNote !== ''
+                            ? $incomingAdminNote
+                            : __('labels.cod_payment_status_updated_by_admin'),
+                        'payment_details' => [
+                            'source' => 'admin_manual_update',
+                            'admin_user_id' => $adminUserId,
+                            'updated_at' => now()->toDateTimeString(),
+                        ],
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => __('messages.order_status_updated_successfully'),
+                'data' => [],
+            ];
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating order by admin', [
+                'order_id' => $order->id,
+                'admin_user_id' => $adminUserId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => __('messages.order_status_update_failed'),
+                'data' => ['error' => $e->getMessage()],
+            ];
+        }
     }
 
     private

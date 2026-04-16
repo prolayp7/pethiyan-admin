@@ -116,6 +116,9 @@ return [
     'order_not_found' => 'Order not found',
     'order_retrieved_successfully' => 'Order retrieved successfully',
     'orders_retrieved_successfully' => 'Orders retrieved successfully',
+    'order_status_updated_successfully' => 'Order status updated successfully',
+    'order_status_update_failed' => 'Failed to update order status',
+    'online_payment_status_managed_by_gateway' => 'Online payment status is updated automatically from the payment gateway webhook or verification response and cannot be changed manually here.',
 
     // Store status toggle
     'store_status_updated_successfully' => 'Store status updated successfully.',
@@ -123,9 +126,7 @@ return [
     'store_not_found' => 'Store not found.',
 
     // Seller Order Messages
-    'order_status_updated_successfully' => 'Order status updated successfully',
     'unauthorized_action' => 'You are not authorized to perform this action',
-    'order_status_update_failed' => 'Failed to update order status',
     'status_already_set' => 'The order item already has this status',
 
     // Language Names

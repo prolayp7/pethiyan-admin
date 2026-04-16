@@ -72,6 +72,7 @@ class Order extends Model
         'shipping_country',
         'shipping_country_code',
         'order_note',
+        'admin_note',
         // GST fields
         'customer_state',
         'customer_state_code',

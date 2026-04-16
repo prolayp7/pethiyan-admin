@@ -474,6 +474,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/datatable', [OrderController::class, 'getOrders'])->name('datatable');
             Route::get('invoice', [OrderController::class, 'orderInvoice']);
             Route::get('/{id}/invoice/download', [OrderController::class, 'downloadInvoice'])->name('invoice.download');
+            Route::post('/{id}/manage', [OrderController::class, 'updateAdminOrder'])->name('manage');
             Route::get('/{id}', [OrderController::class, 'show'])->name('show');
             Route::post('/{id}/{status}', [OrderController::class, 'updateStatus'])->name('update_status');
         });

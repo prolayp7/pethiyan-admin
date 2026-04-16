@@ -14,7 +14,7 @@
         h5 { font-size: 12px; margin: 8px 0 4px; }
         p  { margin: 2px 0; }
 
-        .page { padding: 8px; }
+        .page { padding: 8px 8px 54px; }
         .page-break { page-break-before: always; }
 
         /* ── Header grid ── */
@@ -52,11 +52,22 @@
 
         .section-title { font-size: 13px; font-weight: bold; margin: 14px 0 6px; border-bottom: 2px solid #333; padding-bottom: 4px; }
 
-        .signatory { text-align: center; width: 220px; margin: 30px auto 0; }
+        .signatory { text-align: center; width: 220px; margin: 30px 0 0 auto; }
         .signatory-line { border-top: 1px solid #000; margin-top: 8px; padding-top: 4px; font-weight: bold; font-size: 11px; }
         .clearfix::after { content: ""; display: table; clear: both; }
 
-        .footer-note { margin-top: 20px; text-align: center; font-size: 10px; color: #555; border-top: 1px solid #ddd; padding-top: 8px; }
+        .footer-note {
+            position: fixed;
+            left: 10px;
+            right: 10px;
+            bottom: 6px;
+            text-align: center;
+            font-size: 10px;
+            color: #555;
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+            background: #fff;
+        }
     </style>
 </head>
 <body>
@@ -391,7 +402,9 @@
         @if(!empty($systemSettings['sellerSupportEmail']))
             &nbsp;|&nbsp; {{ $systemSettings['sellerSupportEmail'] }}
         @endif
-        <br>{{ $systemSettings['copyrightDetails'] ?? '' }}
+        @if(!empty($systemSettings['copyrightDetails']))
+            &nbsp;|&nbsp; {{ $systemSettings['copyrightDetails'] }}
+        @endif
     </div>
 
 </div>

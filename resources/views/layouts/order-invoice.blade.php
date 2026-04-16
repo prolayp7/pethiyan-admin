@@ -261,7 +261,7 @@
             @if($store && !empty($store['gstin']))
                 &nbsp;|&nbsp; GSTIN: <strong>{{ $store['gstin'] }}</strong>
             @elseif($store)
-                &nbsp;|&nbsp; Tax No: {{ $displayStoreTaxNumber($store) }}
+                &nbsp;|&nbsp; {{ $displayStoreTaxNumber($store) }}
             @endif
             @if($store && !empty($store['state_code']))
                 &nbsp;|&nbsp; State: {{ $store['state_name'] ?? $store['state'] ?? '' }} ({{ $store['state_code'] }})

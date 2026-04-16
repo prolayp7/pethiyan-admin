@@ -7,11 +7,7 @@ use App\Enums\DeliveryBoy\DeliveryBoyVerificationStatusEnum;
 use App\Enums\Order\OrderItemStatusEnum;
 use App\Enums\Order\OrderStatusEnum;
 use App\Enums\Product\ProductStatusEnum;
-use App\Enums\Seller\SellerVerificationStatusEnum;
-use App\Enums\Seller\SellerVisibilityStatusEnum;
 use App\Enums\SpatieMediaCollectionName;
-use App\Enums\Store\StoreVerificationStatusEnum;
-use App\Enums\Store\StoreVisibilityStatusEnum;
 use App\Models\Category;
 use App\Models\DeliveryBoy;
 use App\Models\Order;
@@ -583,15 +579,6 @@ class DashboardService
     {
         $today = Carbon::now()->format('Y-m-d');
 
-        // Single query for sellers with both conditions
-        $totalSellers = Seller::where('verification_status', SellerVerificationStatusEnum::Approved())->where('visibility_status', SellerVisibilityStatusEnum::Visible())->count();
-
-        // Single query for stores with both conditions
-        $totalStores = Store::where([
-            ['verification_status', StoreVerificationStatusEnum::APPROVED()],
-            ['visibility_status', StoreVisibilityStatusEnum::VISIBLE()]
-        ])->count();
-
         // Combined query for delivery boys data
         $deliveryBoysData = DeliveryBoy::where('verification_status', DeliveryBoyVerificationStatusEnum::VERIFIED())
             ->selectRaw('
@@ -625,8 +612,6 @@ class DashboardService
         $outOfStockCount = StoreProductVariant::where('stock', 0)->count();
 
         return [
-            'total_sellers' => $totalSellers,
-            'total_stores' => $totalStores,
             'total_orders' => $ordersData->total_orders,
             'total_delivered_orders' => $ordersData->total_delivered_orders,
             'total_users' => $totalUsers,
@@ -805,39 +790,83 @@ class DashboardService
     }
 
     /**
-     * Get top sellers based on revenue for the specified number of days.
+     * Get repeated customer data for the specified number of days.
+     * A repeated customer is a user with at least two delivered orders in the period.
      */
-    public function getTopSellers(int $days = 7, int $limit = 10): array
+    public function getRepeatedCustomersData(int $days = 7): array
     {
-        $startDate = Carbon::now()->subDays($days)->startOfDay();
-        $endDate = Carbon::now()->endOfDay();
+        $currentPeriodStart = Carbon::now()->subDays($days)->startOfDay();
+        $currentPeriodEnd = Carbon::now()->endOfDay();
 
-        $topSellers = Seller::select('sellers.*')->with('user')
-            ->selectRaw('SUM(seller_order_items.price) as total_revenue')
-            ->selectRaw('COUNT(seller_order_items.id) as total_orders')
-            ->join('seller_orders', 'sellers.id', '=', 'seller_orders.seller_id')
-            ->join('seller_order_items', 'seller_orders.id', '=', 'seller_order_items.seller_order_id')
-            ->join('order_items', 'seller_order_items.order_item_id', '=', 'order_items.id')
-            ->where('order_items.status', OrderItemStatusEnum::DELIVERED())
-            ->whereBetween('order_items.created_at', [$startDate, $endDate])
-            ->where('sellers.verification_status', SellerVerificationStatusEnum::Approved())
-            ->where('sellers.visibility_status', SellerVisibilityStatusEnum::Visible())
-            ->groupBy('sellers.id')
-            ->orderBy('total_revenue', 'desc')
-            ->limit($limit)
-            ->get();
+        $previousPeriodStart = Carbon::now()->subDays($days * 2)->startOfDay();
+        $previousPeriodEnd = Carbon::now()->subDays($days)->endOfDay();
 
-        return $topSellers->map(function ($seller) {
-            return [
-                'id' => $seller->id,
-                'name' => $seller->user->name ?? 'N/A',
-                'email' => $seller->user->email ?? '',
-                'total_revenue' => $this->currencyService->format($seller->total_revenue),
-                'total_revenue_raw' => $seller->total_revenue,
-                'total_orders' => $seller->total_orders,
-                'avatar' => $seller->user->getFirstMediaUrl(SpatieMediaCollectionName::PROFILE_IMAGE()) ?: null,
+        $currentPeriodRepeatedCustomers = Order::whereNotNull('user_id')
+            ->where('status', OrderStatusEnum::DELIVERED())
+            ->whereBetween('created_at', [$currentPeriodStart, $currentPeriodEnd])
+            ->groupBy('user_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get(['user_id'])
+            ->count();
+
+        $previousPeriodRepeatedCustomers = Order::whereNotNull('user_id')
+            ->where('status', OrderStatusEnum::DELIVERED())
+            ->whereBetween('created_at', [$previousPeriodStart, $previousPeriodEnd])
+            ->groupBy('user_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get(['user_id'])
+            ->count();
+
+        $percentageChange = 0;
+        if ($previousPeriodRepeatedCustomers > 0) {
+            $percentageChange = (($currentPeriodRepeatedCustomers - $previousPeriodRepeatedCustomers) / $previousPeriodRepeatedCustomers) * 100;
+        } elseif ($currentPeriodRepeatedCustomers > 0) {
+            $percentageChange = 100;
+        }
+
+        $orders = Order::whereNotNull('user_id')
+            ->where('status', OrderStatusEnum::DELIVERED())
+            ->whereBetween('created_at', [$currentPeriodStart, $currentPeriodEnd])
+            ->orderBy('created_at')
+            ->get(['user_id', 'created_at']);
+
+        $userOrderCounts = [];
+        $repeatCustomersByDay = [];
+
+        foreach ($orders as $order) {
+            $userId = $order->user_id;
+            $dateStr = $order->created_at->format('Y-m-d');
+
+            $userOrderCounts[$userId] = ($userOrderCounts[$userId] ?? 0) + 1;
+
+            if ($userOrderCounts[$userId] === 2) {
+                $repeatCustomersByDay[$dateStr] = ($repeatCustomersByDay[$dateStr] ?? 0) + 1;
+            }
+        }
+
+        $daily = [];
+        $runningTotal = 0;
+        $currentDate = clone $currentPeriodStart;
+
+        while ($currentDate <= $currentPeriodEnd) {
+            $dateStr = $currentDate->format('Y-m-d');
+            $runningTotal += $repeatCustomersByDay[$dateStr] ?? 0;
+
+            $daily[] = [
+                'date' => $dateStr,
+                'count' => $runningTotal,
             ];
-        })->toArray();
+
+            $currentDate->addDay();
+        }
+
+        return [
+            'count' => $currentPeriodRepeatedCustomers,
+            'previous_count' => $previousPeriodRepeatedCustomers,
+            'percentage_change' => round($percentageChange, 2),
+            'is_increase' => $percentageChange >= 0,
+            'daily' => $daily,
+        ];
     }
 
     /**
@@ -873,43 +902,6 @@ class DashboardService
                 'total_revenue_raw' => $product->total_revenue,
                 'total_orders' => $product->total_orders,
                 'image' => $product->getFirstMediaUrl(SpatieMediaCollectionName::PRODUCT_MAIN_IMAGE()) ?: null,
-            ];
-        })->toArray();
-    }
-
-    /**
-     * Get top delivery boys based on delivered parcels for the specified number of days.
-     */
-    public function getTopDeliveryBoys(int $days = 7, int $limit = 10): array
-    {
-        $startDate = Carbon::now()->subDays($days)->startOfDay();
-        $endDate = Carbon::now()->endOfDay();
-
-        $topDeliveryBoys = DeliveryBoy::select('delivery_boys.*')->with('user')
-            ->selectRaw('COUNT(order_items.id) as total_deliveries')
-            ->selectRaw('SUM(order_items.subtotal) as total_revenue')
-            ->join('delivery_boy_assignments', 'delivery_boys.id', '=', 'delivery_boy_assignments.delivery_boy_id')
-            ->join('orders', 'delivery_boy_assignments.order_id', '=', 'orders.id')
-            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-            ->where('order_items.status', OrderItemStatusEnum::DELIVERED())
-            ->whereBetween('order_items.created_at', [$startDate, $endDate])
-            ->where('delivery_boys.verification_status', DeliveryBoyVerificationStatusEnum::VERIFIED())
-            ->where('delivery_boys.status', ActiveInactiveStatusEnum::ACTIVE())
-            ->groupBy('delivery_boys.id')
-            ->orderBy('total_deliveries', 'desc')
-            ->limit($limit)
-            ->get();
-
-        return $topDeliveryBoys->map(function ($deliveryBoy) {
-            return [
-                'id' => $deliveryBoy->id,
-                'name' => $deliveryBoy->user->name,
-                'email' => $deliveryBoy->user->email,
-                'phone' => $deliveryBoy->user->phone,
-                'total_deliveries' => $deliveryBoy->total_deliveries,
-                'total_revenue' => $this->currencyService->format($deliveryBoy->total_revenue),
-                'total_revenue_raw' => $deliveryBoy->total_revenue,
-                'avatar' => $deliveryBoy->getFirstMediaUrl(SpatieMediaCollectionName::PROFILE_IMAGE()) ?: null,
             ];
         })->toArray();
     }

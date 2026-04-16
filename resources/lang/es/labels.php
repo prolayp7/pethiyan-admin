@@ -1601,10 +1601,9 @@ return [
 
     'total_commission' => 'Comisión Total',
     'avg_commission' => 'Comisión Promedio',
+    'repeated_customer' => 'Cliente Recurrente',
 
-    'top_sellers' => 'Mejores Vendedores',
     'top_selling_products' => 'Productos Más Vendidos',
-    'top_delivery_boys' => 'Mejores Repartidores',
 
     'sold' => 'vendido',
     'deliveries' => 'entregas',

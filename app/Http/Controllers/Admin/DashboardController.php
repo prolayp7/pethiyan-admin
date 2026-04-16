@@ -43,7 +43,6 @@ class DashboardController extends Controller
         $currencyService = $this->currencyService;
         $dashboardService = $this->dashboardService;
 
-        $adminCommissionChart = $dashboardService->getAdminCommissionChartsData(days: 30);
         $adminInsights = $dashboardService->getAdminInsightsData();
         $conversionRateData = $dashboardService->getAdminConversionRateData(days: 30);
         $revenueDataBg = $dashboardService->getRevenueData(days: 30);
@@ -51,18 +50,15 @@ class DashboardController extends Controller
         $todaysEarning = $dashboardService->getTodaysEarning();
         $categoryProductWeightage = $dashboardService->getCategoryProductWeightage();
         $newUserRegistrationsData = $dashboardService->getNewUserRegistrationsData(days: 30);
+        $repeatedCustomersData = $dashboardService->getRepeatedCustomersData(days: 30);
 
         // New analytics data
-        $topSellers = $dashboardService->getTopSellers(days: 30, limit: 5);
         $topSellingProducts = $dashboardService->getTopSellingProducts(days: 30, limit: 5);
-        $topDeliveryBoys = $dashboardService->getTopDeliveryBoys(days: 30, limit: 5);
         $categoriesWithFilters = $dashboardService->getCategoriesWithFilters(sortBy: 'products_count', filterBy: 'all');
-        $enhancedCommissionsData = $dashboardService->getEnhancedCommissionsData(days: 30, type: 'all');
 
         $viewPermission = $this->viewPermission;
         return view('admin.dashboard', compact(
             'currencyService',
-            'adminCommissionChart',
             'adminInsights',
             'conversionRateData',
             'revenueDataBg',
@@ -70,11 +66,9 @@ class DashboardController extends Controller
             'todaysEarning',
             'categoryProductWeightage',
             'newUserRegistrationsData',
-            'topSellers',
+            'repeatedCustomersData',
             'topSellingProducts',
-            'topDeliveryBoys',
             'categoriesWithFilters',
-            'enhancedCommissionsData',
             'viewPermission'
         ));
     }
@@ -89,7 +83,6 @@ class DashboardController extends Controller
         $limit = $request->input('limit', 5);
         $sortBy = $request->input('sort_by', 'name');
         $filterBy = $request->input('filter_by', 'all');
-        $commissionType = $request->input('commission_type', 'all');
 
         switch ($type) {
             case 'sales':
@@ -101,20 +94,14 @@ class DashboardController extends Controller
             case 'new_users':
                 $data = $this->dashboardService->getNewUserRegistrationsData(days: $days);
                 break;
-            case 'top_sellers':
-                $data = $this->dashboardService->getTopSellers(days: $days, limit: $limit);
+            case 'repeated_customers':
+                $data = $this->dashboardService->getRepeatedCustomersData(days: $days);
                 break;
             case 'top_products':
                 $data = $this->dashboardService->getTopSellingProducts(days: $days, limit: $limit);
                 break;
-            case 'top_delivery_boys':
-                $data = $this->dashboardService->getTopDeliveryBoys(days: $days, limit: $limit);
-                break;
             case 'categories':
                 $data = $this->dashboardService->getCategoriesWithFilters(sortBy: $sortBy, filterBy: $filterBy);
-                break;
-            case 'commissions':
-                $data = $this->dashboardService->getEnhancedCommissionsData(days: $days, type: $commissionType);
                 break;
             default:
                 return response()->json(['error' => 'Invalid data type requested'], 400);

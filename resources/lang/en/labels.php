@@ -1647,10 +1647,9 @@ return [
 
     'total_commission' => 'Total Commission',
     'avg_commission' => 'Avg. Commission',
+    'repeated_customer' => 'Repeated Customer',
 
-    'top_sellers' => 'Top Sellers',
     'top_selling_products' => 'Top Selling Products',
-    'top_delivery_boys' => 'Top Delivery Boys',
 
     'sold' => 'sold',
     'deliveries' => 'deliveries',

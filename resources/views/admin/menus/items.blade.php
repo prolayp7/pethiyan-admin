@@ -80,7 +80,7 @@
                 <div class="row w-full p-3">
                     <x-datatable id="items-table" :columns="$columns"
                                  route="{{ route('admin.menus.items.datatable', $menu->id) }}"
-                                 :options="['order' => [[0, 'asc']], 'pageLength' => 25]"/>
+                                 :options="['ordering' => false, 'paging' => false, 'info' => false, 'pageLength' => 500]"/>
                 </div>
             </div>
         </div>
@@ -195,16 +195,20 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
     'use strict';
 
     const menuId    = {{ $menu->id }};
     const baseUrl   = '{{ route("admin.menus.items.index", $menu->id) }}';
+    const reorderUrl = '{{ route("admin.menus.items.reorder", $menu->id) }}';
     const table     = $('#items-table');
     const urlSuggestions = @json($urlSuggestions ?? []);
     let editingId   = null;
     let deleteId    = null;
+    let itemSortable = null;
+    let draggedChildRows = [];
 
     if (!document.getElementById('item-href-suggestion-styles')) {
         $('head').append(`
@@ -259,12 +263,195 @@
                     font-size: 12px;
                     color: #626976;
                 }
+
+                .item-sort-cell {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .item-sort-handle {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    padding: 0;
+                    border: 1px solid rgba(98, 105, 118, 0.12);
+                    border-radius: 6px;
+                    background: rgba(255, 255, 255, 0.72);
+                    color: #7b8794;
+                    cursor: grab;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+                    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+                }
+
+                .item-sort-handle:hover,
+                .item-sort-handle:focus-visible {
+                    color: #182433;
+                    background: rgba(32, 107, 196, 0.06);
+                    border-color: rgba(32, 107, 196, 0.16);
+                    box-shadow: 0 0 0 2px rgba(32, 107, 196, 0.07);
+                    outline: none;
+                }
+
+                .item-sort-handle:active {
+                    cursor: grabbing;
+                    background: rgba(32, 107, 196, 0.12);
+                    border-color: rgba(32, 107, 196, 0.24);
+                    box-shadow: none;
+                }
+
+                .item-sort-handle svg {
+                    opacity: 0.78;
+                }
+
+                .item-sort-handle.is-disabled {
+                    cursor: not-allowed;
+                    opacity: 0.45;
+                    pointer-events: none;
+                }
+
+                #items-table tbody tr.sortable-ghost {
+                    opacity: 0.45;
+                }
+
+                #items-table tbody tr.sortable-chosen {
+                    box-shadow: inset 0 0 0 9999px rgba(32, 107, 196, 0.05);
+                }
             </style>
         `);
     }
 
     // ── Refresh ───────────────────────────────────────────────────────────
     $('#refresh').on('click', () => table.DataTable().ajax.reload());
+
+    function normalizeParentId(value) {
+        return value === undefined || value === null || value === '' ? '' : String(value);
+    }
+
+    function dataTableInstance() {
+        return $.fn.DataTable.isDataTable('#items-table') ? table.DataTable() : null;
+    }
+
+    function rowsForParent(parentId) {
+        return table.find('tbody tr.menu-item-row').filter(function () {
+            return normalizeParentId($(this).data('parent-id')) === normalizeParentId(parentId);
+        });
+    }
+
+    function orderForParent(parentId) {
+        return rowsForParent(parentId).map(function () {
+            return Number($(this).data('item-id'));
+        }).get();
+    }
+
+    function refreshSortBadges(parentId) {
+        rowsForParent(parentId).each(function (index) {
+            $(this).find('.item-sort-badge').text(index + 1);
+        });
+    }
+
+    function setSortingAvailability(enabled) {
+        table.find('.item-sort-handle').toggleClass('is-disabled', !enabled);
+    }
+
+    function persistItemOrder(parentId) {
+        return $.ajax({
+            url: reorderUrl,
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                parent_id: normalizeParentId(parentId) || null,
+                order: orderForParent(parentId),
+            },
+        }).done((res) => {
+            if (!res.success) {
+                toastError(res.message || 'Unable to update menu item order.');
+                table.DataTable().ajax.reload(null, false);
+                return;
+            }
+
+            toastSuccess(res.message || 'Menu item order updated.');
+        }).fail(() => {
+            toastError('Unable to update menu item order.');
+            table.DataTable().ajax.reload(null, false);
+        });
+    }
+
+    function initItemSorting() {
+        const dt = dataTableInstance();
+        const tbody = table.find('tbody').get(0);
+
+        if (itemSortable) {
+            itemSortable.destroy();
+            itemSortable = null;
+        }
+
+        if (!dt || !tbody) {
+            return;
+        }
+
+        const isFiltered = !!dt.search();
+        setSortingAvailability(!isFiltered);
+
+        if (isFiltered || typeof Sortable === 'undefined') {
+            return;
+        }
+
+        itemSortable = Sortable.create(tbody, {
+            animation: 150,
+            handle: '.item-sort-handle',
+            draggable: 'tr.menu-item-row',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onStart: function (event) {
+                draggedChildRows = [];
+
+                const $row = $(event.item);
+                const parentId = normalizeParentId($row.data('parent-id'));
+
+                if (parentId !== '') {
+                    return;
+                }
+
+                let $next = $row.next();
+                while ($next.length && normalizeParentId($next.data('parent-id')) === String($row.data('item-id'))) {
+                    const nextNode = $next.get(0);
+                    $next = $next.next();
+                    draggedChildRows.push(nextNode);
+                    nextNode.parentNode.removeChild(nextNode);
+                }
+            },
+            onMove: function (event) {
+                return normalizeParentId($(event.dragged).data('parent-id')) === normalizeParentId($(event.related).data('parent-id'));
+            },
+            onEnd: function (event) {
+                const $row = $(event.item);
+                const parentId = normalizeParentId($row.data('parent-id'));
+
+                if (parentId === '' && draggedChildRows.length) {
+                    let $cursor = $row;
+                    draggedChildRows.forEach((childNode) => {
+                        $cursor.after(childNode);
+                        $cursor = $(childNode);
+                    });
+                    draggedChildRows = [];
+                }
+
+                refreshSortBadges(parentId);
+                persistItemOrder(parentId || null);
+            },
+        });
+    }
+
+    table.on('draw.dt', function () {
+        refreshSortBadges('');
+        table.find('tbody tr.menu-item-root').each(function () {
+            refreshSortBadges($(this).data('item-id'));
+        });
+        initItemSorting();
+    });
 
     // ── Reset modal on open ───────────────────────────────────────────────
     $('#item-modal').on('show.bs.modal', function () {

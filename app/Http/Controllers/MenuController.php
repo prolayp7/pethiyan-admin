@@ -29,6 +29,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -179,7 +180,7 @@ class MenuController extends Controller
         $menu = Menu::findOrFail($menuId);
 
         $columns = [
-            ['data' => 'sort_order', 'name' => 'sort_order', 'title' => '#'],
+            ['data' => 'sort_order', 'name' => 'sort_order', 'title' => '#', 'orderable' => false, 'searchable' => false],
             ['data' => 'label',      'name' => 'label',      'title' => 'Label'],
             ['data' => 'href',       'name' => 'href',       'title' => 'URL'],
             ['data' => 'type',       'name' => 'type',       'title' => 'Type',     'orderable' => false, 'searchable' => false],
@@ -204,35 +205,41 @@ class MenuController extends Controller
         Menu::findOrFail($menuId);
 
         $draw   = $request->get('draw');
-        $start  = (int) $request->get('start', 0);
-        $length = (int) $request->get('length', 25);
         $search = $request->get('search')['value'] ?? '';
 
-        $query = MenuItem::with('parent')->where('menu_id', $menuId);
+        $orderedItems = $this->orderedMenuItems($menuId);
+        $total = $orderedItems->count();
 
         if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('label', 'like', "%{$search}%")
-                  ->orWhere('href',  'like', "%{$search}%");
-            });
+            $normalizedSearch = mb_strtolower($search);
+            $orderedItems = $orderedItems->filter(function (MenuItem $item) use ($normalizedSearch) {
+                return str_contains(mb_strtolower((string) $item->label), $normalizedSearch)
+                    || str_contains(mb_strtolower((string) $item->href), $normalizedSearch)
+                    || str_contains(mb_strtolower((string) optional($item->parent)->label), $normalizedSearch);
+            })->values();
         }
 
-        $total    = MenuItem::where('menu_id', $menuId)->count();
-        $filtered = $query->count();
+        $filtered = $orderedItems->count();
 
-        $data = $query->orderBy('sort_order')->skip($start)->take($length)->get()
-            ->map(function ($item) use ($menuId) {
-                $typeEnum = $item->type instanceof MenuItemTypeEnum ? $item->type : MenuItemTypeEnum::from($item->type->value ?? $item->type);
-                return [
-                    'sort_order' => $item->sort_order,
-                    'label'      => ($item->parent_id ? '&nbsp;&nbsp;&nbsp;↳ ' : '') . e($item->label),
-                    'href'       => $item->href ? '<code class="text-muted small">' . e($item->href) . '</code>' : '—',
-                    'type'       => '<span class="badge text-uppercase ' . $typeEnum->badgeClass() . '">' . $typeEnum->label() . '</span>',
-                    'parent'     => $item->parent ? e($item->parent->label) : '—',
-                    'is_active'  => $this->renderItemStatusToggle($item, $menuId),
-                    'action'     => $this->renderItemActions($item, $menuId),
-                ];
-            });
+        $data = $orderedItems->map(function (MenuItem $item) use ($menuId) {
+            $typeEnum = $this->resolveMenuItemTypeEnum($item);
+
+            return [
+                'DT_RowId' => 'menu-item-row-' . $item->id,
+                'DT_RowClass' => 'menu-item-row ' . ($item->parent_id ? 'menu-item-child' : 'menu-item-root'),
+                'DT_RowAttr' => [
+                    'data-item-id' => (string) $item->id,
+                    'data-parent-id' => (string) ($item->parent_id ?? ''),
+                ],
+                'sort_order' => $this->renderItemSortHandle($item),
+                'label'      => ($item->parent_id ? '&nbsp;&nbsp;&nbsp;↳ ' : '') . e($item->label),
+                'href'       => $item->href ? '<code class="text-muted small">' . e($item->href) . '</code>' : '—',
+                'type'       => '<span class="badge text-uppercase ' . $typeEnum->badgeClass() . '">' . $typeEnum->label() . '</span>',
+                'parent'     => $item->parent ? e($item->parent->label) : '—',
+                'is_active'  => $this->renderItemStatusToggle($item, $menuId),
+                'action'     => $this->renderItemActions($item, $menuId),
+            ];
+        })->values();
 
         return response()->json([
             'draw'            => (int) $draw,
@@ -240,6 +247,36 @@ class MenuController extends Controller
             'recordsFiltered' => $filtered,
             'data'            => $data,
         ]);
+    }
+
+    public function reorderItems(Request $request, $menuId): JsonResponse
+    {
+        try {
+            Menu::findOrFail($menuId);
+
+            $data = $request->validate([
+                'order' => ['required', 'array'],
+                'order.*' => ['integer'],
+                'parent_id' => ['nullable', 'integer'],
+            ]);
+
+            $parentId = $data['parent_id'] ?? null;
+            $siblings = MenuItem::where('menu_id', $menuId)
+                ->when($parentId, fn ($query) => $query->where('parent_id', $parentId), fn ($query) => $query->whereNull('parent_id'))
+                ->get()
+                ->keyBy('id');
+            $order = collect($data['order'])->map(fn ($id) => (int) $id)->values();
+
+            if (!$this->hasExactIds($siblings->keys()->all(), $order->all())) {
+                return ApiResponseType::sendJsonResponse(false, 'Invalid item order.', [], 422);
+            }
+
+            $this->applySortOrder($siblings, $order->all());
+
+            return ApiResponseType::sendJsonResponse(true, 'Menu item order updated.');
+        } catch (\Throwable $e) {
+            return ApiResponseType::sendJsonResponse(false, $e->getMessage(), [], 500);
+        }
     }
 
     public function storeItem(StoreMenuItemRequest $request, $menuId): JsonResponse
@@ -318,6 +355,31 @@ class MenuController extends Controller
             ->values();
 
         return $suggestions->all();
+    }
+
+    private function orderedMenuItems($menuId): Collection
+    {
+        $items = MenuItem::with('parent')
+            ->where('menu_id', $menuId)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $grouped = $items->groupBy(fn (MenuItem $item) => $item->parent_id ? 'parent-' . $item->parent_id : 'root');
+        $ordered = collect();
+        $seenIds = [];
+
+        foreach ($grouped->get('root', collect()) as $rootItem) {
+            $ordered->push($rootItem);
+            $seenIds[] = $rootItem->id;
+
+            foreach ($grouped->get('parent-' . $rootItem->id, collect()) as $childItem) {
+                $ordered->push($childItem);
+                $seenIds[] = $childItem->id;
+            }
+        }
+
+        return $ordered->concat($items->reject(fn (MenuItem $item) => in_array($item->id, $seenIds, true)))->values();
     }
 
     private function staticMenuItemPaths(): array
@@ -527,6 +589,29 @@ class MenuController extends Controller
         }
     }
 
+    public function reorderPanels(Request $request, $menuId, $itemId): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'order' => ['required', 'array'],
+                'order.*' => ['integer'],
+            ]);
+
+            $panels = MegaMenuPanel::where('menu_item_id', $itemId)->get()->keyBy('id');
+            $order = collect($data['order'])->map(fn ($id) => (int) $id)->values();
+
+            if (!$this->hasExactIds($panels->keys()->all(), $order->all())) {
+                return ApiResponseType::sendJsonResponse(false, 'Invalid panel order.', [], 422);
+            }
+
+            $this->applySortOrder($panels, $order->all());
+
+            return ApiResponseType::sendJsonResponse(true, 'Panel order updated.');
+        } catch (\Throwable $e) {
+            return ApiResponseType::sendJsonResponse(false, $e->getMessage(), [], 500);
+        }
+    }
+
     /* ── Columns ── */
 
     public function storeColumn(StoreColumnRequest $request, $menuId, $itemId, $panelId): JsonResponse
@@ -573,6 +658,29 @@ class MenuController extends Controller
             $col->links()->delete();
             $col->delete();
             return ApiResponseType::sendJsonResponse(true, 'Column deleted successfully.');
+        } catch (\Throwable $e) {
+            return ApiResponseType::sendJsonResponse(false, $e->getMessage(), [], 500);
+        }
+    }
+
+    public function reorderColumns(Request $request, $menuId, $itemId, $panelId): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'order' => ['required', 'array'],
+                'order.*' => ['integer'],
+            ]);
+
+            $columns = MegaMenuColumn::where('panel_id', $panelId)->get()->keyBy('id');
+            $order = collect($data['order'])->map(fn ($id) => (int) $id)->values();
+
+            if (!$this->hasExactIds($columns->keys()->all(), $order->all())) {
+                return ApiResponseType::sendJsonResponse(false, 'Invalid column order.', [], 422);
+            }
+
+            $this->applySortOrder($columns, $order->all());
+
+            return ApiResponseType::sendJsonResponse(true, 'Column order updated.');
         } catch (\Throwable $e) {
             return ApiResponseType::sendJsonResponse(false, $e->getMessage(), [], 500);
         }
@@ -627,6 +735,29 @@ class MenuController extends Controller
             $link = MegaMenuLink::where('column_id', $columnId)->findOrFail($linkId);
             $link->delete();
             return ApiResponseType::sendJsonResponse(true, 'Link deleted successfully.');
+        } catch (\Throwable $e) {
+            return ApiResponseType::sendJsonResponse(false, $e->getMessage(), [], 500);
+        }
+    }
+
+    public function reorderLinks(Request $request, $menuId, $itemId, $panelId, $columnId): JsonResponse
+    {
+        try {
+            $data = $request->validate([
+                'order' => ['required', 'array'],
+                'order.*' => ['integer'],
+            ]);
+
+            $links = MegaMenuLink::where('column_id', $columnId)->get()->keyBy('id');
+            $order = collect($data['order'])->map(fn ($id) => (int) $id)->values();
+
+            if (!$this->hasExactIds($links->keys()->all(), $order->all())) {
+                return ApiResponseType::sendJsonResponse(false, 'Invalid link order.', [], 422);
+            }
+
+            $this->applySortOrder($links, $order->all());
+
+            return ApiResponseType::sendJsonResponse(true, 'Link order updated.');
         } catch (\Throwable $e) {
             return ApiResponseType::sendJsonResponse(false, $e->getMessage(), [], 500);
         }
@@ -697,7 +828,7 @@ HTML;
     {
         $editUrl   = route('admin.menus.items.show',    [$menuId, $item->id]);
         $deleteUrl = route('admin.menus.items.destroy',  [$menuId, $item->id]);
-        $typeEnum  = $item->type instanceof MenuItemTypeEnum ? $item->type : MenuItemTypeEnum::from($item->type->value ?? $item->type);
+        $typeEnum  = $this->resolveMenuItemTypeEnum($item);
         $megaBtn   = '';
         if ($typeEnum === MenuItemTypeEnum::MEGA_MENU) {
             $megaUrl = route('admin.menus.items.mega-menu.index', [$menuId, $item->id]);
@@ -732,5 +863,57 @@ HTML;
   </button>
 </div>
 HTML;
+    }
+
+    private function resolveMenuItemTypeEnum(MenuItem $item): MenuItemTypeEnum
+    {
+        if ($item->type instanceof MenuItemTypeEnum) {
+            return $item->type;
+        }
+
+        $typeValue = null;
+
+        if (is_string($item->type)) {
+            $typeValue = $item->type;
+        } elseif ($item->type instanceof \BackedEnum) {
+            $typeValue = $item->type->value;
+        }
+
+        return MenuItemTypeEnum::tryFrom((string) $typeValue) ?? MenuItemTypeEnum::LINK;
+    }
+
+        private function renderItemSortHandle(MenuItem $item): string
+        {
+                $value = (int) $item->sort_order;
+
+                return <<<HTML
+<div class="item-sort-cell">
+    <button type="button" class="btn btn-xs btn-ghost-secondary item-sort-handle" title="Drag to reorder" aria-label="Drag to reorder menu item">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="9" cy="6" r="1.25"/><circle cx="15" cy="6" r="1.25"/>
+            <circle cx="9" cy="12" r="1.25"/><circle cx="15" cy="12" r="1.25"/>
+            <circle cx="9" cy="18" r="1.25"/><circle cx="15" cy="18" r="1.25"/>
+        </svg>
+    </button>
+    <span class="badge bg-blue-lt item-sort-badge">{$value}</span>
+</div>
+HTML;
+        }
+
+    private function hasExactIds(array $existingIds, array $orderedIds): bool
+    {
+        sort($existingIds);
+        sort($orderedIds);
+
+        return $existingIds === $orderedIds;
+    }
+
+    private function applySortOrder(Collection $records, array $orderedIds): void
+    {
+        DB::transaction(function () use ($records, $orderedIds) {
+            foreach ($orderedIds as $index => $id) {
+                $records[(int) $id]->update(['sort_order' => $index + 1]);
+            }
+        });
     }
 }

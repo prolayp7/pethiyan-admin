@@ -645,6 +645,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::get('/',          [MenuController::class, 'itemsIndex'])->name('index');
                 Route::get('/datatable', [MenuController::class, 'itemsDatatable'])->name('datatable');
                 Route::post('/',         [MenuController::class, 'storeItem'])->name('store');
+                Route::post('/reorder',  [MenuController::class, 'reorderItems'])->name('reorder');
                 Route::get('/{item}',    [MenuController::class, 'showItem'])->name('show');
                 Route::post('/{item}',   [MenuController::class, 'updateItem'])->name('update');
                 Route::delete('/{item}', [MenuController::class, 'destroyItem'])->name('destroy');
@@ -656,6 +657,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
                     // Panels
                     Route::post('/panels',             [MenuController::class, 'storePanel'])->name('panels.store');
+                    Route::post('/panels/reorder',     [MenuController::class, 'reorderPanels'])->name('panels.reorder');
                     Route::get('/panels/{panel}',      [MenuController::class, 'showPanel'])->name('panels.show');
                     Route::post('/panels/{panel}',     [MenuController::class, 'updatePanel'])->name('panels.update');
                     Route::delete('/panels/{panel}',   [MenuController::class, 'destroyPanel'])->name('panels.destroy');
@@ -663,12 +665,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
                     // Columns
                     Route::post('/panels/{panel}/columns',           [MenuController::class, 'storeColumn'])->name('columns.store');
+                    Route::post('/panels/{panel}/columns/reorder',   [MenuController::class, 'reorderColumns'])->name('columns.reorder');
                     Route::get('/panels/{panel}/columns/{column}',   [MenuController::class, 'showColumn'])->name('columns.show');
                     Route::post('/panels/{panel}/columns/{column}',  [MenuController::class, 'updateColumn'])->name('columns.update');
                     Route::delete('/panels/{panel}/columns/{column}',[MenuController::class, 'destroyColumn'])->name('columns.destroy');
 
                     // Links
                     Route::post('/panels/{panel}/columns/{column}/links',          [MenuController::class, 'storeLink'])->name('links.store');
+                    Route::post('/panels/{panel}/columns/{column}/links/reorder',  [MenuController::class, 'reorderLinks'])->name('links.reorder');
                     Route::get('/panels/{panel}/columns/{column}/links/{link}',    [MenuController::class, 'showLink'])->name('links.show');
                     Route::post('/panels/{panel}/columns/{column}/links/{link}',   [MenuController::class, 'updateLink'])->name('links.update');
                     Route::delete('/panels/{panel}/columns/{column}/links/{link}', [MenuController::class, 'destroyLink'])->name('links.destroy');

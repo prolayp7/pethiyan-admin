@@ -17,8 +17,11 @@
         ['title' => $menuItem->label . ' — Mega Menu', 'url' => null],
     ];
     $panelBaseUrl  = route('admin.menus.items.mega-menu.panels.store', [$menu->id, $menuItem->id]);
+    $panelReorderUrl = route('admin.menus.items.mega-menu.panels.reorder', [$menu->id, $menuItem->id]);
     $columnBaseUrl = route('admin.menus.items.mega-menu.columns.store', [$menu->id, $menuItem->id, '__PANEL__']);
+    $columnReorderUrl = route('admin.menus.items.mega-menu.columns.reorder', [$menu->id, $menuItem->id, '__PANEL__']);
     $linkBaseUrl   = route('admin.menus.items.mega-menu.links.store',   [$menu->id, $menuItem->id, '__PANEL__', '__COL__']);
+    $linkReorderUrl = route('admin.menus.items.mega-menu.links.reorder',   [$menu->id, $menuItem->id, '__PANEL__', '__COL__']);
 @endphp
 
 @section('admin-content')
@@ -78,10 +81,17 @@
         @else
             <div class="accordion" id="panels-accordion">
                 @foreach($panels as $panel)
-                <div class="card mb-2" id="panel-card-{{ $panel->id }}">
+                <div class="card mb-2 panel-sort-item" id="panel-card-{{ $panel->id }}" data-panel-id="{{ $panel->id }}">
                     {{-- Panel header --------------------------------}}
                     <div class="card-header d-flex align-items-center gap-2 py-2"
                          style="border-left: 4px solid {{ $panel->accent_color ?? '#2563eb' }}">
+                        <button type="button" class="btn btn-sm p-0 text-muted sortable-handle panel-drag-handle" title="Drag to reorder" aria-label="Drag to reorder panel">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <circle cx="9" cy="6" r="1.25"/><circle cx="15" cy="6" r="1.25"/>
+                                <circle cx="9" cy="12" r="1.25"/><circle cx="15" cy="12" r="1.25"/>
+                                <circle cx="9" cy="18" r="1.25"/><circle cx="15" cy="18" r="1.25"/>
+                            </svg>
+                        </button>
                         <button class="btn btn-sm p-0 me-2 collapsed" data-bs-toggle="collapse"
                                 data-bs-target="#panel-body-{{ $panel->id }}" aria-expanded="false">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
@@ -130,11 +140,18 @@
                             @if($panel->columns->isEmpty())
                                 <p class="text-muted small">No columns yet. Click "+ Column" to add one.</p>
                             @else
-                                <div class="row g-3">
+                                <div class="row g-3 columns-sortable" id="columns-grid-{{ $panel->id }}" data-panel-id="{{ $panel->id }}">
                                     @foreach($panel->columns as $column)
-                                    <div class="col-md-4" id="column-card-{{ $column->id }}">
+                                    <div class="col-md-4 column-sort-item" id="column-card-{{ $column->id }}" data-column-id="{{ $column->id }}">
                                         <div class="card card-sm h-100">
                                             <div class="card-header py-2 d-flex align-items-center">
+                                                <button type="button" class="btn btn-xs btn-ghost-secondary me-1 sortable-handle column-drag-handle" title="Drag to reorder" aria-label="Drag to reorder column">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                        <circle cx="9" cy="6" r="1.25"/><circle cx="15" cy="6" r="1.25"/>
+                                                        <circle cx="9" cy="12" r="1.25"/><circle cx="15" cy="12" r="1.25"/>
+                                                        <circle cx="9" cy="18" r="1.25"/><circle cx="15" cy="18" r="1.25"/>
+                                                    </svg>
+                                                </button>
                                                 <strong class="flex-fill small">{{ $column->heading }}</strong>
                                                 <button type="button" class="btn btn-xs btn-outline-secondary column-edit-btn ms-1"
                                                         data-column-id="{{ $column->id }}"
@@ -155,10 +172,17 @@
                                                     ×
                                                 </button>
                                             </div>
-                                            <ul class="list-group list-group-flush" id="links-list-{{ $column->id }}">
+                                            <ul class="list-group list-group-flush links-sortable" id="links-list-{{ $column->id }}" data-panel-id="{{ $panel->id }}" data-column-id="{{ $column->id }}">
                                                 @foreach($column->links as $link)
-                                                <li class="list-group-item py-1 px-2 d-flex align-items-center"
-                                                    id="link-row-{{ $link->id }}">
+                                                <li class="list-group-item py-1 px-2 d-flex align-items-center link-sort-item"
+                                                    id="link-row-{{ $link->id }}" data-link-id="{{ $link->id }}">
+                                                    <button type="button" class="btn btn-xs btn-ghost-secondary me-1 sortable-handle link-drag-handle" title="Drag to reorder" aria-label="Drag to reorder link">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                                            <circle cx="9" cy="6" r="1.25"/><circle cx="15" cy="6" r="1.25"/>
+                                                            <circle cx="9" cy="12" r="1.25"/><circle cx="15" cy="12" r="1.25"/>
+                                                            <circle cx="9" cy="18" r="1.25"/><circle cx="15" cy="18" r="1.25"/>
+                                                        </svg>
+                                                    </button>
                                                     <span class="flex-fill small {{ !$link->is_active ? 'text-muted text-decoration-line-through' : '' }}">
                                                         {{ $link->label }}
                                                     </span>
@@ -355,6 +379,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 (function () {
     'use strict';
@@ -363,9 +388,12 @@
     const menuId      = {{ $menu->id }};
     const itemId      = {{ $menuItem->id }};
     const panelBase   = '{{ $panelBaseUrl }}';
+    const panelReorderUrl = '{{ $panelReorderUrl }}';
     // Replace __PANEL__ / __COL__ at runtime
     const colBaseTPL  = '{{ $columnBaseUrl }}';
+    const colReorderTPL = '{{ $columnReorderUrl }}';
     const linkBaseTPL = '{{ $linkBaseUrl }}';
+    const linkReorderTPL = '{{ $linkReorderUrl }}';
     const urlSuggestions = @json($urlSuggestions ?? []);
     const panelImageInput = document.getElementById('panel-image-upload');
 
@@ -424,13 +452,80 @@
                     font-size: 12px;
                     color: #626976;
                 }
+
+                .sortable-handle {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 26px;
+                    height: 26px;
+                    padding: 0;
+                    border: 1px solid rgba(98, 105, 118, 0.12);
+                    border-radius: 7px;
+                    color: #7b8794;
+                    background: rgba(255, 255, 255, 0.72);
+                    cursor: grab;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+                    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+                }
+
+                .sortable-handle:hover,
+                .sortable-handle:focus-visible {
+                    color: #182433;
+                    background: rgba(32, 107, 196, 0.06);
+                    border-color: rgba(32, 107, 196, 0.16);
+                    box-shadow: 0 0 0 2px rgba(32, 107, 196, 0.07);
+                    transform: translateY(-1px);
+                    outline: none;
+                }
+
+                .sortable-handle:active {
+                    cursor: grabbing;
+                    background: rgba(32, 107, 196, 0.12);
+                    border-color: rgba(32, 107, 196, 0.24);
+                    box-shadow: none;
+                    transform: none;
+                }
+
+                .sortable-handle svg {
+                    display: block;
+                    opacity: 0.72;
+                    transition: opacity 0.15s ease;
+                }
+
+                .sortable-handle:hover svg,
+                .sortable-handle:focus-visible svg,
+                .sortable-handle:active svg {
+                    opacity: 0.95;
+                }
+
+                .panel-drag-handle {
+                    margin-right: 2px;
+                }
+
+                .column-drag-handle,
+                .link-drag-handle {
+                    width: 22px;
+                    height: 22px;
+                    border-radius: 6px;
+                }
+
+                .sortable-ghost {
+                    opacity: 0.45;
+                }
+
+                .sortable-chosen {
+                    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+                }
             </style>
         `);
     }
 
     function panelUrl(panelId, extra)  { return panelBase.replace('panels', 'panels') + (extra ? '/' + extra : ''); }
     function colBaseUrl(panelId)       { return colBaseTPL.replace('__PANEL__', panelId); }
+    function colReorderUrl(panelId)    { return colReorderTPL.replace('__PANEL__', panelId); }
     function linkBaseUrl(panelId, colId) { return linkBaseTPL.replace('__PANEL__', panelId).replace('__COL__', colId); }
+    function linkReorderUrl(panelId, colId) { return linkReorderTPL.replace('__PANEL__', panelId).replace('__COL__', colId); }
 
     /* ── CSRF helper ─────────────────────────────────────────────────── */
     function ajax(url, method, data, done) {
@@ -678,8 +773,96 @@
         return { close };
     }
 
+    function reorderRequest(url, order, successMessage) {
+        return ajax(url, 'POST', { order }, () => {
+            if (successMessage) {
+                toastSuccess(successMessage);
+            }
+        });
+    }
+
+    function refreshPanelState() {
+        const $panels = $('#panels-accordion').children('.panel-sort-item');
+
+        $panels.each(function (index) {
+            $(this).find('.badge').first().text(index + 1);
+        });
+    }
+
+    function panelOrder() {
+        return $('#panels-accordion').children('.panel-sort-item').map(function () {
+            return Number($(this).data('panel-id'));
+        }).get();
+    }
+
+    function columnOrder(panelId) {
+        return $(`#columns-grid-${panelId}`).children('.column-sort-item').map(function () {
+            return Number($(this).data('column-id'));
+        }).get();
+    }
+
+    function linkOrder(columnId) {
+        return $(`#links-list-${columnId}`).children('.link-sort-item').map(function () {
+            return Number($(this).data('link-id'));
+        }).get();
+    }
+
+    function initSortable() {
+        if (typeof Sortable === 'undefined') {
+            return;
+        }
+
+        const panelsRoot = document.getElementById('panels-accordion');
+
+        if (panelsRoot) {
+            Sortable.create(panelsRoot, {
+                animation: 150,
+                handle: '.panel-drag-handle',
+                draggable: '.panel-sort-item',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function () {
+                    refreshPanelState();
+                    reorderRequest(panelReorderUrl, panelOrder(), 'Panel order updated.');
+                },
+            });
+        }
+
+        document.querySelectorAll('.columns-sortable').forEach((element) => {
+            Sortable.create(element, {
+                animation: 150,
+                handle: '.column-drag-handle',
+                draggable: '.column-sort-item',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function () {
+                    const panelId = element.dataset.panelId;
+                    reorderRequest(colReorderUrl(panelId), columnOrder(panelId), 'Column order updated.');
+                },
+            });
+        });
+
+        document.querySelectorAll('.links-sortable').forEach((element) => {
+            Sortable.create(element, {
+                animation: 150,
+                handle: '.link-drag-handle',
+                draggable: '.link-sort-item',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function () {
+                    const panelId = element.dataset.panelId;
+                    const columnId = element.dataset.columnId;
+                    reorderRequest(linkReorderUrl(panelId, columnId), linkOrder(columnId), 'Link order updated.');
+                },
+            });
+        });
+    }
+
     const panelHrefSuggestions = initializeUrlSuggestionField('#panel-href', '#panel-href-suggestions');
     const linkHrefSuggestions = initializeUrlSuggestionField('#link-href', '#link-href-suggestions');
+
+    refreshPanelState();
+    initSortable();
 
     /* ═══════════════════════════════════════════════════════════════
      |  PANELS

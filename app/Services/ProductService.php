@@ -20,6 +20,7 @@ use App\Services\ImageWebpService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class ProductService
 {
@@ -36,6 +37,78 @@ class ProductService
     public function storeProduct(array $validated, $request): array
     {
         return $this->processProduct(null, $validated, $request, 'create');
+    }
+
+    public function duplicateProduct(Product $sourceProduct, int $sellerId): Product
+    {
+        return DB::transaction(function () use ($sourceProduct, $sellerId) {
+            $sourceProduct->loadMissing(['taxClasses', 'variants.attributes', 'variants.storeProductVariants']);
+
+            $duplicate = $sourceProduct->replicate([
+                'uuid',
+                'slug',
+                'status',
+                'verification_status',
+                'rejection_reason',
+                'created_at',
+                'updated_at',
+                'deleted_at',
+            ]);
+
+            $duplicate->seller_id = $sellerId;
+            $duplicate->cloned_from_id = $sourceProduct->id;
+            $duplicate->status = ProductStatusEnum::DRAFT();
+            $duplicate->verification_status = ProductVarificationStatusEnum::APPROVED();
+            $duplicate->rejection_reason = null;
+            $duplicate->title = $this->makeDuplicateTitle($sourceProduct->title);
+            $duplicate->save();
+
+            $duplicate->taxClasses()->sync($sourceProduct->taxClasses->pluck('id')->all());
+
+            $this->copyMediaCollection($sourceProduct, $duplicate, SpatieMediaCollectionName::PRODUCT_MAIN_IMAGE);
+            $this->copyMediaCollection($sourceProduct, $duplicate, SpatieMediaCollectionName::PRODUCT_ADDITIONAL_IMAGE);
+            $this->copyMediaCollection($sourceProduct, $duplicate, SpatieMediaCollectionName::PRODUCT_VIDEO);
+
+            foreach ($sourceProduct->variants as $sourceVariant) {
+                $duplicateVariant = $sourceVariant->replicate([
+                    'uuid',
+                    'slug',
+                    'created_at',
+                    'updated_at',
+                    'deleted_at',
+                ]);
+
+                $duplicateVariant->product_id = $duplicate->id;
+                $duplicateVariant->uuid = (string) Str::uuid();
+                $duplicateVariant->title = $sourceVariant->title;
+                $duplicateVariant->save();
+
+                foreach ($sourceVariant->attributes as $attribute) {
+                    $duplicateAttribute = $attribute->replicate([
+                        'created_at',
+                        'updated_at',
+                        'deleted_at',
+                    ]);
+                    $duplicateAttribute->product_id = $duplicate->id;
+                    $duplicateAttribute->product_variant_id = $duplicateVariant->id;
+                    $duplicateAttribute->save();
+                }
+
+                foreach ($sourceVariant->storeProductVariants as $storeVariant) {
+                    $duplicateStoreVariant = $storeVariant->replicate([
+                        'created_at',
+                        'updated_at',
+                        'deleted_at',
+                    ]);
+                    $duplicateStoreVariant->product_variant_id = $duplicateVariant->id;
+                    $duplicateStoreVariant->save();
+                }
+
+                $this->copyMediaCollection($sourceVariant, $duplicateVariant, SpatieMediaCollectionName::VARIANT_IMAGE);
+            }
+
+            return $duplicate->fresh(['taxClasses', 'variants.attributes', 'variants.storeProductVariants']);
+        });
     }
 
     /**
@@ -634,5 +707,27 @@ class ProductService
                 'metadata' => array_merge($product->metadata ?? [], $metadata),
             ]);
         }
+    }
+
+    private function copyMediaCollection($sourceModel, $targetModel, SpatieMediaCollectionName $collection): void
+    {
+        $sourceModel->getMedia($collection->value)->each(function (Media $media) use ($targetModel, $collection) {
+            $media->copy($targetModel, $collection->value);
+        });
+    }
+
+    private function makeDuplicateTitle(string $title): string
+    {
+        $trimmedTitle = trim($title);
+
+        if ($trimmedTitle === '') {
+            return 'Product Copy';
+        }
+
+        if (preg_match('/\(Copy(?:\s+\d+)?\)$/', $trimmedTitle) === 1) {
+            return $trimmedTitle;
+        }
+
+        return $trimmedTitle . ' (Copy)';
     }
 }

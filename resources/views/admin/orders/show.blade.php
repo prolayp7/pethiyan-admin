@@ -91,7 +91,7 @@
                                 <div class="datagrid">
                                     <div class="datagrid-item">
                                         <div class="datagrid-title">{{ __('labels.order_number') }}</div>
-                                        <div class="datagrid-content">{{ $order['uuid'] }}</div>
+                                        <div class="datagrid-content">{{ $order['order_number'] }}</div>
                                     </div>
                                     <div class="datagrid-item">
                                         <div class="datagrid-title">{{ __('labels.order_date') }}</div>
@@ -102,7 +102,7 @@
                                         <div class="datagrid-title">{{ __('labels.status') }}</div>
                                         <div class="datagrid-content text-capitalize">
                                             <span class="badge {{ $order['status'] }}">
-                                                {{ Str::ucfirst(Str::replace("_", " ", $order['status']))}}
+                                                {{ $currentOrderStatusLabel }}
                                             </span>
                                         </div>
                                     </div>
@@ -144,9 +144,9 @@
                                         <div class="mb-3">
                                             <label class="form-label">{{ __('labels.status') }}</label>
                                             <select name="status" class="form-select text-capitalize">
-                                                @foreach($orderStatusOptions as $statusOption)
-                                                    <option value="{{ $statusOption }}" {{ old('status', $order['status']) === $statusOption ? 'selected' : '' }}>
-                                                        {{ Str::headline($statusOption) }}
+                                                @foreach($orderStatusOptions as $statusValue => $statusLabel)
+                                                    <option value="{{ $statusValue }}" {{ old('status', $order['status']) === $statusValue ? 'selected' : '' }}>
+                                                        {{ $statusLabel }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -164,6 +164,11 @@
                                             @if(!$isCodOrder)
                                                 <input type="hidden" name="payment_status" value="{{ $order['payment_status'] }}">
                                             @endif
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">Tracking Code</label>
+                                            <textarea name="tracking_code" rows="3" class="form-control" placeholder="Add tracking code if available">{{ old('tracking_code', $order['tracking_code'] ?? '') }}</textarea>
                                         </div>
 
                                         <div class="mb-3">
@@ -217,6 +222,10 @@
                                         <div class="datagrid-title">{{ __('labels.phone') }}</div>
                                         <div class="datagrid-content">{{ $order['billing_phone'] }}</div>
                                     </div>
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">GSTIN</div>
+                                        <div class="datagrid-content">{{ $order['customer_gstin'] ?: 'N/A' }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -225,6 +234,11 @@
                         <div class="card mt-3">
                             <div class="card-header">
                                 <h3 class="card-title">{{ __('labels.shipping_address') }}</h3>
+                                <div class="card-actions">
+                                    <a href="{{ route('admin.orders.shipping-address.download', $order['id']) }}" class="btn btn-outline-primary btn-sm">
+                                        Download Printable Address
+                                    </a>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <address>
@@ -254,7 +268,7 @@
                                     <div class="datagrid mb-3">
                                         <div class="datagrid-item">
                                             <div class="datagrid-title">{{ __('labels.transaction_id') }}</div>
-                                            <div class="datagrid-content">{{ $latestTransaction['transaction_id'] }}</div>
+                                            <div class="datagrid-content">{{ $latestTransaction['display_transaction_id'] ?? $latestTransaction['transaction_id'] }}</div>
                                         </div>
                                         <div class="datagrid-item">
                                             <div class="datagrid-title">{{ __('labels.payment_method') }}</div>

@@ -486,6 +486,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/datatable', [OrderController::class, 'getOrders'])->name('datatable');
             Route::get('invoice', [OrderController::class, 'orderInvoice']);
             Route::get('/{id}/invoice/download', [OrderController::class, 'downloadInvoice'])->name('invoice.download');
+            Route::get('/{id}/shipping-address/download', [OrderController::class, 'downloadShippingAddress'])->name('shipping-address.download');
             Route::post('/{id}/manage', [OrderController::class, 'updateAdminOrder'])->name('manage');
             Route::get('/{id}', [OrderController::class, 'show'])->name('show');
             Route::post('/{id}/{status}', [OrderController::class, 'updateStatus'])->name('update_status');
@@ -502,6 +503,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/import/failed-report/{reportId}', [ProductImportController::class, 'downloadFailedReport'])->name('import.failed-report');
             Route::get('/datatable', [ProductController::class, 'getProducts'])->name('datatable');
             Route::get('/search', [ProductController::class, 'search'])->name('search');
+            Route::post('/{id}/duplicate', [ProductController::class, 'duplicate'])->name('duplicate');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::get('/{id}/pricing', [ProductController::class, 'getProductPricing'])->name('pricing');
             Route::post('/{id}', [ProductController::class, 'update'])->name('update');

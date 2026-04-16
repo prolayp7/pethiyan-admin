@@ -40,6 +40,17 @@ class OrderController extends Controller
 {
     use PanelAware, AuthorizesRequests, ChecksPermissions;
 
+    private const ADMIN_ORDER_STATUS_OPTIONS = [
+        'accepted_by_seller' => 'Order Accepted',
+        'preparing' => 'Order Start Packing',
+        'ready_for_pickup' => 'Order Packing Done',
+        'assigned' => 'Order Ready for Pickup',
+        'collected' => 'Order Collected',
+        'cancelled' => 'Order Cancelled',
+        'failed' => 'Order Failed',
+        'delivered' => 'Order Completed',
+    ];
+
     public bool $editPermission = false;
     protected OrderService $orderService;
     protected CurrencyService $currencyService;
@@ -347,25 +358,28 @@ class OrderController extends Controller
                 ->firstOrFail();
         } else {
             $order = Order::with([
+                'user',
                 'items',
                 'items.product',
                 'items.variant',
                 'items.store',
                 'promoLine',
-                'paymentTransactions' => fn($query) => $query->latest()->with(['settlements']),
+                'paymentTransactions' => fn($query) => $query->latest()->with(['settlements', 'order']),
             ])
                 ->findOrFail($id);
         }
         $this->authorize('view', $order);
         // Transform the order data using the resource
         $orderData = new OrderResource($order);
+        $adminOrderStatusOptions = $this->getAdminOrderStatusOptions((string) $order->status);
 
         return view($this->panelView('orders.show'), [
             'order' => $orderData->toArray(request()),
             'canManageOrder' => $this->canManageAdminOrder(),
-            'orderStatusOptions' => OrderStatusEnum::values(),
+            'orderStatusOptions' => $adminOrderStatusOptions,
             'paymentStatusOptions' => PaymentStatusEnum::values(),
             'isCodOrder' => strtolower((string)$order->payment_method) === PaymentTypeEnum::COD(),
+            'currentOrderStatusLabel' => $this->resolveAdminOrderStatusLabel((string) $order->status),
         ]);
     }
 
@@ -378,10 +392,13 @@ class OrderController extends Controller
         $order = Order::findOrFail($id);
         $this->authorize('view', $order);
 
+        $allowedStatusValues = array_keys($this->getAdminOrderStatusOptions((string) $order->status));
+
         $validated = $request->validate([
-            'status' => ['required', Rule::in(OrderStatusEnum::values())],
+            'status' => ['required', Rule::in($allowedStatusValues)],
             'payment_status' => ['nullable', Rule::in(PaymentStatusEnum::values())],
             'admin_note' => ['nullable', 'string', 'max:2000'],
+            'tracking_code' => ['nullable', 'string', 'max:100'],
         ]);
 
         $result = $this->orderService->updateOrderByAdmin($order, $validated, Auth::id());
@@ -389,6 +406,38 @@ class OrderController extends Controller
         return redirect()
             ->route('admin.orders.show', $order->id)
             ->with($result['success'] ? 'success' : 'error', $result['message']);
+    }
+
+    public function downloadShippingAddress(int $id)
+    {
+        if ($this->getPanel() === 'seller') {
+            abort(404);
+        }
+
+        $order = Order::with('user')->findOrFail($id);
+        $this->authorize('view', $order);
+
+        $pdf = Pdf::loadView('admin.orders.shipping-address-pdf', [
+            'order' => $order,
+        ])->setPaper('a5', 'portrait');
+
+        return $pdf->download('shipping-address-' . $order->order_number . '.pdf');
+    }
+
+    private function getAdminOrderStatusOptions(?string $currentStatus = null): array
+    {
+        $options = self::ADMIN_ORDER_STATUS_OPTIONS;
+
+        if ($currentStatus !== null && !array_key_exists($currentStatus, $options)) {
+            $options = [$currentStatus => Str::headline($currentStatus)] + $options;
+        }
+
+        return $options;
+    }
+
+    private function resolveAdminOrderStatusLabel(string $status): string
+    {
+        return $this->getAdminOrderStatusOptions($status)[$status] ?? Str::headline($status);
     }
 
     /**
@@ -526,7 +575,7 @@ class OrderController extends Controller
                 ->setPaper('a4', 'portrait')
                 ->setOptions(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => false]);
 
-            $filename = 'invoice-' . ($order->uuid ?? $order->id) . '.pdf';
+            $filename = 'invoice-' . ($order->order_number ?? $order->uuid ?? $order->id) . '.pdf';
 
             return $pdf->download($filename);
 

@@ -55,6 +55,46 @@ class SettingController extends Controller
         'product_grid' => ['showVariantColorsInGrid', 'showGstInGrid', 'showCategoryNameInGrid', 'showMinQtyInGrid'],
     ];
 
+    /** Fields belonging to each web-settings section for partial saves */
+    private const WEB_SECTION_FIELDS = [
+        'support' => ['supportEmail', 'supportNumber', 'googleMapKey', 'mapIframe'],
+        'seo' => [
+            'metaTitle',
+            'metaKeywords',
+            'metaDescription',
+            'metaCanonicalUrl',
+            'metaRobots',
+            'metaAuthor',
+            'metaPublisher',
+            'googleSiteVerification',
+            'bingSiteVerification',
+            'ogTitle',
+            'ogDescription',
+            'twitterCard',
+            'twitterSite',
+            'twitterCreator',
+            'twitterTitle',
+            'twitterDescription',
+            'seoSchemaJson',
+            'googleAnalyticsId',
+            'googleTagManagerId',
+            'facebookPixelId',
+        ],
+        'footer_seo' => ['footerSeoEnabled', 'footerSeoHomepageOnly', 'footerSeoTitle', 'footerSeoIntro', 'footerSeoSectionsJson'],
+    ];
+
+    private const WEB_MAIN_FORM_FIELDS = [
+        'defaultLatitude',
+        'defaultLongitude',
+        'returnRefundPolicy',
+        'shippingPolicy',
+        'privacyPolicy',
+        'termsCondition',
+        'aboutUs',
+    ];
+
+    private const WEB_BOOLEAN_FIELDS = ['footerSeoEnabled', 'footerSeoHomepageOnly'];
+
     protected SettingService $settingService;
     protected TotpService $totpService;
 
@@ -151,6 +191,10 @@ class SettingController extends Controller
                 $payload = $this->ensureRazorpayWebhookSecretForDomain($request, $payload);
             }
 
+            if ($type === SettingTypeEnum::WEB()) {
+                $payload = $this->buildWebSettingsPayload($request, $payload, $existingValues, $method);
+            }
+
             // Partial section save: merge submitted fields with existing values so
             // saving one section does not reset all other sections to defaults.
             $section = $request->input('_section');
@@ -176,7 +220,9 @@ class SettingController extends Controller
             }
 
             // Initialize settings object from request data
-            $settings = $method::fromArray($payload);
+            $settings = $type === SettingTypeEnum::WEB()
+                ? $this->hydrateSettingsObject($method, $payload)
+                : $method::fromArray($payload);
 
             if ($type === SettingTypeEnum::SYSTEM()) {
                 foreach (['logo', 'favicon', 'adminSignature'] as $mediaField) {
@@ -300,6 +346,18 @@ class SettingController extends Controller
             if ($request->hasFile($field)) {
                 $settings->$field = $request->file($field)->storeAs($config['path'], $config['name'], 'public');
             }
+        }
+
+        if ($request->hasFile('seoOgImage')) {
+            $settings->ogImage = ImageConversionService::storeAsWebP(
+                $request->file('seoOgImage'), 'settings', 'seo-og-image-' . time()
+            );
+        }
+
+        if ($request->hasFile('seoTwitterImage')) {
+            $settings->twitterImage = ImageConversionService::storeAsWebP(
+                $request->file('seoTwitterImage'), 'settings', 'seo-twitter-image-' . time()
+            );
         }
 
         // Service-account JSON — not an image, store as-is on the local (non-public) disk.
@@ -614,6 +672,66 @@ class SettingController extends Controller
             ['variable' => SettingTypeEnum::WEB()],
             ['value' => json_encode($webValues, JSON_UNESCAPED_UNICODE)]
         );
+    }
+
+    private function buildWebSettingsPayload(Request $request, array $payload, array $existingValues, string $method): array
+    {
+        $section = $request->input('_section');
+        $fields = self::WEB_SECTION_FIELDS[$section] ?? self::WEB_MAIN_FORM_FIELDS;
+        $rules = $method::validationRules($fields);
+
+        if ($section === 'seo') {
+            $rules['seoOgImage'] = 'nullable|image|mimes:png,jpg,jpeg,webp|max:4096';
+            $rules['seoTwitterImage'] = 'nullable|image|mimes:png,jpg,jpeg,webp|max:4096';
+        }
+
+        $validated = validator($payload, $rules)->validate();
+        $merged = array_merge(get_object_vars(new $method()), $existingValues);
+
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $validated)) {
+                $merged[$field] = $validated[$field];
+                continue;
+            }
+
+            if (in_array($field, self::WEB_BOOLEAN_FIELDS, true)) {
+                $merged[$field] = false;
+            }
+        }
+
+        return $merged;
+    }
+
+    private function hydrateSettingsObject(string $method, array $payload): object
+    {
+        $settings = new $method();
+
+        $reflection = new \ReflectionClass($settings);
+
+        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            $field = $property->getName();
+
+            if (!array_key_exists($field, $payload)) {
+                continue;
+            }
+
+            $value = $payload[$field];
+            $type = $property->getType();
+
+            if ($value === null && $type && !$type->allowsNull()) {
+                $value = match ($type->getName()) {
+                    'array' => [],
+                    'bool' => false,
+                    'int' => 0,
+                    'float' => 0.0,
+                    default => '',
+                };
+            }
+
+            $settings->{$field} = $value;
+        }
+
+        return $settings;
     }
 
 }

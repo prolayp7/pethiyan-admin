@@ -24,6 +24,7 @@ class OrderResource extends JsonResource
             return [
                 'id' => $this->id,
                 'uuid' => $this->order->uuid,
+                'order_number' => $this->order->order_number,
                 'email' => $this->order->email,
                 'status' => $this->order->status,
                 'payment_method' => $this->order->payment_method,
@@ -33,6 +34,7 @@ class OrderResource extends JsonResource
                 // Customer information
                 'billing_name' => $this->order->billing_name,
                 'billing_phone' => $this->order->billing_phone,
+                'customer_gstin' => $this->order->user?->gstin,
 
                 // Shipping information
                 'shipping_name' => $this->order->shipping_name,
@@ -44,6 +46,7 @@ class OrderResource extends JsonResource
                 'shipping_zip' => $this->order->shipping_zip,
                 'shipping_country' => $this->order->shipping_country,
                 'shipping_phone' => $this->order->shipping_phone,
+                'tracking_code' => $this->order->tracking_code,
                 'order_note' => $this->order->order_note,
                 'promo_line' => new PromoLineResource($this->whenLoaded('promoLine')),
 
@@ -94,6 +97,7 @@ class OrderResource extends JsonResource
             return [
                 'id' => $this->id,
                 'uuid' => $this->uuid,
+                'order_number' => $this->order_number,
                 'email' => $this->email,
                 'status' => $this->status,
                 'payment_method' => $this->payment_method,
@@ -111,6 +115,7 @@ class OrderResource extends JsonResource
                 // Customer information
                 'billing_name' => $this->billing_name,
                 'billing_phone' => $this->billing_phone,
+                'customer_gstin' => $this->user?->gstin,
 
                 // Shipping information
                 'shipping_name' => $this->shipping_name,
@@ -122,6 +127,7 @@ class OrderResource extends JsonResource
                 'shipping_zip' => $this->shipping_zip,
                 'shipping_country' => $this->shipping_country,
                 'shipping_phone' => $this->shipping_phone,
+                'tracking_code' => $this->tracking_code,
                 'order_note' => $this['order_note'],
                 'admin_note' => $this->admin_note,
                 'promo_line' => new PromoLineResource($this->whenLoaded('promoLine')),
@@ -137,6 +143,7 @@ class OrderResource extends JsonResource
                             return [
                                 'id' => $transaction->id,
                                 'transaction_id' => $transaction->transaction_id,
+                                'display_transaction_id' => $transaction->display_transaction_id,
                                 'payment_method' => $transaction->payment_method,
                                 'payment_status' => $transaction->payment_status,
                                 'message' => $transaction->message,

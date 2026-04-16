@@ -1198,7 +1198,9 @@ class OrderService
             $isCodOrder = strtolower((string)$order->payment_method) === PaymentTypeEnum::COD();
             $currentPaymentStatus = (string)$order->payment_status;
             $currentAdminNote = (string)($order->admin_note ?? '');
+            $currentTrackingCode = (string)($order->tracking_code ?? '');
             $incomingAdminNote = trim((string)($data['admin_note'] ?? ''));
+            $incomingTrackingCode = trim((string)($data['tracking_code'] ?? ''));
             $newPaymentStatus = $currentPaymentStatus;
 
             if ($isCodOrder && !empty($data['payment_status'])) {
@@ -1219,32 +1221,44 @@ class OrderService
                 'status' => $data['status'],
                 'payment_status' => $newPaymentStatus,
                 'admin_note' => $incomingAdminNote !== '' ? $incomingAdminNote : null,
+                'tracking_code' => $incomingTrackingCode !== '' ? $incomingTrackingCode : null,
             ]);
 
             $this->syncOrderItemsStatusForAdmin($order, $data['status']);
 
-            if ($isCodOrder && ($newPaymentStatus !== $currentPaymentStatus || $incomingAdminNote !== $currentAdminNote)) {
-                OrderPaymentTransaction::updateOrCreate(
-                    ['transaction_id' => 'cod-order-' . $order->id],
-                    [
+            if ($isCodOrder && ($newPaymentStatus !== $currentPaymentStatus || $incomingAdminNote !== $currentAdminNote || $incomingTrackingCode !== $currentTrackingCode)) {
+                $codTransactionId = OrderPaymentTransaction::generateCodTransactionId($order);
+                $existingTransaction = OrderPaymentTransaction::where('order_id', $order->id)
+                    ->where('payment_method', $order->payment_method)
+                    ->latest('id')
+                    ->first();
+
+                $transactionPayload = [
+                    'order_id' => $order->id,
+                    'user_id' => $order->user_id,
+                    'transaction_id' => $codTransactionId,
+                    'amount' => $order->final_total,
+                    'currency' => $order->currency_code,
+                    'payment_method' => $order->payment_method,
+                    'payment_status' => $newPaymentStatus,
+                    'message' => $incomingAdminNote !== ''
+                        ? $incomingAdminNote
+                        : __('labels.cod_payment_status_updated_by_admin'),
+                    'payment_details' => [
+                        'source' => 'admin_manual_update',
+                        'admin_user_id' => $adminUserId,
+                        'updated_at' => now()->toDateTimeString(),
+                    ],
+                ];
+
+                if ($existingTransaction) {
+                    $existingTransaction->update($transactionPayload);
+                } else {
+                    OrderPaymentTransaction::create([
                         'uuid' => (string) Str::uuid(),
-                        'order_id' => $order->id,
-                        'user_id' => $order->user_id,
-                        'transaction_id' => 'cod-order-' . $order->id,
-                        'amount' => $order->final_total,
-                        'currency' => $order->currency_code,
-                        'payment_method' => $order->payment_method,
-                        'payment_status' => $newPaymentStatus,
-                        'message' => $incomingAdminNote !== ''
-                            ? $incomingAdminNote
-                            : __('labels.cod_payment_status_updated_by_admin'),
-                        'payment_details' => [
-                            'source' => 'admin_manual_update',
-                            'admin_user_id' => $adminUserId,
-                            'updated_at' => now()->toDateTimeString(),
-                        ],
-                    ]
-                );
+                        ...$transactionPayload,
+                    ]);
+                }
             }
 
             DB::commit();

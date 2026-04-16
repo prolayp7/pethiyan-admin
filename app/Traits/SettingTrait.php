@@ -22,6 +22,17 @@ trait SettingTrait
 {
     abstract protected static function getValidationRules(): array;
 
+    public static function validationRules(?array $only = null): array
+    {
+        $rules = static::getValidationRules();
+
+        if ($only === null) {
+            return $rules;
+        }
+
+        return array_intersect_key($rules, array_flip($only));
+    }
+
     /**
      * Optionally provide custom validation messages for settings validation.
      */

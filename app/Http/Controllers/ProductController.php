@@ -36,6 +36,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Enum;
@@ -410,6 +411,33 @@ class ProductController extends Controller
         }
     }
 
+    public function duplicate(string $id, ProductService $productService): RedirectResponse
+    {
+        $product = ProductService::getProductWithVariants((int) $id);
+        if (!$product) {
+            abort(404, 'Product Not Found');
+        }
+
+        $this->authorize('view', $product);
+        $this->authorize('create', Product::class);
+
+        try {
+            $sellerId = $this->getPanel() === 'admin' ? 1 : $product->seller_id;
+            $duplicate = $productService->duplicateProduct($product, $sellerId);
+
+            return redirect()
+                ->route($this->panelView('products.index'))
+                ->with('success', 'Product copied successfully.');
+        } catch (AuthorizationException $e) {
+            abort(403, __('labels.permission_denied'));
+        } catch (\Throwable $e) {
+            Log::error('Error while duplicating product => ' . $e->getMessage());
+            return redirect()
+                ->route($this->panelView('products.index'))
+                ->with('error', 'Failed to copy product.');
+        }
+    }
+
     /**
      * Get product pricing data for a specific product
      */
@@ -612,6 +640,8 @@ class ProductController extends Controller
                 'viewRoute' => route($this->panelView('products.show'), ['id' => $product->id]),
                 'editPermission' => $this->editPermission,
                 'deletePermission' => $this->deletePermission,
+                'duplicatePermission' => $this->createPermission,
+                'duplicateRoute' => route($this->panelView('products.duplicate'), ['id' => $product->id]),
                 'viewPermission' => $this->viewPermission,
             ])->render(),
         ];

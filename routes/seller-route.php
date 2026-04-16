@@ -151,6 +151,7 @@ Route::prefix('seller')->name('seller.')->group(function () {
             Route::post('/', [ProductController::class, 'store'])->name('store');
             Route::get('/datatable', [ProductController::class, 'getProducts'])->name('datatable');
             Route::get('/search', [ProductController::class, 'search'])->name('search');
+            Route::post('/{id}/duplicate', [ProductController::class, 'duplicate'])->name('duplicate');
             Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
             Route::get('/{id}/pricing', [ProductController::class, 'getProductPricing'])->name('pricing');
             Route::post('/{id}', [ProductController::class, 'update'])->name('update');

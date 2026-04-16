@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Log;
  */
 class Order extends Model
 {
+    protected $appends = ['order_number'];
+
     protected $fillable = [
         'uuid',
         'user_id',
@@ -73,6 +75,7 @@ class Order extends Model
         'shipping_country_code',
         'order_note',
         'admin_note',
+        'tracking_code',
         // GST fields
         'customer_state',
         'customer_state_code',
@@ -141,6 +144,13 @@ class Order extends Model
     public function promoLine(): HasOne
     {
         return $this->hasOne(OrderPromoLine::class);
+    }
+
+    public function getOrderNumberAttribute(): string
+    {
+        $date = $this->created_at?->format('Ymd') ?? now()->format('Ymd');
+
+        return 'PET' . $date . str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 
     /**

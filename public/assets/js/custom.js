@@ -72,7 +72,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const action = form.getAttribute('action');
             const method = (form.getAttribute('method') || 'GET').toUpperCase();
             const formData = new FormData(form);
-            const submitButton = form.querySelector('button[type="submit"]');
+            const submitButton = e.submitter
+                || form.querySelector('button[type="submit"]')
+                || (form.id ? document.querySelector(`button[type="submit"][form="${form.id}"]`) : null);
+
+            if (!submitButton) {
+                console.error('No submit button found for form submission.', form);
+                return;
+            }
+
             submitButton.disabled = true;
             const originalButtonContent = submitButton.innerHTML;
             submitButton.innerHTML = `<div class="spinner-border text-white me-2" role="status"><span class="visually-hidden">Loading...</span></div> ${originalButtonContent}`;

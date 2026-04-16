@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Payment\PaymentTypeEnum;
 use App\Enums\PaymentStatusEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -85,6 +86,36 @@ class OrderPaymentTransaction extends Model
     public function settlements(): HasMany
     {
         return $this->hasMany(PaymentSettlement::class, 'order_payment_transaction_id');
+    }
+
+    public static function generateCodTransactionId(Order $order): string
+    {
+        $date = $order->created_at?->format('Ymd') ?? now()->format('Ymd');
+
+        return 'PETTXN' . $date . str_pad((string) $order->id, 5, '0', STR_PAD_LEFT);
+    }
+
+    public function getDisplayTransactionIdAttribute(): ?string
+    {
+        if (strtolower((string) $this->payment_method) !== PaymentTypeEnum::COD()) {
+            return $this->transaction_id;
+        }
+
+        if (!empty($this->transaction_id) && !str_starts_with((string) $this->transaction_id, 'cod-order-')) {
+            return $this->transaction_id;
+        }
+
+        if ($this->relationLoaded('order') && $this->order) {
+            return self::generateCodTransactionId($this->order);
+        }
+
+        if ($this->order_id) {
+            $date = $this->created_at?->format('Ymd') ?? now()->format('Ymd');
+
+            return 'PETTXN' . $date . str_pad((string) $this->order_id, 5, '0', STR_PAD_LEFT);
+        }
+
+        return $this->transaction_id;
     }
 
     /**

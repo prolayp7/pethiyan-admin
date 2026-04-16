@@ -15,6 +15,7 @@ use App\Enums\SettingTypeEnum;
 use App\Events\Order\OrderDelivered;
 use App\Events\Order\OrderPlaced;
 use App\Events\Order\OrderStatusUpdated;
+use App\Mail\AdminOrderManagementUpdatedMail;
 use App\Http\Resources\User\OrderItemReturnResource;
 use App\Http\Resources\User\OrderResource;
 use App\Http\Resources\User\ReviewResource;
@@ -54,6 +55,7 @@ class OrderService
     protected SellerStatementService $sellerStatementService;
     protected WalletService $walletService;
     protected GstService $gstService;
+    protected EmailService $emailService;
 
     public function __construct(
         StockService           $stockService,
@@ -62,7 +64,8 @@ class OrderService
         PaymentService         $paymentService,
         SellerStatementService $sellerStatementService,
         WalletService          $walletService,
-        GstService             $gstService
+        GstService             $gstService,
+        EmailService           $emailService
     )
     {
         $this->settingService = $settingService;
@@ -72,6 +75,7 @@ class OrderService
         $this->sellerStatementService = $sellerStatementService;
         $this->walletService = $walletService;
         $this->gstService = $gstService;
+        $this->emailService = $emailService;
     }
 
     /**
@@ -1198,16 +1202,20 @@ class OrderService
 
         try {
             $isCodOrder = strtolower((string)$order->payment_method) === PaymentTypeEnum::COD();
+            $currentStatus = (string) $order->status;
             $currentPaymentStatus = (string)$order->payment_status;
             $currentAdminNote = (string)($order->admin_note ?? '');
             $currentTrackingCode = (string)($order->tracking_code ?? '');
             $incomingAdminNote = trim((string)($data['admin_note'] ?? ''));
             $incomingTrackingCode = trim((string)($data['tracking_code'] ?? ''));
             $newPaymentStatus = $currentPaymentStatus;
+            $statusChanged = $data['status'] !== $currentStatus;
 
             if ($isCodOrder && !empty($data['payment_status'])) {
                 $newPaymentStatus = $data['payment_status'];
             }
+
+            $paymentStatusChanged = $newPaymentStatus !== $currentPaymentStatus;
 
             if (!$isCodOrder && !empty($data['payment_status']) && $data['payment_status'] !== $currentPaymentStatus) {
                 DB::rollBack();
@@ -1261,6 +1269,24 @@ class OrderService
                         ...$transactionPayload,
                     ]);
                 }
+            }
+
+            if ($statusChanged || $paymentStatusChanged) {
+                $order->loadMissing('user');
+
+                DB::afterCommit(function () use ($order, $currentStatus, $currentPaymentStatus) {
+                    $customer = $order->user;
+
+                    if (!$customer?->email) {
+                        return;
+                    }
+
+                    $this->emailService->send(
+                        new AdminOrderManagementUpdatedMail($order, $currentStatus, $currentPaymentStatus),
+                        $customer->email,
+                        $customer->name
+                    );
+                });
             }
 
             DB::commit();

@@ -16,13 +16,19 @@ use App\Http\Requests\Menu\UpdateMenuRequest;
 use App\Models\MegaMenuColumn;
 use App\Models\MegaMenuLink;
 use App\Models\MegaMenuPanel;
+use App\Models\BlogCategory;
+use App\Models\BlogPost;
+use App\Models\Category;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Models\Product;
 use App\Traits\ChecksPermissions;
 use App\Traits\PanelAware;
 use App\Types\Api\ApiResponseType;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -183,9 +189,14 @@ class MenuController extends Controller
         ];
 
         $types        = MenuItemTypeEnum::cases();
-        $parentItems  = MenuItem::where('menu_id', $menuId)->whereNull('parent_id')->orderBy('sort_order')->get();
+        $parentItems  = MenuItem::where('menu_id', $menuId)
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+        $urlSuggestions = $this->getMenuItemUrlSuggestions();
 
-        return view('admin.menus.items', compact('menu', 'columns', 'types', 'parentItems'));
+        return view('admin.menus.items', compact('menu', 'columns', 'types', 'parentItems', 'urlSuggestions'));
     }
 
     public function itemsDatatable(Request $request, $menuId): JsonResponse
@@ -297,6 +308,108 @@ class MenuController extends Controller
         }
     }
 
+    private function getMenuItemUrlSuggestions(): array
+    {
+        $suggestions = collect($this->staticMenuItemPaths())
+            ->merge($this->dynamicMenuItemPaths())
+            ->filter(fn ($item) => filled($item['value']))
+            ->unique('value')
+            ->sortBy('value', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        return $suggestions->all();
+    }
+
+    private function staticMenuItemPaths(): array
+    {
+        return [
+            ['value' => '/', 'label' => 'Home'],
+            ['value' => '/about', 'label' => 'About'],
+            ['value' => '/blog', 'label' => 'Blog'],
+            ['value' => '/cart', 'label' => 'Cart'],
+            ['value' => '/contact', 'label' => 'Contact'],
+            ['value' => '/enquiry-form', 'label' => 'Enquiry Form'],
+            ['value' => '/faq', 'label' => 'FAQ'],
+            ['value' => '/new-arrivals', 'label' => 'New Arrivals'],
+            ['value' => '/privacy-policy', 'label' => 'Privacy Policy'],
+            ['value' => '/returns-policy', 'label' => 'Returns Policy'],
+            ['value' => '/search', 'label' => 'Search'],
+            ['value' => '/shipping-policy', 'label' => 'Shipping Policy'],
+            ['value' => '/shop', 'label' => 'Shop'],
+            ['value' => '/terms-and-conditions', 'label' => 'Terms and Conditions'],
+            ['value' => '/track-order', 'label' => 'Track Order'],
+            ['value' => '/wishlist', 'label' => 'Wishlist'],
+        ];
+    }
+
+    private function dynamicMenuItemPaths(): Collection
+    {
+        $sources = [
+            [
+                'labelPrefix' => 'Category',
+                'query' => fn () => Category::query()
+                    ->select(['title', 'slug'])
+                    ->where('status', 'active')
+                    ->where('is_indexable', true)
+                    ->orderBy('title')
+                    ->limit(250)
+                    ->get(),
+                'map' => fn ($item) => [
+                    'value' => '/category/' . ltrim((string) $item->slug, '/'),
+                    'label' => 'Category: ' . ($item->title ?? $item->slug),
+                ],
+            ],
+            [
+                'labelPrefix' => 'Product',
+                'query' => fn () => Product::query()
+                    ->select(['title', 'slug'])
+                    ->where('status', 'active')
+                    ->where('is_indexable', true)
+                    ->orderBy('title')
+                    ->limit(250)
+                    ->get(),
+                'map' => fn ($item) => [
+                    'value' => '/products/' . ltrim((string) $item->slug, '/'),
+                    'label' => 'Product: ' . ($item->title ?? $item->slug),
+                ],
+            ],
+            [
+                'labelPrefix' => 'Blog Post',
+                'query' => fn () => BlogPost::query()
+                    ->select(['title', 'slug'])
+                    ->published()
+                    ->orderByDesc('published_at')
+                    ->limit(250)
+                    ->get(),
+                'map' => fn ($item) => [
+                    'value' => '/blog/' . ltrim((string) $item->slug, '/'),
+                    'label' => 'Blog Post: ' . ($item->title ?? $item->slug),
+                ],
+            ],
+            [
+                'labelPrefix' => 'Blog Category',
+                'query' => fn () => BlogCategory::query()
+                    ->select(['title', 'slug'])
+                    ->active()
+                    ->orderBy('title')
+                    ->limit(100)
+                    ->get(),
+                'map' => fn ($item) => [
+                    'value' => '/blog/category/' . ltrim((string) $item->slug, '/'),
+                    'label' => 'Blog Category: ' . ($item->title ?? $item->slug),
+                ],
+            ],
+        ];
+
+        return collect($sources)->flatMap(function (array $source) {
+            try {
+                return $source['query']()->map($source['map']);
+            } catch (QueryException $exception) {
+                return collect();
+            }
+        });
+    }
+
     /* ═══════════════════════════════════════════════════════════════
      |  MEGA MENU BUILDER
      ═══════════════════════════════════════════════════════════════ */
@@ -309,8 +422,9 @@ class MenuController extends Controller
             ->where('menu_item_id', $itemId)
             ->orderBy('sort_order')
             ->get();
+        $urlSuggestions = $this->getMenuItemUrlSuggestions();
 
-        return view('admin.menus.mega-menu', compact('menu', 'menuItem', 'panels'));
+        return view('admin.menus.mega-menu', compact('menu', 'menuItem', 'panels', 'urlSuggestions'));
     }
 
     /* ── Panels ── */

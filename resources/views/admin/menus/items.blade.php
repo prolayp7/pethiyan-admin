@@ -114,7 +114,11 @@
                     </div>
                     <div class="col-md-8">
                         <label class="form-label">URL / href</label>
-                        <input type="text" class="form-control" id="item-href" placeholder="e.g. /shop"/>
+                        <div class="position-relative">
+                            <input type="text" class="form-control" id="item-href" placeholder="e.g. /shop" autocomplete="off"/>
+                            <div id="item-href-suggestions" class="item-href-suggestions"></div>
+                        </div>
+                        <small class="text-muted">Choose a suggested system URL or enter any custom relative path or full URL.</small>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Target</label>
@@ -198,8 +202,66 @@
     const menuId    = {{ $menu->id }};
     const baseUrl   = '{{ route("admin.menus.items.index", $menu->id) }}';
     const table     = $('#items-table');
+    const urlSuggestions = @json($urlSuggestions ?? []);
     let editingId   = null;
     let deleteId    = null;
+
+    if (!document.getElementById('item-href-suggestion-styles')) {
+        $('head').append(`
+            <style id="item-href-suggestion-styles">
+                .item-href-suggestions {
+                    position: absolute;
+                    top: calc(100% + 4px);
+                    left: 0;
+                    right: 0;
+                    z-index: 1065;
+                    display: none;
+                    max-height: 220px;
+                    overflow-y: auto;
+                    background: #fff;
+                    border: 1px solid rgba(98, 105, 118, 0.16);
+                    border-radius: 8px;
+                    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+                    padding: 4px 0;
+                }
+
+                .item-href-suggestions.is-open {
+                    display: block;
+                }
+
+                .item-href-option {
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    line-height: 1.25;
+                }
+
+                .item-href-option:hover,
+                .item-href-option.is-active {
+                    background: rgba(32, 107, 196, 0.08);
+                }
+
+                .item-href-option-value {
+                    display: block;
+                    font-weight: 600;
+                    color: #182433;
+                    word-break: break-all;
+                }
+
+                .item-href-option-label {
+                    display: block;
+                    margin-top: 2px;
+                    font-size: 12px;
+                    color: #626976;
+                }
+
+                .item-href-empty {
+                    padding: 10px 12px;
+                    font-size: 12px;
+                    color: #626976;
+                }
+            </style>
+        `);
+    }
 
     // ── Refresh ───────────────────────────────────────────────────────────
     $('#refresh').on('click', () => table.DataTable().ajax.reload());
@@ -210,12 +272,16 @@
             $('#item-modal-title').text('Add Menu Item');
             resetItemForm();
         }
-    }).on('hidden.bs.modal', () => { editingId = null; });
+    }).on('hidden.bs.modal', () => {
+        editingId = null;
+        closeHrefSuggestions();
+    });
 
     function resetItemForm() {
         $('#item-label').val('');
         $('#item-type').val('link');
         $('#item-href').val('');
+        closeHrefSuggestions();
         $('#item-target').val('_self');
         $('#item-parent-id').val('');
         $('#item-sort-order').val(0);
@@ -237,6 +303,7 @@
             $('#item-label').val(d.label);
             $('#item-type').val(d.type);
             $('#item-href').val(d.href ?? '');
+            closeHrefSuggestions();
             $('#item-target').val(d.target ?? '_self');
             $('#item-parent-id').val(d.parent_id ?? '');
             $('#item-sort-order').val(d.sort_order ?? 0);
@@ -303,6 +370,124 @@
             toastSuccess(res.message);
             table.DataTable().ajax.reload();
         }).fail(() => toastError('Request failed.'));
+    });
+
+    const $hrefInput = $('#item-href');
+    const $hrefSuggestions = $('#item-href-suggestions');
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function filterHrefSuggestions(query) {
+        const normalized = query.trim().toLowerCase();
+
+        if (!normalized) {
+            return urlSuggestions.slice(0, 40);
+        }
+
+        return urlSuggestions.filter((item) => item.value.toLowerCase().includes(normalized)
+            || (item.label || '').toLowerCase().includes(normalized)).slice(0, 40);
+    }
+
+    function renderHrefSuggestions(query) {
+        const matches = filterHrefSuggestions(query);
+
+        if (!matches.length) {
+            $hrefSuggestions.html('<div class="item-href-empty">No matching system URL. You can still enter a custom URL.</div>');
+            $hrefSuggestions.addClass('is-open');
+            return;
+        }
+
+        const html = matches.map((item, index) => `
+            <div class="item-href-option${index === 0 ? ' is-active' : ''}" data-value="${escapeHtml(item.value)}">
+                <span class="item-href-option-value">${escapeHtml(item.value)}</span>
+                <span class="item-href-option-label">${escapeHtml(item.label || '')}</span>
+            </div>
+        `).join('');
+
+        $hrefSuggestions.html(html).addClass('is-open');
+    }
+
+    function closeHrefSuggestions() {
+        $hrefSuggestions.removeClass('is-open').empty();
+    }
+
+    function applyHrefSuggestion(value) {
+        $hrefInput.val(value).trigger('change').focus();
+        closeHrefSuggestions();
+    }
+
+    $hrefInput.on('focus input', function () {
+        renderHrefSuggestions($(this).val());
+    });
+
+    $hrefInput.on('keydown', function (event) {
+        if (!$hrefSuggestions.hasClass('is-open')) {
+            return;
+        }
+
+        const $items = $hrefSuggestions.find('.item-href-option');
+        if (!$items.length) {
+            return;
+        }
+
+        let $active = $items.filter('.is-active');
+        let index = $items.index($active);
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            index = Math.min(index + 1, $items.length - 1);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            index = Math.max(index - 1, 0);
+        } else if (event.key === 'Enter') {
+            if ($active.length) {
+                event.preventDefault();
+                applyHrefSuggestion($active.data('value'));
+            }
+            return;
+        } else if (event.key === 'Escape') {
+            closeHrefSuggestions();
+            return;
+        } else {
+            return;
+        }
+
+        $items.removeClass('is-active');
+        $active = $items.eq(index).addClass('is-active');
+
+        const dropdown = $hrefSuggestions.get(0);
+        const activeEl = $active.get(0);
+
+        if (dropdown && activeEl) {
+            const dropdownTop = dropdown.scrollTop;
+            const dropdownBottom = dropdownTop + dropdown.clientHeight;
+            const activeTop = activeEl.offsetTop;
+            const activeBottom = activeTop + activeEl.offsetHeight;
+
+            if (activeBottom > dropdownBottom) {
+                dropdown.scrollTop = activeBottom - dropdown.clientHeight;
+            } else if (activeTop < dropdownTop) {
+                dropdown.scrollTop = activeTop;
+            }
+        }
+    });
+
+    $(document).on('mousedown', '.item-href-option', function (event) {
+        event.preventDefault();
+        applyHrefSuggestion($(this).data('value'));
+    });
+
+    $(document).on('mousedown', function (event) {
+        if (!$(event.target).closest('#item-href, #item-href-suggestions').length) {
+            closeHrefSuggestions();
+        }
     });
 
     function toastSuccess(msg) {

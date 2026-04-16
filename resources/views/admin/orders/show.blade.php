@@ -437,35 +437,38 @@
                                         </tbody>
                                         <tfoot>
                                         <tr>
-                                            <td colspan="5" class="text-end"><strong>{{ __('labels.total') }}:</strong>
+                                            <td colspan="5" class="text-end"><strong>Total Quantity:</strong>
                                             </td>
                                             <td><strong>{{ collect($order['items'])->sum('quantity')  }}</strong></td>
-                                            <td>
-                                                <strong>{{$systemSettings['currencySymbol'] . number_format($order['subtotal'], 2) }}</strong>
-                                            </td>
+                                            <td></td>
                                         </tr>
 
                                         <tr>
-                                            <td colspan="6" class="text-end"><b>{{ __('labels.shipping_handling') }}
-                                                    :</b></td>
+                                            <td colspan="6" class="text-end"><b>{{ __('labels.subtotal') }}:</b></td>
+                                            <td>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['subtotal'], 2) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="6" class="text-end"><b>Shipping Cost:</b></td>
                                             <td>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['delivery_charge'], 2) }}</td>
                                         </tr>
                                         <tr>
-                                            <td colspan="6" class="text-end"><b>{{ __('labels.handling_charges') }}:</b>
-                                            </td>
-                                            <td>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['handling_charges'] ?? 0, 2) }}</td>
+                                            <td colspan="6" class="text-end"><b>GST:</b></td>
+                                            <td>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['total_gst'] ?? 0, 2) }}</td>
                                         </tr>
-                                        <tr>
-                                            <td colspan="6" class="text-end">
-                                                <b>{{ __('labels.per_store_drop_off_fee') }}:</b></td>
-                                            <td>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['per_store_drop_off_fee'] ?? 0, 2) }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td colspan="6" class="text-end"><b>{{ __('labels.grand_total') }}:</b></td>
-                                            <td>
-                                                <b>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['subtotal'] + $order['delivery_charge'] + ($order['handling_charges'] ?? 0) + ($order['per_store_drop_off_fee'] ?? 0), 2) }}</b>
-                                            </td>
-                                        </tr>
+                                        @if(($order['handling_charges'] ?? 0) > 0)
+                                            <tr>
+                                                <td colspan="6" class="text-end"><b>{{ __('labels.handling_charges') }}:</b>
+                                                </td>
+                                                <td>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['handling_charges'], 2) }}</td>
+                                            </tr>
+                                        @endif
+                                        @if(($order['per_store_drop_off_fee'] ?? 0) > 0)
+                                            <tr>
+                                                <td colspan="6" class="text-end">
+                                                    <b>{{ __('labels.per_store_drop_off_fee') }}:</b></td>
+                                                <td>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['per_store_drop_off_fee'], 2) }}</td>
+                                            </tr>
+                                        @endif
                                         @if($order['wallet_balance'] > 0)
                                             <tr>
                                                 <td colspan="6" class="text-end"><b>{{ __('labels.wallet_used') }}:</b>
@@ -509,10 +512,10 @@
                                             </tr>
                                         @endif
                                         <tr>
-                                            <td colspan="6" class="text-end"><b>{{ __('labels.total_payable') }}:</b>
+                                            <td colspan="6" class="text-end"><b>{{ __('labels.total') }}:</b>
                                             </td>
                                             <td>
-                                                <b>{{ $systemSettings['currencySymbol'] }}{{ $order['total_payable'] }}</b>
+                                                <b>{{ $systemSettings['currencySymbol'] }}{{ number_format($order['final_total'] ?? $order['total_payable'], 2) }}</b>
                                             </td>
                                         </tr>
                                         </tfoot>

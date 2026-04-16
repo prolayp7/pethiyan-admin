@@ -109,6 +109,7 @@ class OrderResource extends JsonResource
                 'delivery_charge' => $this->delivery_charge,
                 'handling_charges' => $this->handling_charges,
                 'per_store_drop_off_fee' => $this->per_store_drop_off_fee,
+                'total_gst' => $this->total_gst,
                 'total_payable' => $this->total_payable,
                 'final_total' => $this->final_total,
 

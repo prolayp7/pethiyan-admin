@@ -12,6 +12,7 @@ class Address extends Model
 {
     protected $fillable = [
         'user_id',
+        'company_name',
         'address_line1',
         'address_line2',
         'city',
@@ -32,6 +33,7 @@ class Address extends Model
     protected $casts = [
         'id' => 'integer',
         'user_id' => 'integer',
+        'company_name' => 'string',
         'address_line1' => 'string',
         'address_line2' => 'string',
         'city' => 'string',

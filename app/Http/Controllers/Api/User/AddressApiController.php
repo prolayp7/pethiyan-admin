@@ -48,6 +48,7 @@ class AddressApiController extends Controller
                 $query->where(function ($q) use ($searchQuery) {
                     $q->where('address_line1', 'LIKE', '%' . $searchQuery . '%')
                         ->orWhere('address_line2', 'LIKE', '%' . $searchQuery . '%')
+                        ->orWhere('company_name', 'LIKE', '%' . $searchQuery . '%')
                         ->orWhere('city', 'LIKE', '%' . $searchQuery . '%')
                         ->orWhere('landmark', 'LIKE', '%' . $searchQuery . '%')
                         ->orWhere('state', 'LIKE', '%' . $searchQuery . '%')
@@ -83,7 +84,7 @@ class AddressApiController extends Controller
 
                 // Validate sort field to prevent SQL injection
                 $allowedSortFields = [
-                    'id', 'address_line1', 'city', 'state', 'zipcode',
+                    'id', 'company_name', 'address_line1', 'city', 'state', 'zipcode',
                     'address_type', 'country', 'created_at', 'updated_at'
                 ];
 
@@ -159,6 +160,7 @@ class AddressApiController extends Controller
     {
         try {
             $validatedData = $request->validate([
+                'company_name' => 'nullable|string|max:255',
                 'address_line1' => 'required|string|max:255',
                 'address_line2' => 'nullable|string|max:255',
                 'city' => 'required|string|max:100',
@@ -267,6 +269,7 @@ class AddressApiController extends Controller
             }
 
             $validatedData = $request->validate([
+                'company_name' => 'nullable|string|max:255',
                 'address_line1' => 'sometimes|required|string|max:255',
                 'address_line2' => 'nullable|string|max:255',
                 'city' => 'sometimes|required|string|max:100',

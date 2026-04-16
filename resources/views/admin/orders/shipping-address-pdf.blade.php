@@ -64,6 +64,9 @@
         <div class="label">Recipient</div>
         <div class="value">
             {{ $order->shipping_name }}<br>
+            @if(!empty($order->shipping_company_name) || !empty($order->user?->company_name))
+                Company: {{ $order->shipping_company_name ?: $order->user?->company_name }}<br>
+            @endif
             {{ $order->shipping_address_1 }}<br>
             @if($order->shipping_address_2)
                 {{ $order->shipping_address_2 }}<br>

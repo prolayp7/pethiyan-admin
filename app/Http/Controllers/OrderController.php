@@ -519,10 +519,15 @@ class OrderController extends Controller
                     $so->seller->authorized_signature = $so->seller->getFirstMediaUrl(SpatieMediaCollectionName::AUTHORIZED_SIGNATURE()) ?? null;
                 }
             }
-            $orderData = $sellerOrder[0]['order'];
+            $orderData = $sellerOrder->first()->order;
+            $systemSettingResource = app(\App\Services\SettingService::class)
+                ->getSettingByVariable('system');
+            $systemSettings = $systemSettingResource?->toArray(request())['value'] ?? [];
+
             return view('layouts.order-invoice', [
-                'order'       => $orderData,
-                'sellerOrder' => $sellerOrder,
+                'order'          => $orderData,
+                'sellerOrder'    => $sellerOrder,
+                'systemSettings' => $systemSettings,
             ]);
         } catch (AuthorizationException) {
             abort(403, __('messages.unauthorized_action'));

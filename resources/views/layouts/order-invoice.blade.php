@@ -23,6 +23,8 @@
 
         /* ── Generic tables ── */
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        thead { display: table-header-group; }
+        tfoot { display: table-row-group; }
         th, td {
             border: 1px solid #ccc;
             padding: 5px 6px;
@@ -30,6 +32,7 @@
             font-size: 10px;
             overflow-wrap: anywhere;
             word-break: break-word;
+            page-break-inside: avoid;
         }
         th { background: #f0f0f0; font-weight: bold; }
         tfoot td { background: #fafafa; }
@@ -49,7 +52,7 @@
 
         .section-title { font-size: 13px; font-weight: bold; margin: 14px 0 6px; border-bottom: 2px solid #333; padding-bottom: 4px; }
 
-        .signatory { float: right; text-align: center; width: 220px; margin-top: 30px; }
+        .signatory { text-align: center; width: 220px; margin: 30px auto 0; }
         .signatory-line { border-top: 1px solid #000; margin-top: 8px; padding-top: 4px; font-weight: bold; font-size: 11px; }
         .clearfix::after { content: ""; display: table; clear: both; }
 
@@ -123,6 +126,24 @@
     $shipZip = $order['shipping_zip'] ?? $order['billing_zip'] ?? '';
     $shipCountry = $order['shipping_country'] ?? $order['billing_country'] ?? '';
     $shipPhone = $order['shipping_phone'] ?? $order['billing_phone'] ?? '';
+    $customerCompanyName = data_get($order, 'shipping_company_name')
+        ?: data_get($order, 'billing_company_name')
+        ?: data_get($order, 'company_name')
+        ?: data_get($order, 'user.company_name')
+        ?: '';
+    $customerGstin = data_get($order, 'customer_gstin')
+        ?: data_get($order, 'gstin')
+        ?: data_get($order, 'user.gstin')
+        ?: '';
+    $formatWeight = function ($weight, $unit): ?string {
+        if ($weight === null || $weight === '') {
+            return null;
+        }
+
+        $formattedWeight = rtrim(rtrim(number_format((float) $weight, 3, '.', ''), '0'), '.');
+
+        return trim($formattedWeight . ' ' . (string) $unit);
+    };
 @endphp
 
 <div class="page">
@@ -186,6 +207,9 @@
                 <td style="border:1px solid #ccc; border-radius:4px;">
                     <strong>Bill To:</strong><br>
                 {{ $shipName }}<br>
+                @if($customerCompanyName)
+                    Company: {{ $customerCompanyName }}<br>
+                @endif
                 {{ $shipAddress1 }}
                 @if(!empty($shipLandmark)), {{ $shipLandmark }}@endif<br>
                 @if(!empty($shipAddress2))
@@ -195,6 +219,9 @@
                 {{ $shipCountry }}<br>
                 Phone: {{ $shipPhone }}<br>
                 Email: {{ $order['email'] }}
+                @if($customerGstin)
+                    <br>GSTIN: {{ $customerGstin }}
+                @endif
             </td>
         </tr>
     </table>
@@ -249,10 +276,15 @@
                     $totalTax   = (float)($oi['total_tax_amount'] ?? ($cgst + $sgst + $igst));
                     $lineTotal  = $taxableAmt + $totalTax;
                     $hsn        = $oi['hsn_code'] ?? ($item['product']['hsn_code'] ?? '—');
+                    $variantTitle = $item['variant']['title'] ?? $item['variant_title'] ?? '';
+                    $weightLabel = $formatWeight($item['variant']['weight'] ?? null, $item['variant']['weight_unit'] ?? '');
+                    $itemMeta = collect([$variantTitle, $weightLabel])->filter(fn ($value) => filled($value))->implode(' | ');
                 @endphp
                 <tr>
-                    <td>{{ $item['product']['title'] }}<br>
-                        <small style="color:#666;">{{ $item['variant']['title'] ?? '' }}</small>
+                    <td>{{ $item['product']['title'] ?? $item['title'] ?? 'Item' }}<br>
+                        @if($itemMeta)
+                            <small style="color:#666;">{{ $itemMeta }}</small>
+                        @endif
                     </td>
                     <td>{{ $hsn }}</td>
                     <td class="text-center">{{ $qty }}</td>
@@ -355,167 +387,12 @@
     </div>
 
     <div class="footer-note">
-        Thank you for shopping with {{ $systemSettings['appName'] }}!
+        Computer Generated Invoice - No Signature Required.
         @if(!empty($systemSettings['sellerSupportEmail']))
             &nbsp;|&nbsp; {{ $systemSettings['sellerSupportEmail'] }}
         @endif
         <br>{{ $systemSettings['copyrightDetails'] ?? '' }}
     </div>
-
-    {{-- ══ STORE-WISE DETAILED INVOICES ════════════════════════════════════ --}}
-    @foreach($sellerOrder as $vendor)
-        @php $store = $vendor['items'][0]['orderItem']['store'] ?? null; @endphp
-
-        <div class="page-break"></div>
-
-        <table class="header-table" style="margin-bottom:10px;">
-            <tr>
-                <td style="border:none; width:45%; padding:0; vertical-align:top;">
-                    @if(!empty($invoiceLogoSrc))
-                        <img src="{{ $invoiceLogoSrc }}" alt="Logo" style="max-width:220px; max-height:84px; width:auto; height:auto; object-fit:contain; display:block;">
-                    @endif
-                </td>
-                <td style="border:none; width:55%; padding:0; vertical-align:top; text-align:right;">
-                    <h2 style="margin:0;">TAX INVOICE</h2>
-                    <p style="font-size:10px; margin-top:4px;">
-                        Supply Type:
-                        @if($isIntra)
-                            <span class="badge-intra">Intra-State (CGST + SGST)</span>
-                        @else
-                            <span class="badge-inter">Inter-State (IGST)</span>
-                        @endif
-                    </p>
-                </td>
-            </tr>
-        </table>
-
-        <table class="header-table">
-            <tr>
-                {{-- Seller / Store --}}
-                <td style="border:1px solid #ccc; border-radius:4px;">
-                    <strong>Sold by:</strong> {{ $store['name'] ?? ($vendor['seller']['stores'][0]['name'] ?? 'N/A') }}<br>
-                    @if($store)
-                        {{ $store['address'] ?? '' }}
-                        @if(!empty($store['landmark'])), {{ $store['landmark'] }}@endif<br>
-                        {{ $store['city'] ?? '' }}, {{ $store['state'] ?? '' }}
-                        @if(!empty($store['zipcode'])) - {{ $store['zipcode'] }}@endif<br>
-                        {{ $store['country'] ?? '' }}<br>
-                    @endif
-                    @if(!empty($store['gstin']))
-                        <strong>GSTIN:</strong> {{ $store['gstin'] }}<br>
-                    @else
-                        Tax No: {{ $store['tax_number'] ?? 'N/A' }}<br>
-                    @endif
-                    @if(!empty($store['state_code']))
-                        State Code: {{ $store['state_code'] }}
-                    @endif
-                </td>
-
-                {{-- Invoice Meta --}}
-                <td style="border:1px solid #ccc; border-radius:4px;">
-                    <strong>Invoice #:</strong> {{ $order->invoice_number }}<br>
-                    <strong>Order Date:</strong> {{ $order['created_at']->format('d M Y H:i') }}<br>
-                    <strong>Payment:</strong> {{ strtoupper(str_replace('_',' ',$order['payment_method'] ?? 'N/A')) }}<br>
-                    @if(!empty($order['customer_state']))
-                        <strong>Ship-to State:</strong> {{ $order['customer_state'] }}
-                        ({{ $order['customer_state_code'] ?? '' }})
-                    @endif
-                </td>
-
-                {{-- Buyer --}}
-                <td style="border:1px solid #ccc; border-radius:4px;">
-                    <strong>Bill To:</strong><br>
-                    {{ $shipName }}<br>
-                    {{ $shipAddress1 }}
-                    @if(!empty($shipLandmark)), {{ $shipLandmark }}@endif<br>
-                    @if(!empty($shipAddress2))
-                        {{ $shipAddress2 }}<br>
-                    @endif
-                    {{ $shipCity }}, {{ $shipState }} - {{ $shipZip }}<br>
-                    Phone: {{ $shipPhone }}
-                </td>
-            </tr>
-        </table>
-
-        {{-- Line Items --}}
-        <div class="section-title">Items</div>
-        <table>
-            <thead>
-            <tr>
-                <th style="width:20%">Item</th>
-                <th style="width:7%">HSN</th>
-                <th style="width:5%">Qty</th>
-                <th style="width:8%">Unit Price</th>
-                <th style="width:8%">Taxable Amt</th>
-                <th style="width:6%">GST%</th>
-                @if($isIntra)
-                    <th style="width:8%">CGST</th>
-                    <th style="width:8%">SGST</th>
-                @else
-                    <th style="width:10%">IGST</th>
-                @endif
-                <th style="width:10%">Tax Amt</th>
-                <th style="width:10%">Total</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach($vendor['items'] as $item)
-                @php
-                    $oi         = $item['orderItem'];
-                    $qty        = (float)($item['quantity'] ?? 1);
-                    $taxableAmt = (float)($oi['taxable_amount']   ?? ($item['price'] * $qty));
-                    $gstRate    = (float)($oi['gst_rate']         ?? 0);
-                    $cgst       = (float)($oi['cgst_amount']      ?? 0);
-                    $sgst       = (float)($oi['sgst_amount']      ?? 0);
-                    $igst       = (float)($oi['igst_amount']      ?? 0);
-                    $totalTax   = (float)($oi['total_tax_amount'] ?? ($cgst + $sgst + $igst));
-                    $lineTotal  = $taxableAmt + $totalTax;
-                    $hsn        = $oi['hsn_code'] ?? ($item['product']['hsn_code'] ?? '—');
-                @endphp
-                <tr>
-                    <td>{{ $item['product']['title'] }}<br>
-                        <small style="color:#666;">{{ $item['variant']['title'] ?? '' }}</small>
-                    </td>
-                    <td>{{ $hsn }}</td>
-                    <td class="text-center">{{ $qty }}</td>
-                    <td class="text-right">{{ $currency }}{{ number_format($item['price'], 2) }}</td>
-                    <td class="text-right">{{ $currency }}{{ number_format($taxableAmt, 2) }}</td>
-                    <td class="text-center">{{ $gstRate }}%</td>
-                    @if($isIntra)
-                        <td class="text-right">{{ $currency }}{{ number_format($cgst, 2) }}<br><small>({{ $gstRate/2 }}%)</small></td>
-                        <td class="text-right">{{ $currency }}{{ number_format($sgst, 2) }}<br><small>({{ $gstRate/2 }}%)</small></td>
-                    @else
-                        <td class="text-right">{{ $currency }}{{ number_format($igst, 2) }}<br><small>({{ $gstRate }}%)</small></td>
-                    @endif
-                    <td class="text-right">{{ $currency }}{{ number_format($totalTax, 2) }}</td>
-                    <td class="text-right"><strong>{{ $currency }}{{ number_format($lineTotal, 2) }}</strong></td>
-                </tr>
-            @endforeach
-            </tbody>
-            <tfoot>
-            <tr>
-                <td colspan="{{ $isIntra ? 9 : 8 }}" class="text-right"><strong>Store Total:</strong></td>
-                <td class="text-right"><strong>{{ $currency }}{{ number_format($vendor['total_price'], 2) }}</strong></td>
-            </tr>
-            </tfoot>
-        </table>
-
-        {{-- Store signatory --}}
-        <div class="clearfix" style="margin-top:30px;">
-            <div class="signatory">
-                @if(!empty($vendor['seller']['authorized_signature']))
-                    <img src="{{ $vendor['seller']['authorized_signature'] }}" style="max-height:60px; max-width:180px;">
-                @else
-                    <div style="height:50px;"></div>
-                @endif
-                <div class="signatory-line">Authorized Signatory</div>
-            </div>
-        </div>
-
-        <div class="footer-note">
-            {{ $systemSettings['appName'] }} &nbsp;|&nbsp; {{ $systemSettings['copyrightDetails'] ?? '' }}
-        </div>
-    @endforeach
 
 </div>
 </body>

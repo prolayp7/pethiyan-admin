@@ -48,6 +48,7 @@ class Order extends Model
         'final_total',
         'status',
         'billing_name',
+        'billing_company_name',
         'billing_address_1',
         'billing_address_2',
         'billing_landmark',
@@ -61,6 +62,7 @@ class Order extends Model
         'billing_country',
         'billing_country_code',
         'shipping_name',
+        'shipping_company_name',
         'shipping_address_1',
         'shipping_address_2',
         'shipping_landmark',
@@ -89,6 +91,8 @@ class Order extends Model
 
     protected $casts = [
 //        'status' => OrderStatusEnum::class,
+        'billing_company_name' => 'string',
+        'shipping_company_name' => 'string',
     ];
 
     public function user(): BelongsTo

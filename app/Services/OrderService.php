@@ -500,6 +500,7 @@ class OrderService
             'status' => ($data['payment_type'] === PaymentTypeEnum::COD()) ? OrderStatusEnum::AWAITING_STORE_RESPONSE() : OrderStatusEnum::PENDING(),
             // Billing info
             'billing_name' => $user->name,
+            'billing_company_name' => $data['address']['company_name'] ?? $user->company_name,
             'billing_address_1' => $data['address']['address_line1'],
             'billing_address_2' => $data['address']['address_line2'],
             'billing_landmark' => $data['address']['landmark'] ?? '',
@@ -515,6 +516,7 @@ class OrderService
 
             // Shipping info (same as billing)
             'shipping_name' => $user->name,
+            'shipping_company_name' => $data['address']['company_name'] ?? $user->company_name,
             'shipping_address_1' => $data['address']['address_line1'],
             'shipping_address_2' => $data['address']['address_line2'],
             'shipping_landmark' => $data['address']['landmark'] ?? '',

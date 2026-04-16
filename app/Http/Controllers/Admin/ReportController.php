@@ -249,7 +249,7 @@ class ReportController extends Controller
 
                         $rows[] = [
                             $serialNumber++,
-                            $order->created_at?->format('Y-m-d H:i:s'),
+                            $order->created_at?->format('Y-m-d'),
                             $order->invoice_number,
                             $order->order_number,
                             $order->user?->name ?? $order->billing_name,
@@ -262,6 +262,7 @@ class ReportController extends Controller
                             $order->shipping_zip,
                             $item->title ?: ($item->variant_title ?: 'N/A'),
                             $item->quantity,
+                            $item->price,
                             $order->subtotal,
                             $order->delivery_charge,
                             ($order->promo_discount ?? 0) + ($order->gift_card_discount ?? 0),
@@ -288,6 +289,7 @@ class ReportController extends Controller
                 'Pincode',
                 'Product Name',
                 'Quantity',
+                'Amount',
                 'Sub Total Amount',
                 'Shipping Amount',
                 'Discount Amount',

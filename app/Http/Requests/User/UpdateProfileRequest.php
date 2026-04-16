@@ -28,6 +28,11 @@ class UpdateProfileRequest extends FormRequest
                 'required',
                 'string',
             ],
+            'company_name' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'profile_image' => [
                 'nullable',
                 'image',
@@ -53,6 +58,8 @@ class UpdateProfileRequest extends FormRequest
         return [
             'name.required' => 'The name field is required.',
             'name.string' => 'The name must be a string.',
+            'company_name.string' => 'The company name must be a string.',
+            'company_name.max' => 'The company name may not be greater than 255 characters.',
             'gstin.size' => 'GSTIN must be exactly 15 characters long.',
             'gstin.regex' => 'The GSTIN format is invalid. It should be like 07AAAAA0000A1Z5.',
         ];
@@ -67,6 +74,7 @@ class UpdateProfileRequest extends FormRequest
     {
         return [
             'name' => 'name',
+            'company_name' => 'company name',
         ];
     }
 }

@@ -65,6 +65,7 @@
                         data-name="{{ $customer->name }}"
                         data-email="{{ $customer->email }}"
                         data-mobile="{{ $customer->mobile }}"
+                    data-company-name="{{ $customer->company_name ?? '' }}"
                         data-status="{{ $customer->status ? 1 : 0 }}"
                         data-gstin="{{ $customer->gstin ?? '' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -95,6 +96,12 @@
                     <div class="row py-2">
                         <div class="col text-secondary">GSTIN</div>
                         <div class="col-auto fw-medium font-monospace">{{ $customer->gstin }}</div>
+                    </div>
+                    @endif
+                    @if($customer->company_name)
+                    <div class="row py-2">
+                        <div class="col text-secondary">Company Name</div>
+                        <div class="col-auto fw-medium">{{ $customer->company_name }}</div>
                     </div>
                     @endif
                     <div class="row py-2">
@@ -207,6 +214,11 @@
                     <div class="mb-3">
                         <label class="form-label">{{ __('labels.mobile') }}</label>
                         <input type="text" class="form-control" id="editMobile" name="mobile">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Company Name</label>
+                        <input type="text" class="form-control" id="editCompanyName" name="company_name"
+                               placeholder="Optional business/company name">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">{{ __('labels.password') }} <small class="text-muted">({{ __('labels.leave_blank_to_keep') }})</small></label>
@@ -428,6 +440,7 @@
         document.getElementById('editName').value    = btn.dataset.name   ?? '';
         document.getElementById('editEmail').value   = btn.dataset.email  ?? '';
         document.getElementById('editMobile').value  = btn.dataset.mobile ?? '';
+        document.getElementById('editCompanyName').value = btn.dataset.companyName ?? '';
         document.getElementById('editStatus').value  = btn.dataset.status ?? '1';
         document.getElementById('editGstin').value   = btn.dataset.gstin  ?? '';
         document.getElementById('editPassword').value = '';
@@ -440,6 +453,7 @@
             name:     document.getElementById('editName').value,
             email:    document.getElementById('editEmail').value,
             mobile:   document.getElementById('editMobile').value,
+            company_name: document.getElementById('editCompanyName').value.trim() || null,
             status:   document.getElementById('editStatus').value,
             password: document.getElementById('editPassword').value || undefined,
             gstin:    document.getElementById('editGstin').value.trim().toUpperCase() || null,

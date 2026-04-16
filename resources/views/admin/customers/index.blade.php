@@ -114,6 +114,11 @@
                                 <label class="form-label">{{ __('labels.mobile') }}</label>
                                 <input type="text" class="form-control" id="customerMobile" name="mobile">
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Company Name</label>
+                                <input type="text" class="form-control" id="customerCompanyName" name="company_name"
+                                       placeholder="Optional business/company name">
+                            </div>
                             <div class="col-md-6" id="passwordGroup">
                                 <label class="form-label required" id="passwordLabel">{{ __('labels.password') }}</label>
                                 <input type="password" class="form-control" id="customerPassword" name="password" autocomplete="new-password">
@@ -573,6 +578,7 @@
         document.getElementById('customerName').value        = customer?.name   ?? '';
         document.getElementById('customerEmail').value       = customer?.email  ?? '';
         document.getElementById('customerMobile').value      = customer?.mobile ?? '';
+        document.getElementById('customerCompanyName').value = customer?.company_name ?? '';
         document.getElementById('customerStatus').value      = customer?.status != null ? (customer.status ? '1' : '0') : '1';
         document.getElementById('customerGstin').value       = customer?.gstin  ?? '';
         document.getElementById('customerPassword').value    = '';
@@ -607,6 +613,7 @@
             name:     document.getElementById('customerName').value,
             email:    document.getElementById('customerEmail').value,
             mobile:   document.getElementById('customerMobile').value,
+            company_name: document.getElementById('customerCompanyName').value.trim() || null,
             status:   document.getElementById('customerStatus').value,
             password: document.getElementById('customerPassword').value || undefined,
             gstin:    document.getElementById('customerGstin').value.trim().toUpperCase() || null,

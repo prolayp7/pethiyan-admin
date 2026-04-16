@@ -248,6 +248,7 @@ class AuthApiController extends Controller
 
             $validated = $request->validate([
                 'mobile' => 'required|unique:users|numeric',
+                'company_name' => 'nullable|string|max:255',
                 'password' => 'required|string|min:6|confirmed',
                 'country' => 'nullable|string|max:255',
                 'iso_2' => 'nullable|string|max:2'
@@ -256,6 +257,7 @@ class AuthApiController extends Controller
                 'name' => $firebaseUser->displayName ?? $firebaseUser->email,
                 'email' => $firebaseUser->email,
                 'mobile' => $validated['mobile'],
+                'company_name' => $validated['company_name'] ?? null,
                 'country' => $validated['country'] ?? null,
                 'iso_2' => $validated['iso_2'] ?? null,
                 'password' => Hash::make($validated['password'])
@@ -395,6 +397,7 @@ class AuthApiController extends Controller
             // If email was not provided by Apple/Firebase, require it from client during registration
             $rules = [
                 'mobile' => 'required|unique:users|numeric',
+                'company_name' => 'nullable|string|max:255',
                 'password' => 'required|string|min:6|confirmed',
                 'country' => 'nullable|string|max:255',
                 'iso_2' => 'nullable|string|max:2',
@@ -410,6 +413,7 @@ class AuthApiController extends Controller
                 'name' => $displayName ?? $finalEmail,
                 'email' => $finalEmail,
                 'mobile' => $validated['mobile'],
+                'company_name' => $validated['company_name'] ?? null,
                 'country' => $validated['country'] ?? null,
                 'iso_2' => $validated['iso_2'] ?? null,
                 'password' => Hash::make($validated['password'])

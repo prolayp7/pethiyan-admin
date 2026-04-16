@@ -18,7 +18,7 @@ class ProfileService
      * @return Model
      * @throws \Exception
      */
-    public function updateProfile(Model $user, array $validatedData, Request $request = null): Model
+    public function updateProfile(Model $user, array $validatedData, ?Request $request = null): Model
     {
         try {
             DB::beginTransaction();
@@ -53,6 +53,7 @@ class ProfileService
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'company_name' => $user->company_name,
             'profile_image' => $user->profile_image,
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,

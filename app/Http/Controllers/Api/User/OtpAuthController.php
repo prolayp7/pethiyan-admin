@@ -124,6 +124,7 @@ class OtpAuthController extends Controller
             'otp'          => 'required|string|size:' . ($this->demoMode ? 6 : ($this->smsConfig['otp_length'] ?? 6)),
             // Optional fields for new-user registration
             'name'         => 'sometimes|string|max:255',
+            'company_name' => 'sometimes|nullable|string|max:255',
             'email'        => 'sometimes|email|max:255',
         ]);
 
@@ -165,9 +166,10 @@ class OtpAuthController extends Controller
         if (!$user) {
             $isNew = true;
             $user  = User::create([
-                'name'     => $validated['name'] ?? ('User ' . Str::upper(Str::random(5))),
-                'email'    => $validated['email'] ?? null,
-                'mobile'   => $mobile,
+                'name' => $validated['name'] ?? ('User ' . Str::upper(Str::random(5))),
+                'email' => $validated['email'] ?? null,
+                'mobile' => $mobile,
+                'company_name' => $validated['company_name'] ?? null,
                 'password' => Hash::make(Str::random(24)), // random unusable password
             ]);
 

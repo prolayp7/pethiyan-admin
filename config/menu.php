@@ -140,12 +140,12 @@ return [
                     'sub_title'   => 'Social Proof',
                     'permission'  => 'home_page.view',
                 ],
-                'video_story_section' => [
-                    'sub_active'  => 'video_story_section',
-                    'sub_route'   => 'admin.video-stories-section.show',
-                    'sub_title'   => 'Video Stories',
-                    'permission'  => 'home_page.view',
-                ],
+                // 'video_story_section' => [
+                //     'sub_active'  => 'video_story_section',
+                //     'sub_route'   => 'admin.video-stories-section.show',
+                //     'sub_title'   => 'Video Stories',
+                //     'permission'  => 'home_page.view',
+                // ],
                 'featured_products_section' => [
                     'sub_active'  => 'featured_products_section',
                     'sub_route'   => 'admin.featured-products-section.show',

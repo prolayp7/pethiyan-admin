@@ -16,6 +16,130 @@
     ];
 @endphp
 
+@push('styles')
+<style>
+    .featured-preview-shell {
+        background: #fff;
+        padding: 1.25rem 1.25rem 1.5rem;
+    }
+
+    .featured-preview-eyebrow {
+        color: #4ea85f;
+        font-size: 0.875rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .featured-preview-heading {
+        margin: 0;
+        background: linear-gradient(135deg, #1a4f83 0%, #2b6e92 48%, #2d8b6a 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+        font-size: 2.25rem;
+        font-weight: 800;
+        line-height: 1.05;
+    }
+
+    .featured-preview-subheading {
+        color: #4f6281;
+        font-size: 1rem;
+        margin: 0.75rem 0 0;
+    }
+
+    .featured-preview-link {
+        color: #6ea8d8;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .featured-preview-grid {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 1.75rem;
+    }
+
+    .featured-preview-card {
+        background: #fff;
+        border: 1px solid #e6edf5;
+        border-radius: 1.25rem;
+        box-shadow: 0 10px 28px rgba(15, 36, 68, 0.06);
+        overflow: hidden;
+    }
+
+    .featured-preview-media {
+        aspect-ratio: 1 / 1;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .featured-preview-media img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .featured-preview-no-image {
+        color: #94a3b8;
+        font-size: 0.95rem;
+    }
+
+    .featured-preview-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.95rem 1rem 1.1rem;
+    }
+
+    .featured-preview-category {
+        color: #94a3b8;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .featured-preview-title {
+        color: #0f2444;
+        font-size: 0.95rem;
+        font-weight: 600;
+        line-height: 1.35;
+        min-height: 2.6em;
+    }
+
+    .featured-preview-price {
+        color: #0f2444;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .featured-preview-empty {
+        color: #94a3b8;
+        padding: 2rem 0 0.5rem;
+        text-align: center;
+    }
+
+    @media (max-width: 991.98px) {
+        .featured-preview-heading {
+            font-size: 1.9rem;
+        }
+
+        .featured-preview-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+@endpush
+
 @section('admin-content')
 <div class="page-header d-print-none">
     <div class="row g-2 align-items-center">
@@ -106,51 +230,38 @@
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPreviewBtn">Refresh</button>
                     </div>
                     <div class="card-body bg-light">
-                        {{-- Preview Header --}}
-                        <div class="mb-4">
-                            <div class="text-success text-uppercase small fw-bold mb-1" id="previewEyebrow">{{ $settings['eyebrow'] }}</div>
-                            <h2 class="mb-2" style="color: #1c4c64;" id="previewHeading">{{ $settings['heading'] }}</h2>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <p class="text-muted mb-0" id="previewSubheading">{{ $settings['subheading'] }}</p>
-                                <a href="#" class="text-primary text-decoration-none">View All →</a>
+                        <div class="featured-preview-shell">
+                            <div class="d-flex justify-content-between align-items-end gap-3">
+                                <div>
+                                    <div class="featured-preview-eyebrow mb-2" id="previewEyebrow">{{ $settings['eyebrow'] }}</div>
+                                    <h2 class="featured-preview-heading" id="previewHeading">{{ $settings['heading'] }}</h2>
+                                    <p class="featured-preview-subheading" id="previewSubheading">{{ $settings['subheading'] }}</p>
+                                </div>
+                                <a href="#" class="featured-preview-link">View All →</a>
                             </div>
-                        </div>
 
-                        {{-- Category Pills Simulation --}}
-                        @if(count($settings['category_ids'] ?? []) > 1)
-                            <div class="d-flex gap-2 mb-4 overflow-auto pb-2" id="previewPills">
-                                @foreach($categories->whereIn('id', $settings['category_ids'] ?? []) as $index => $cat)
-                                    <span class="badge @if($index === 0) bg-primary @else bg-white text-dark border @endif px-3 py-2 rounded-pill">{{ $cat->title }}</span>
-                                @endforeach
-                            </div>
-                        @else
-                            <div id="previewPills" class="d-flex gap-2 mb-4 overflow-auto pb-2"></div>
-                        @endif
-
-                        {{-- Product Grid Preview --}}
-                        <div class="row row-cols-2 row-cols-sm-3 g-3" id="previewGrid">
-                            @forelse($products as $product)
-                                <div class="col">
-                                    <div class="card card-sm shadow-sm h-100">
-                                        <div class="ratio ratio-1x1 bg-white">
-                                            @if($product->getFirstMediaUrl('images'))
-                                                <img src="{{ $product->getFirstMediaUrl('images') }}" class="object-fit-contain p-2" alt="{{ $product->name }}">
+                            <div class="featured-preview-grid" id="previewGrid">
+                                @forelse($products as $product)
+                                    <div class="featured-preview-card">
+                                        <div class="featured-preview-media">
+                                            @if($product['image'])
+                                                <img src="{{ $product['image'] }}" alt="{{ $product['title'] }}">
                                             @else
-                                                <div class="d-flex align-items-center justify-content-center bg-light text-muted">No Image</div>
+                                                <div class="featured-preview-no-image">No Image</div>
                                             @endif
                                         </div>
-                                        <div class="card-body p-2 d-flex flex-column">
-                                            <div class="text-muted small text-truncate text-uppercase mb-1" style="font-size: 0.7rem;">{{ $product->category?->title }}</div>
-                                            <div class="fw-semibold text-dark text-truncate mb-auto" style="font-size: 0.85rem;">{{ $product->name }}</div>
-                                            <div class="mt-2 fw-bold" style="font-size: 0.9rem;">₹{{ $product->price }}</div>
+                                        <div class="featured-preview-body">
+                                            <div class="featured-preview-category">{{ $product['category_name'] }}</div>
+                                            <div class="featured-preview-title">{{ $product['title'] }}</div>
+                                            <div class="featured-preview-price">₹{{ $product['price'] !== null ? $product['price'] : '' }}</div>
                                         </div>
                                     </div>
-                                </div>
-                            @empty
-                                <div class="col-12 py-5 text-center text-muted">
-                                    No products found for the selected categories.
-                                </div>
-                            @endforelse
+                                @empty
+                                    <div class="featured-preview-empty">
+                                        No products available for the current preview.
+                                    </div>
+                                @endforelse
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -188,18 +299,6 @@ $(document).ready(function() {
         const categoryIds = $('#categoryIds').val() || [];
         const productCount = $('#productCount').val() || 8;
 
-        // Render Pills natively based on selected text from select2
-        const selectedData = $('#categoryIds').select2('data');
-        let pillsHtml = '';
-        if (selectedData.length > 1) {
-            selectedData.forEach((item, index) => {
-                const title = item.text.replace('-- ', '');
-                const bgClass = index === 0 ? 'bg-primary' : 'bg-white text-dark border';
-                pillsHtml += `<span class="badge ${bgClass} px-3 py-2 rounded-pill">${title}</span>`;
-            });
-        }
-        $('#previewPills').html(pillsHtml);
-
         $.ajax({
             url: '{{ route("admin.featured-products-section.preview") }}',
             type: 'POST',
@@ -213,24 +312,22 @@ $(document).ready(function() {
                 if (response.success && response.products && response.products.length > 0) {
                     response.products.forEach(product => {
                         gridHtml += `
-                        <div class="col">
-                            <div class="card card-sm shadow-sm h-100">
-                                <div class="ratio ratio-1x1 bg-white">
+                        <div class="featured-preview-card">
+                                <div class="featured-preview-media">
                                     ${product.image 
-                                        ? `<img src="${product.image}" class="object-fit-contain p-2" alt="${product.name}">` 
-                                        : `<div class="d-flex align-items-center justify-content-center bg-light text-muted">No Image</div>`
+                                        ? `<img src="${product.image}" alt="${product.title}">` 
+                                        : `<div class="featured-preview-no-image">No Image</div>`
                                     }
                                 </div>
-                                <div class="card-body p-2 d-flex flex-column">
-                                    <div class="text-muted small text-truncate text-uppercase mb-1" style="font-size: 0.7rem;">${product.category_name || ''}</div>
-                                    <div class="fw-semibold text-dark text-truncate mb-auto" style="font-size: 0.85rem;">${product.name}</div>
-                                    <div class="mt-2 fw-bold" style="font-size: 0.9rem;">₹${product.price}</div>
+                                <div class="featured-preview-body">
+                                    <div class="featured-preview-category">${product.category_name || ''}</div>
+                                    <div class="featured-preview-title">${product.title || ''}</div>
+                                    <div class="featured-preview-price">₹${product.price ?? ''}</div>
                                 </div>
-                            </div>
-                        </div>`;
+                            </div>`;
                     });
                 } else {
-                    gridHtml = `<div class="col-12 py-5 text-center text-muted">No products found for the selected categories.</div>`;
+                    gridHtml = `<div class="featured-preview-empty">No products available for the current preview.</div>`;
                 }
                 $('#previewGrid').html(gridHtml);
                 

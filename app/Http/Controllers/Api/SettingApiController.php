@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Product\ProductStatusEnum;
+use App\Enums\Product\ProductVarificationStatusEnum;
 use App\Enums\SettingTypeEnum;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Product\ProductCatalogResource;
+use App\Models\Category;
 use App\Models\Menu;
+use App\Models\Product;
 use App\Models\Setting;
 use App\Services\SettingService;
 use App\Types\Api\ApiResponseType;
@@ -19,6 +24,7 @@ class SettingApiController extends Controller
     use AuthorizesRequests;
 
     private const HIGHLIGHT_TICKER_SETTING_KEY = 'highlight_ticker_section';
+    private const FEATURED_PRODUCTS_SECTION_SETTING_KEY = 'featured_products_section';
 
     protected SettingService $settingService;
 
@@ -238,6 +244,78 @@ class SettingApiController extends Controller
                     'homepageOnly' => (bool) ($highlightTickerValue['is_active'] ?? true),
                     'items' => $highlightTickerItems,
                 ],
+            ]
+        );
+    }
+
+    public function featuredProductsSection(): JsonResponse
+    {
+        $setting = Setting::query()->where('variable', self::FEATURED_PRODUCTS_SECTION_SETTING_KEY)->first();
+        $value = is_array($setting?->value)
+            ? $setting->value
+            : (json_decode((string) $setting?->value, true) ?: []);
+
+        $categoryIds = collect($value['category_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->all();
+
+        $productCount = max(1, min(50, (int) ($value['product_count'] ?? 8)));
+
+        $categories = Category::query()
+            ->select('id', 'title', 'slug')
+            ->whereIn('id', $categoryIds)
+            ->orderBy('title')
+            ->get()
+            ->map(fn (Category $category) => [
+                'id' => $category->id,
+                'title' => $category->title,
+                'slug' => $category->slug,
+            ])
+            ->values()
+            ->all();
+
+        $products = [];
+        $productsQuery = Product::query()
+            ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
+            ->where('status', ProductStatusEnum::ACTIVE->value)
+            ->with([
+                'category:id,title,slug',
+                'brand:id,title,slug',
+                'taxClasses:id,title',
+                'taxClasses.taxRates:id,title,rate',
+                'variants.attributes.attribute:id,title,slug',
+                'variants.attributes.attributeValue:id,title,swatche_value',
+                'variants.storeProductVariants.store:id,name,slug,state_code,state_name',
+            ]);
+
+        if (!empty($categoryIds)) {
+            $productsQuery->whereIn('category_id', $categoryIds);
+        } else {
+            $productsQuery->where('featured', '1');
+        }
+
+        $products = $productsQuery
+            ->latest('id')
+            ->take($productCount)
+            ->get()
+            ->map(fn (Product $product) => (new ProductCatalogResource($product))->resolve(request()))
+            ->values()
+            ->all();
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.setting_fetched_successfully',
+            data: [
+                'enabled' => (bool) ($value['is_active'] ?? true),
+                'eyebrow' => trim((string) ($value['eyebrow'] ?? 'BESTSELLERS')),
+                'heading' => trim((string) ($value['heading'] ?? 'Featured Products')),
+                'subheading' => trim((string) ($value['subheading'] ?? 'Handpicked packaging solutions loved by thousands of brands')),
+                'productCount' => $productCount,
+                'viewAllLink' => trim((string) ($value['view_all_link'] ?? '/shop')),
+                'categories' => $categories,
+                'products' => $products,
             ]
         );
     }

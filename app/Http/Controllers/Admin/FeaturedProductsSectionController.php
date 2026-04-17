@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\Product\ProductStatusEnum;
+use App\Enums\Product\ProductVarificationStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
@@ -32,15 +34,19 @@ class FeaturedProductsSectionController extends Controller
         $selectedCategoryIds = $settings['category_ids'] ?? [];
         $productCount        = $settings['product_count'] ?? 8;
 
-        $products = collect();
+        $productsQuery = $this->buildPreviewProductsQuery();
+
         if (!empty($selectedCategoryIds)) {
-            $products = Product::with('category')
-                ->whereIn('category_id', $selectedCategoryIds)
-                ->where('status', 'active')
-                ->latest()
-                ->take($productCount)
-                ->get();
+            $productsQuery->whereIn('category_id', $selectedCategoryIds);
+        } else {
+            $productsQuery->where('featured', '1');
         }
+
+        $products = $productsQuery
+            ->latest()
+            ->take($productCount)
+            ->get()
+            ->map(fn (Product $product) => $this->transformPreviewProduct($product));
 
         return view('admin.featured-products-section.index', compact('settings', 'categories', 'products'));
     }
@@ -51,8 +57,12 @@ class FeaturedProductsSectionController extends Controller
 
     public function updateSettings(Request $request): JsonResponse
     {
+        $request->merge([
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
         $data = $request->validate([
-            'is_active'    => 'required|boolean',
+            'is_active'    => 'boolean',
             'eyebrow'      => 'nullable|string|max:120',
             'heading'      => 'nullable|string|max:255',
             'subheading'   => 'nullable|string|max:255',
@@ -83,25 +93,29 @@ class FeaturedProductsSectionController extends Controller
         $categoryIds  = $request->input('category_ids', []);
         $productCount = (int) $request->input('product_count', 8);
 
-        if (empty($categoryIds)) {
-            return response()->json(['success' => true, 'products' => [], 'total' => 0]);
+        $productsQuery = $this->buildPreviewProductsQuery()->latest();
+
+        if (!empty($categoryIds)) {
+            $productsQuery->whereIn('category_id', $categoryIds);
+        } else {
+            $productsQuery->where('featured', '1');
         }
 
-        $products = Product::with('category')
-            ->whereIn('category_id', $categoryIds)
-            ->where('status', 'active')
-            ->latest()
+        $products = $productsQuery
             ->take(min($productCount, 50))
             ->get()
-            ->map(fn($p) => [
-                'id'            => $p->id,
-                'name'          => $p->name,
-                'category_name' => $p->category?->title,
-                'price'         => $p->price,
-                'image'         => $p->getFirstMediaUrl('images') ?: null,
-            ]);
+            ->map(fn (Product $product) => $this->transformPreviewProduct($product));
 
-        $total = Product::whereIn('category_id', $categoryIds)->where('status', 'active')->count();
+        $totalQuery = Product::query()
+            ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
+            ->where('status', ProductStatusEnum::ACTIVE->value);
+        if (!empty($categoryIds)) {
+            $totalQuery->whereIn('category_id', $categoryIds);
+        } else {
+            $totalQuery->where('featured', '1');
+        }
+
+        $total = $totalQuery->count();
 
         return response()->json(['success' => true, 'products' => $products, 'total' => $total]);
     }
@@ -149,5 +163,30 @@ class FeaturedProductsSectionController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Featured products revalidation failed.', ['message' => $e->getMessage()]);
         }
+    }
+
+    private function buildPreviewProductsQuery()
+    {
+        return Product::with([
+            'category',
+            'variants.storeProductVariants',
+        ])
+            ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
+            ->where('status', ProductStatusEnum::ACTIVE->value);
+    }
+
+    private function transformPreviewProduct(Product $product): array
+    {
+        $variant = $product->variants->firstWhere('is_default', true) ?? $product->variants->first();
+        $pricing = $variant?->storeProductVariants->firstWhere('stock', '>', 0) ?? $variant?->storeProductVariants->first();
+        $price = $pricing?->special_price ?: $pricing?->price;
+
+        return [
+            'id' => $product->id,
+            'title' => $product->title,
+            'category_name' => $product->category?->title,
+            'price' => $price,
+            'image' => $variant?->image ?: $product->main_image,
+        ];
     }
 }

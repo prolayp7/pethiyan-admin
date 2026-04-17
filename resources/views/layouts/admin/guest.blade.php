@@ -7,8 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>@yield('title', config('app.name'))</title>
-    <link rel="icon" href="{{ !empty($systemSettings['favicon']) ? $systemSettings['favicon'] : "" }}"
-          sizes="image/x-icon">
+    @include('layouts.partials._favicon')
     @include('layouts.partials._head')
 </head>
 <input type="hidden" name="base_url" id="base_url" value="{{url('/')}}">

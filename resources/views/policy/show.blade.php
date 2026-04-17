@@ -4,8 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'Policy' }}</title>
-    <link rel="icon" href="{{ !empty($systemSettings['favicon']) ? $systemSettings['favicon'] : "" }}"
-          sizes="image/x-icon">
+    @include('layouts.partials._favicon')
     <style>
         body { margin: 2rem; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
         .container { max-width: 900px; margin: 0 auto; }

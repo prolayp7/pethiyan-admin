@@ -30,8 +30,12 @@ class HighlightTickerController extends Controller
 
     public function updateSettings(Request $request): JsonResponse
     {
+        $request->merge([
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
         $data = $request->validate([
-            'is_active'         => 'required|boolean',
+            'is_active'         => 'boolean',
             'highlights'        => 'nullable|array',
             'highlights.*'      => 'nullable|string|max:120',
             'texts'             => 'nullable|array',

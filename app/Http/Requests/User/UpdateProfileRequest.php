@@ -8,6 +8,8 @@ use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends FormRequest
 {
+    private const COMPANY_NAME_REGEX = "/^[A-Za-z0-9][A-Za-z0-9\s.,&()'\/-]*$/";
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -32,6 +34,7 @@ class UpdateProfileRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:255',
+                'regex:' . self::COMPANY_NAME_REGEX,
             ],
             'profile_image' => [
                 'nullable',
@@ -60,6 +63,7 @@ class UpdateProfileRequest extends FormRequest
             'name.string' => 'The name must be a string.',
             'company_name.string' => 'The company name must be a string.',
             'company_name.max' => 'The company name may not be greater than 255 characters.',
+            'company_name.regex' => 'The company name contains invalid characters.',
             'gstin.size' => 'GSTIN must be exactly 15 characters long.',
             'gstin.regex' => 'The GSTIN format is invalid. It should be like 07AAAAA0000A1Z5.',
         ];

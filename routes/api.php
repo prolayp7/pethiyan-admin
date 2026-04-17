@@ -88,6 +88,7 @@ Route::post('auth/apple/callback', [AuthApiController::class, 'appleCallback'])-
 // settings
 Route::prefix('settings')->name('api.')->group(function () {
     Route::get('/', [SettingApiController::class, 'index'])->name('settings.index');
+    Route::get('footer', [SettingApiController::class, 'footer'])->name('settings.footer');
     Route::get('firebase-config', [SettingApiController::class, 'firebaseConfig'])->name('settings.firebase-config');;
     Route::get('seo', [SettingApiController::class, 'seo'])->name('settings.seo');
     Route::get('seo-advanced', [SettingApiController::class, 'seoAdvanced'])->name('settings.seo-advanced');

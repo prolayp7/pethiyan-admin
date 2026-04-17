@@ -23,6 +23,8 @@ use Illuminate\Support\Collection;
 #[Group('Categories')]
 class CategoryApiController extends Controller
 {
+    private const CATEGORY_ORDER_COLUMN = 'sort_order';
+
     /**
      * Get categories with optional slug filter.
      * If slug is not provided, returns root categories.
@@ -58,7 +60,7 @@ class CategoryApiController extends Controller
         $this->applyProductsCount($query, $storeIds);
 
         // Fetch and post-process
-        $allCategories = $query->orderBy('title')->get();
+        $allCategories = $this->applyCategoryOrdering($query)->get();
         // When listing root categories, aggregate children's product counts only for root items.
         // When a slug is provided (listing children of a specific category), aggregate for all
         // returned categories so their immediate children's products are included as well.
@@ -161,6 +163,8 @@ class CategoryApiController extends Controller
             $topCategory = Category::query()
                 ->whereNull('parent_id')
                 ->where('status', CategoryStatusEnum::ACTIVE())
+                ->orderBy(self::CATEGORY_ORDER_COLUMN)
+                ->orderBy('title')
                 ->first();
             if (!$topCategory) {
                 return ApiResponseType::sendJsonResponse(true, 'labels.category_fetched_successfully', $this->emptyResponse($perPage, ['filter' => $filter]));
@@ -178,7 +182,7 @@ class CategoryApiController extends Controller
         // Ordering
         $filter === CategorySubCategoryFilterEnum::RANDOM()
             ? $query->inRandomOrder()
-            : $query->orderBy('title');
+            : $this->applyCategoryOrdering($query);
 
         $allCategories = $query->get();
 
@@ -225,7 +229,7 @@ class CategoryApiController extends Controller
     /**
      * Apply children and products_count withCount to a query.
      */
-    private function applyProductsCount(Builder $query, array $storeIds): void
+    private function applyProductsCount($query, array $storeIds): void
     {
         if (!empty($storeIds)) {
             $query->withCount([
@@ -290,6 +294,12 @@ class CategoryApiController extends Controller
         return $categories->filter(function ($cat) {
             return ($cat->products_count ?? 0) > 0;
         })->values();
+    }
+
+    private function applyCategoryOrdering($query)
+    {
+        return $query->orderBy(self::CATEGORY_ORDER_COLUMN)
+            ->orderBy('title');
     }
 
     /**

@@ -69,6 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
 
+            if (typeof hugeRTE !== 'undefined' && typeof hugeRTE.triggerSave === 'function') {
+                hugeRTE.triggerSave();
+            }
+
             const action = form.getAttribute('action');
             const method = (form.getAttribute('method') || 'GET').toUpperCase();
             const formData = new FormData(form);

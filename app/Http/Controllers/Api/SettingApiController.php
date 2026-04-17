@@ -4,16 +4,21 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\SettingTypeEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Menu;
+use App\Models\Setting;
 use App\Services\SettingService;
 use App\Types\Api\ApiResponseType;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 #[Group('Settings')]
 class SettingApiController extends Controller
 {
     use AuthorizesRequests;
+
+    private const HIGHLIGHT_TICKER_SETTING_KEY = 'highlight_ticker_section';
 
     protected SettingService $settingService;
 
@@ -136,5 +141,120 @@ class SettingApiController extends Controller
                 'seoSchemaJson' => $value['seoSchemaJson'] ?? '',
             ]
         );
+    }
+
+    public function footer(): JsonResponse
+    {
+        $systemSetting = Setting::query()->find(SettingTypeEnum::SYSTEM());
+        $systemRaw = is_array($systemSetting?->value) ? $systemSetting->value : [];
+
+        $system = $this->settingService->getSettingByVariable(SettingTypeEnum::SYSTEM());
+        $web = $this->settingService->getSettingByVariable(SettingTypeEnum::WEB());
+        $highlightTickerSetting = Setting::query()->where('variable', self::HIGHLIGHT_TICKER_SETTING_KEY)->first();
+
+        $systemValue = $system ? ($system->toArray(request())['value'] ?? []) : [];
+        $webValue = $web ? ($web->toArray(request())['value'] ?? []) : [];
+        $highlightTickerValue = is_array($highlightTickerSetting?->value)
+            ? $highlightTickerSetting->value
+            : (json_decode((string) $highlightTickerSetting?->value, true) ?: []);
+
+        $footerMenus = Menu::query()
+            ->where('is_active', true)
+            ->where('location', 'footer')
+            ->with([
+                'items' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
+            ])
+            ->orderBy('id')
+            ->get();
+
+        $legalMenu = $footerMenus->firstWhere('slug', 'footer_legal');
+
+        $navigationMenus = $footerMenus
+            ->reject(fn (Menu $menu) => $menu->slug === 'footer_legal')
+            ->map(fn (Menu $menu) => $this->formatFooterMenu($menu))
+            ->values()
+            ->all();
+
+        $socialLinks = collect($systemRaw['socialLinks'] ?? [])
+            ->map(function ($link, $platform) {
+                $url = is_array($link) ? trim((string) ($link['url'] ?? '')) : '';
+                $active = is_array($link) ? (bool) ($link['active'] ?? false) : false;
+
+                if (!$active || $url === '') {
+                    return null;
+                }
+
+                return [
+                    'platform' => (string) $platform,
+                    'label' => Str::of((string) $platform)->replace(['_', '-'], ' ')->title()->toString(),
+                    'url' => $url,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        $defaultHighlightTickerItems = [
+            ['highlight' => '+PACKAGING', 'text' => 'READY IN 7 BUSINESS DAYS'],
+            ['highlight' => '+BULK DISCOUNTS', 'text' => 'UP TO 30% OFF ON WHOLESALE ORDERS'],
+            ['highlight' => '+ECO-FRIENDLY', 'text' => 'MATERIALS ACROSS ALL PRODUCT LINES'],
+            ['highlight' => '+NEW ARRIVALS', 'text' => 'BIODEGRADABLE STANDUP POUCHES'],
+            ['highlight' => '+DESIGN SUPPORT', 'text' => 'FREE ARTWORK REVIEW WITH EVERY ORDER'],
+        ];
+
+        $highlightTickerItems = collect($highlightTickerValue['items'] ?? $defaultHighlightTickerItems)
+            ->map(fn ($item) => [
+                'highlight' => trim((string) ($item['highlight'] ?? '')),
+                'text' => trim((string) ($item['text'] ?? '')),
+            ])
+            ->filter(fn ($item) => $item['highlight'] !== '' || $item['text'] !== '')
+            ->values()
+            ->all();
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.setting_fetched_successfully',
+            data: [
+                'brand' => [
+                    'appName' => $systemValue['appName'] ?? config('app.name'),
+                    'logo' => $systemValue['logo'] ?? '',
+                    'footerLogo' => $webValue['siteFooterLogo'] ?: ($systemValue['logo'] ?? ''),
+                    'copyrightText' => trim((string) ($webValue['siteCopyright'] ?: ($systemValue['copyrightDetails'] ?? ''))),
+                    'address' => $webValue['address'] ?: ($systemValue['companyAddress'] ?? ''),
+                    'supportEmail' => $webValue['supportEmail'] ?: ($systemValue['sellerSupportEmail'] ?? ''),
+                    'supportNumber' => $webValue['supportNumber'] ?: ($systemValue['sellerSupportNumber'] ?? ''),
+                    'socialLinks' => $socialLinks,
+                ],
+                'menus' => [
+                    'navigation' => $navigationMenus,
+                    'legal' => $legalMenu instanceof Menu ? $this->formatFooterMenu($legalMenu) : null,
+                ],
+                'footerSeo' => [
+                    'enabled' => (bool) ($webValue['footerSeoEnabled'] ?? true),
+                    'homepageOnly' => (bool) ($webValue['footerSeoHomepageOnly'] ?? false),
+                    'introHtml' => (string) ($webValue['footerSeoIntro'] ?? ''),
+                ],
+                'highlightTicker' => [
+                    'homepageOnly' => (bool) ($highlightTickerValue['is_active'] ?? true),
+                    'items' => $highlightTickerItems,
+                ],
+            ]
+        );
+    }
+
+    private function formatFooterMenu(Menu $menu): array
+    {
+        return [
+            'id' => $menu->id,
+            'name' => $menu->name,
+            'slug' => $menu->slug,
+            'title' => Str::of($menu->slug)->after('footer_')->replace('_', ' ')->title()->toString(),
+            'links' => $menu->items->map(fn ($item) => [
+                'id' => $item->id,
+                'label' => $item->label,
+                'href' => $item->href,
+                'target' => $item->target ?? '_self',
+            ])->values()->all(),
+        ];
     }
 }

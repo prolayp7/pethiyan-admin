@@ -71,9 +71,7 @@ class WebSettingType implements SettingInterface
     public string $facebookPixelId = '';
     public bool $footerSeoEnabled = true;
     public bool $footerSeoHomepageOnly = false;
-    public string $footerSeoTitle = '';
     public string $footerSeoIntro = '';
-    public string $footerSeoSectionsJson = '';
     public array $allowedCountries = [];
     public bool $enableCountryValidation = false;
     public string $defaultLongitude = '';
@@ -154,9 +152,7 @@ class WebSettingType implements SettingInterface
             'facebookPixelId' => 'nullable|string|max:50',
             'footerSeoEnabled' => 'nullable|boolean',
             'footerSeoHomepageOnly' => 'nullable|boolean',
-            'footerSeoTitle' => 'nullable|string|max:255',
             'footerSeoIntro' => 'nullable|string',
-            'footerSeoSectionsJson' => 'nullable|string',
             'defaultLatitude' => 'nullable|numeric|between:-90,90',
             'defaultLongitude' => 'nullable|numeric|between:-180,180',
             'enableCountryValidation' => 'nullable|boolean',

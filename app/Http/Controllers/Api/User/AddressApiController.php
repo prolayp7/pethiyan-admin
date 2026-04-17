@@ -22,6 +22,9 @@ use Illuminate\Validation\ValidationException;
 #[Group('Addresses')]
 class AddressApiController extends Controller
 {
+    private const COMPANY_NAME_REGEX = "/^[A-Za-z0-9][A-Za-z0-9\s.,&()'\/-]*$/";
+    private const GSTIN_REGEX = '/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/';
+
     /**
      * Display a listing of the resource.
      *
@@ -160,7 +163,7 @@ class AddressApiController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'company_name' => 'nullable|string|max:255',
+                'company_name' => ['nullable', 'string', 'max:255', 'regex:' . self::COMPANY_NAME_REGEX],
                 'address_line1' => 'required|string|max:255',
                 'address_line2' => 'nullable|string|max:255',
                 'city' => 'required|string|max:100',
@@ -168,6 +171,7 @@ class AddressApiController extends Controller
                 'state' => 'required|string|max:100',
                 'zipcode' => 'required|string|max:10',
                 'mobile' => 'required|string|max:15',
+                'gstin' => ['nullable', 'string', 'size:15', 'regex:' . self::GSTIN_REGEX],
                 'address_type' => ['sometimes', 'required', new Enum(AddressTypeEnum::class)],
                 'country' => 'required|string|max:100',
                 'country_code' => 'required|string|max:3',
@@ -191,6 +195,7 @@ class AddressApiController extends Controller
             $validatedData['user_id'] = Auth::id();
 
             $address = Address::create($validatedData);
+            $this->syncUserBusinessFields($request, $validatedData);
 
             return ApiResponseType::sendJsonResponse(
                 success: true,
@@ -269,7 +274,7 @@ class AddressApiController extends Controller
             }
 
             $validatedData = $request->validate([
-                'company_name' => 'nullable|string|max:255',
+                'company_name' => ['nullable', 'string', 'max:255', 'regex:' . self::COMPANY_NAME_REGEX],
                 'address_line1' => 'sometimes|required|string|max:255',
                 'address_line2' => 'nullable|string|max:255',
                 'city' => 'sometimes|required|string|max:100',
@@ -277,6 +282,7 @@ class AddressApiController extends Controller
                 'state' => 'sometimes|required|string|max:100',
                 'zipcode' => 'sometimes|required|string|max:10',
                 'mobile' => 'sometimes|required|string|max:15',
+                'gstin' => ['nullable', 'string', 'size:15', 'regex:' . self::GSTIN_REGEX],
                 'address_type' => ['required', new Enum(AddressTypeEnum::class)],
                 'country' => 'sometimes|required|string|max:100',
                 'country_code' => 'sometimes|required|string|max:5',
@@ -298,6 +304,7 @@ class AddressApiController extends Controller
             }
 
             $address->update($validatedData);
+            $this->syncUserBusinessFields($request, $validatedData);
 
             return ApiResponseType::sendJsonResponse(
                 success: true,
@@ -354,6 +361,30 @@ class AddressApiController extends Controller
                 data: null,
                 status: 500
             );
+        }
+    }
+
+    private function syncUserBusinessFields(Request $request, array $validatedData): void
+    {
+        $user = $request->user();
+        if (!$user) {
+            return;
+        }
+
+        $updates = [];
+
+        if ($request->exists('company_name')) {
+            $updates['company_name'] = $validatedData['company_name'] ?? null;
+        }
+
+        if ($request->exists('gstin')) {
+            $updates['gstin'] = isset($validatedData['gstin'])
+                ? strtoupper(trim((string) $validatedData['gstin']))
+                : null;
+        }
+
+        if ($updates !== []) {
+            $user->update($updates);
         }
     }
 }

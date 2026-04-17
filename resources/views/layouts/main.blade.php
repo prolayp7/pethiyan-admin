@@ -8,8 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title')
         | {{ !empty($systemSettings['appName']) ? $systemSettings['appName'] : config('app.name') }}</title>
-    <link rel="icon" href="{{ $systemSettings['favicon'] ?? asset('logos/hyper-local-favicon.png') }}"
-          sizes="image/x-icon">
+    @include('layouts.partials._favicon')
     @include('layouts.partials._head')
 </head>
 

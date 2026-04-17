@@ -80,7 +80,7 @@ class SettingController extends Controller
             'googleTagManagerId',
             'facebookPixelId',
         ],
-        'footer_seo' => ['footerSeoEnabled', 'footerSeoHomepageOnly', 'footerSeoTitle', 'footerSeoIntro', 'footerSeoSectionsJson'],
+        'footer_seo' => ['footerSeoEnabled', 'footerSeoHomepageOnly', 'footerSeoIntro'],
     ];
 
     private const WEB_MAIN_FORM_FIELDS = [

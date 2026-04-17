@@ -87,7 +87,7 @@
                                                 $colors = ['bg-blue','bg-green','bg-purple','bg-orange','bg-teal','bg-pink'];
                                                 $color  = $colors[crc32($testimonial->name) % count($colors)];
                                             @endphp
-                                            <div class="avatar {{ $color }}" style="width:40px;height:40px;">
+                                                <div class="avatar {{ $color }} text-white fw-bold" style="width:40px;height:40px;">
                                                 <span>{{ $initials }}</span>
                                             </div>
                                         @endif
@@ -167,6 +167,24 @@
                                         <label class="form-label fw-semibold" for="spSubheading">Subheading</label>
                                         <input type="text" class="form-control" id="spSubheading" name="subheading"
                                             value="{{ $settings['subheading'] }}" maxlength="255" placeholder="e.g. Trusted by over 10,000 brands worldwide">
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label fw-semibold" for="spPlacement">Show Section After</label>
+                                        <select class="form-select" id="spPlacement" name="placement">
+                                            @foreach([
+                                                'after_hero' => 'Hero Section',
+                                                'after_categories' => 'Categories',
+                                                'after_featured_products' => 'Featured Products',
+                                                'after_your_items' => 'Your Items',
+                                                'after_recently_viewed' => 'Recently Viewed Products',
+                                                'after_video_stories' => 'Video Stories',
+                                                'after_why_choose_us' => 'Why Choose Us',
+                                                'after_promo_banner' => 'Promo Banner',
+                                                'after_newsletter' => 'Newsletter',
+                                            ] as $value => $label)
+                                                <option value="{{ $value }}" {{ $settings['placement'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <button type="submit" class="btn btn-primary w-100" id="saveSpSettingsBtn">
                                         Save Settings

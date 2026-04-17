@@ -30,11 +30,16 @@ class WhyChooseUsController extends Controller
 
     public function updateSettings(Request $request): JsonResponse
     {
+        $request->merge([
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
         $data = $request->validate([
-            'is_active'  => 'required|boolean',
+            'is_active'  => 'boolean',
             'eyebrow'    => 'nullable|string|max:120',
             'heading'    => 'nullable|string|max:255',
             'subheading' => 'nullable|string|max:500',
+            'placement'  => 'required|in:after_hero,after_categories,after_featured_products,after_your_items,after_recently_viewed,after_video_stories,after_promo_banner,after_social_proof,after_newsletter',
             'features'   => 'nullable|array',
             'features.*' => 'nullable|string|max:255',
         ]);
@@ -87,6 +92,7 @@ class WhyChooseUsController extends Controller
             'eyebrow'    => $value['eyebrow']    ?? 'WHY CHOOSE US',
             'heading'    => $value['heading']    ?? 'Why Buy from Pethiyan?',
             'subheading' => $value['subheading'] ?? 'From small businesses to large manufacturers — we\'re your trusted packaging partner across India.',
+            'placement'  => $value['placement']  ?? 'after_video_stories',
             'features'   => $value['features']   ?? $defaultFeatures,
         ];
     }

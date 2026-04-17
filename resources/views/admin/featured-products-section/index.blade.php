@@ -204,7 +204,7 @@
                                         @endforeach
                                     @endif
                                 </select>
-                                <div class="form-hint mt-2">Products from these categories will be shown in tabs (if multiple).</div>
+                                <div class="form-hint mt-2">Only products marked as featured will appear here. Selected categories further narrow that featured product list.</div>
                             </div>
 
                             <div class="mb-3">

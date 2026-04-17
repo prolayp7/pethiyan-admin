@@ -102,6 +102,7 @@ class BlogCategoryController extends Controller
             'is_active' => 'nullable|boolean',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
+            'meta_keywords' => 'nullable|string|max:255',
         ]);
 
         return [
@@ -113,6 +114,7 @@ class BlogCategoryController extends Controller
             'metadata' => array_filter([
                 'meta_title' => $data['meta_title'] ?? null,
                 'meta_description' => $data['meta_description'] ?? null,
+                'meta_keywords' => $data['meta_keywords'] ?? null,
             ], fn ($value) => !is_null($value) && $value !== ''),
         ];
     }

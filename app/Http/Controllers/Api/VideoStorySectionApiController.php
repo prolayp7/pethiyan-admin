@@ -37,6 +37,7 @@ class VideoStorySectionApiController extends Controller
                 'eyebrow' => $settings['eyebrow'] ?? 'SHOP & DISCOVER',
                 'heading' => $settings['heading'] ?? 'Real Products, Real Stories',
                 'subheading' => $settings['subheading'] ?? 'Watch our packaging in action — trusted by brands across the country.',
+                'placement' => $settings['placement'] ?? 'after_recently_viewed',
                 'autoplayEnabled' => filter_var($settings['autoplay_enabled'] ?? true, FILTER_VALIDATE_BOOL),
                 'autoplayDelay' => (int) ($settings['autoplay_delay'] ?? 4500),
                 'transitionDuration' => (int) ($settings['transition_duration'] ?? 420),

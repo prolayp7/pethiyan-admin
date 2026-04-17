@@ -30,12 +30,17 @@ class NewsletterSectionController extends Controller
 
     public function updateSettings(Request $request): JsonResponse
     {
+        $request->merge([
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
         $data = $request->validate([
-            'is_active'         => 'required|boolean',
+            'is_active'         => 'boolean',
             'badge_text'        => 'nullable|string|max:120',
             'heading'           => 'nullable|string|max:255',
             'heading_highlight' => 'nullable|string|max:255',
             'subheading'        => 'nullable|string|max:500',
+            'placement'         => 'required|in:after_hero,after_categories,after_featured_products,after_your_items,after_recently_viewed,after_video_stories,after_why_choose_us,after_promo_banner,after_social_proof',
             'perks'             => 'nullable|array|max:10',
             'perks.*'           => 'nullable|string|max:200',
             'form_title'        => 'nullable|string|max:200',
@@ -75,6 +80,7 @@ class NewsletterSectionController extends Controller
             'heading'           => $value['heading']           ?? 'Stay Updated with',
             'heading_highlight' => $value['heading_highlight'] ?? 'Packaging Trends',
             'subheading'        => $value['subheading']        ?? 'Join 5,000+ brand owners who get our weekly packaging insights, exclusive deals, and new product alerts.',
+            'placement'         => $value['placement']         ?? 'after_social_proof',
             'perks'             => $value['perks']             ?? [
                 'Exclusive deals & early access',
                 'New product announcements',

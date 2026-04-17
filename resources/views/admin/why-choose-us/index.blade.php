@@ -61,6 +61,25 @@
                             </div>
 
                             <div class="mb-4">
+                                <label class="form-label" for="placement">Show Section After</label>
+                                <select class="form-select" id="placement" name="placement">
+                                    @foreach([
+                                        'after_hero' => 'Hero Section',
+                                        'after_categories' => 'Categories',
+                                        'after_featured_products' => 'Featured Products',
+                                        'after_your_items' => 'Your Items',
+                                        'after_recently_viewed' => 'Recently Viewed Products',
+                                        'after_video_stories' => 'Video Stories',
+                                        'after_promo_banner' => 'Promo Banner',
+                                        'after_social_proof' => 'Social Proof',
+                                        'after_newsletter' => 'Newsletter',
+                                    ] as $value => $label)
+                                        <option value="{{ $value }}" {{ $settings['placement'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="mb-4">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <label class="form-label mb-0 fw-semibold">Features Block</label>
                                     <button type="button" class="btn btn-sm btn-outline-primary" id="addFeatureBtn">

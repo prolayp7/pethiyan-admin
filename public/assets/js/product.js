@@ -509,16 +509,16 @@ function renderVariantSeoSection(v) {
                         <small class="form-hint">Uncheck to add noindex for this variant.</small>
                     </div>
                     <div class="col-12">
-                        <label class="form-label mb-1">SEO Title <span class="text-muted">(max 60)</span></label>
-                        <input type="text" class="form-control variant-seo-title-input" maxlength="60"
+                        <label class="form-label mb-1">SEO Title <span class="text-muted">(max 255)</span></label>
+                        <input type="text" class="form-control variant-seo-title-input" maxlength="255"
                                data-variant-id="${v.id}"
                                placeholder="Variant SEO title"
                                value="${v.seo_title || ''}"
                                oninput="handleVariantSeoTitleInput('${v.id}', this.value)">
                     </div>
                     <div class="col-12">
-                        <label class="form-label mb-1">SEO Description <span class="text-muted">(max 160)</span></label>
-                        <textarea class="form-control variant-seo-description-input" maxlength="160" rows="3"
+                        <label class="form-label mb-1">SEO Description <span class="text-muted">(max 500)</span></label>
+                        <textarea class="form-control variant-seo-description-input" maxlength="500" rows="3"
                                   data-variant-id="${v.id}"
                                   placeholder="Variant SEO description"
                                   oninput="handleVariantSeoDescriptionInput('${v.id}', this.value)">${v.seo_description || ''}</textarea>

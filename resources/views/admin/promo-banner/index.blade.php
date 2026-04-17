@@ -61,6 +61,25 @@
                                 <textarea class="form-control" id="subheading" name="subheading" rows="2" maxlength="500" placeholder="e.g. Get premium branded packaging...">{{ $settings['subheading'] }}</textarea>
                             </div>
 
+                            <div class="mb-4">
+                                <label class="form-label" for="placement">Show Section After</label>
+                                <select class="form-select" id="placement" name="placement">
+                                    @foreach([
+                                        'after_hero' => 'Hero Section',
+                                        'after_categories' => 'Categories',
+                                        'after_featured_products' => 'Featured Products',
+                                        'after_your_items' => 'Your Items',
+                                        'after_recently_viewed' => 'Recently Viewed Products',
+                                        'after_video_stories' => 'Video Stories',
+                                        'after_why_choose_us' => 'Why Choose Us',
+                                        'after_social_proof' => 'Social Proof',
+                                        'after_newsletter' => 'Newsletter',
+                                    ] as $value => $label)
+                                        <option value="{{ $value }}" {{ $settings['placement'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
                             <hr>
                             <h4 class="mb-3">Offer Box Details</h4>
 

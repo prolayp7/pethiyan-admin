@@ -57,11 +57,15 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Meta Title</label>
-                            <input type="text" class="form-control" name="meta_title" value="{{ old('meta_title', $category->metadata['meta_title'] ?? '') }}">
+                            <input type="text" class="form-control" name="meta_title" maxlength="255" value="{{ old('meta_title', $category->metadata['meta_title'] ?? '') }}">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Meta Description</label>
-                            <textarea class="form-control" name="meta_description" rows="2">{{ old('meta_description', $category->metadata['meta_description'] ?? '') }}</textarea>
+                            <textarea class="form-control" name="meta_description" rows="2" maxlength="500">{{ old('meta_description', $category->metadata['meta_description'] ?? '') }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Meta Keywords</label>
+                            <input type="text" class="form-control" name="meta_keywords" maxlength="255" value="{{ old('meta_keywords', $category->metadata['meta_keywords'] ?? '') }}" placeholder="packaging news, shipping tips, ecommerce">
                         </div>
                     </div>
 

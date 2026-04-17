@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\VideoStorySlide;
+use App\Types\Api\ApiResponseType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -24,9 +25,18 @@ class VideoStorySectionController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        if ($this->uploadExceededPhpLimit($request)) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'messages.upload_too_large',
+                data: ['error' => 'The uploaded video exceeds the active PHP upload limit. Current server max: ' . ini_get('upload_max_filesize')],
+                status: 422
+            );
+        }
+
         $data = $request->validate([
             'title' => 'required|string|max:120',
-            'video' => 'required|file|mimetypes:video/mp4,video/webm,video/quicktime|max:51200',
+            'video' => 'required|file|mimetypes:video/mp4,video/webm,video/quicktime|max:5120',
             'is_active' => 'nullable|boolean',
         ]);
 
@@ -48,9 +58,18 @@ class VideoStorySectionController extends Controller
     {
         $video = VideoStorySlide::findOrFail($id);
 
+        if ($this->uploadExceededPhpLimit($request)) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'messages.upload_too_large',
+                data: ['error' => 'The uploaded video exceeds the active PHP upload limit. Current server max: ' . ini_get('upload_max_filesize')],
+                status: 422
+            );
+        }
+
         $data = $request->validate([
             'title' => 'required|string|max:120',
-            'video' => 'nullable|file|mimetypes:video/mp4,video/webm,video/quicktime|max:51200',
+            'video' => 'nullable|file|mimetypes:video/mp4,video/webm,video/quicktime|max:5120',
             'is_active' => 'nullable|boolean',
         ]);
 
@@ -130,6 +149,7 @@ class VideoStorySectionController extends Controller
             'eyebrow' => 'nullable|string|max:120',
             'heading' => 'nullable|string|max:255',
             'subheading' => 'nullable|string|max:255',
+            'placement' => 'required|in:after_hero,after_categories,after_featured_products,after_your_items,after_recently_viewed,after_why_choose_us,after_promo_banner,after_social_proof,after_newsletter',
             'autoplay_enabled' => 'required|boolean',
             'autoplay_delay' => 'required|integer|min:1500|max:20000',
             'transition_duration' => 'required|integer|min:0|max:2000',
@@ -165,11 +185,45 @@ class VideoStorySectionController extends Controller
             'eyebrow' => $value['eyebrow'] ?? 'SHOP & DISCOVER',
             'heading' => $value['heading'] ?? 'Real Products, Real Stories',
             'subheading' => $value['subheading'] ?? 'Watch our packaging in action — trusted by brands across the country.',
+            'placement' => $value['placement'] ?? 'after_recently_viewed',
             'autoplay_enabled' => filter_var($value['autoplay_enabled'] ?? true, FILTER_VALIDATE_BOOL),
             'autoplay_delay' => (int) ($value['autoplay_delay'] ?? 4500),
             'transition_duration' => (int) ($value['transition_duration'] ?? 420),
             'animation_style' => $value['animation_style'] ?? 'slide',
         ];
+    }
+
+    private function uploadExceededPhpLimit(Request $request): bool
+    {
+        $contentLength = (int) ($request->server('CONTENT_LENGTH', 0));
+        $postMaxSize = $this->parsePhpSize(ini_get('post_max_size'));
+
+        if ($contentLength > 0 && $contentLength > $postMaxSize && empty($_FILES)) {
+            return true;
+        }
+
+        foreach ($_FILES as $file) {
+            $error = is_array($file['error']) ? $file['error'][0] : $file['error'];
+            if (in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function parsePhpSize(string $size): int
+    {
+        $size = trim($size);
+        $last = strtolower($size[strlen($size) - 1]);
+        $value = (int) $size;
+
+        return match ($last) {
+            'g' => $value * 1024 * 1024 * 1024,
+            'm' => $value * 1024 * 1024,
+            'k' => $value * 1024,
+            default => $value,
+        };
     }
 
     private function triggerFrontendRevalidate(): void

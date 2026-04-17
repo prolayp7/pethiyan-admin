@@ -140,11 +140,16 @@ class SocialProofController extends Controller
 
     public function updateSettings(Request $request): JsonResponse
     {
+        $request->merge([
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
         $data = $request->validate([
-            'is_active'  => 'required|boolean',
+            'is_active'  => 'boolean',
             'eyebrow'    => 'nullable|string|max:120',
             'heading'    => 'nullable|string|max:255',
             'subheading' => 'nullable|string|max:255',
+            'placement'  => 'required|in:after_hero,after_categories,after_featured_products,after_your_items,after_recently_viewed,after_video_stories,after_why_choose_us,after_promo_banner,after_newsletter',
         ]);
 
         Setting::updateOrCreate(
@@ -175,6 +180,7 @@ class SocialProofController extends Controller
             'eyebrow'    => $value['eyebrow']     ?? 'SOCIAL PROOF',
             'heading'    => $value['heading']     ?? 'What Our Customers Say',
             'subheading' => $value['subheading']  ?? 'Trusted by over 10,000 brands worldwide',
+            'placement'  => $value['placement']   ?? 'after_promo_banner',
         ];
     }
 

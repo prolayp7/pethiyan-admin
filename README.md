@@ -214,8 +214,11 @@ DB_PASSWORD=your_db_password
 php artisan migrate
 php artisan storage:link
 
-php artisan serve --port=8000
+./serve.sh --port=8000
 ```
+
+The local upload limits for media-heavy admin features are injected by `serve.sh`.
+If you start the app with plain `php artisan serve`, PHP falls back to the default 2M upload limit and larger video uploads will fail before Laravel validation runs.
 
 ### Setup Routes (local only)
 

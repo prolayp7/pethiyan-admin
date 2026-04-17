@@ -30,11 +30,16 @@ class PromoBannerController extends Controller
 
     public function updateSettings(Request $request): JsonResponse
     {
+        $request->merge([
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
         $data = $request->validate([
-            'is_active'          => 'required|boolean',
+            'is_active'          => 'boolean',
             'badge_text'         => 'nullable|string|max:120',
             'heading'            => 'nullable|string|max:255',
             'subheading'         => 'nullable|string|max:500',
+            'placement'          => 'required|in:after_hero,after_categories,after_featured_products,after_your_items,after_recently_viewed,after_video_stories,after_why_choose_us,after_social_proof,after_newsletter',
             'offer_primary'      => 'nullable|string|max:50',
             'offer_secondary'    => 'nullable|string|max:120',
             'button_label'       => 'nullable|string|max:120',
@@ -70,6 +75,7 @@ class PromoBannerController extends Controller
             'badge_text'         => $value['badge_text']      ?? 'Limited Time Offer',
             'heading'            => $value['heading']         ?? 'Custom Packaging Solutions for Your Brand',
             'subheading'         => $value['subheading']      ?? 'Get premium branded packaging with your logo and design. Minimum order from just 100 units.',
+            'placement'          => $value['placement']       ?? 'after_why_choose_us',
             'offer_primary'      => $value['offer_primary']   ?? '20%',
             'offer_secondary'    => $value['offer_secondary'] ?? 'OFF First Order',
             'button_label'       => $value['button_label']    ?? 'Explore Now',

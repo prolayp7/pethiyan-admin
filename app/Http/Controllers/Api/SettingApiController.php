@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Menu;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\Testimonial;
 use App\Services\SettingService;
 use App\Types\Api\ApiResponseType;
 use Dedoc\Scramble\Attributes\Group;
@@ -25,6 +26,9 @@ class SettingApiController extends Controller
 
     private const HIGHLIGHT_TICKER_SETTING_KEY = 'highlight_ticker_section';
     private const FEATURED_PRODUCTS_SECTION_SETTING_KEY = 'featured_products_section';
+    private const WHY_CHOOSE_US_SECTION_SETTING_KEY = 'why_choose_us_section';
+    private const PROMO_BANNER_SECTION_SETTING_KEY = 'promo_banner_section';
+    private const SOCIAL_PROOF_SECTION_SETTING_KEY = 'social_proof_section';
 
     protected SettingService $settingService;
 
@@ -280,6 +284,7 @@ class SettingApiController extends Controller
         $productsQuery = Product::query()
             ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
             ->where('status', ProductStatusEnum::ACTIVE->value)
+            ->where('featured', '1')
             ->with([
                 'category:id,title,slug',
                 'brand:id,title,slug',
@@ -292,8 +297,6 @@ class SettingApiController extends Controller
 
         if (!empty($categoryIds)) {
             $productsQuery->whereIn('category_id', $categoryIds);
-        } else {
-            $productsQuery->where('featured', '1');
         }
 
         $products = $productsQuery
@@ -316,6 +319,107 @@ class SettingApiController extends Controller
                 'viewAllLink' => trim((string) ($value['view_all_link'] ?? '/shop')),
                 'categories' => $categories,
                 'products' => $products,
+            ]
+        );
+    }
+
+    public function whyChooseUsSection(): JsonResponse
+    {
+        $setting = Setting::query()->where('variable', self::WHY_CHOOSE_US_SECTION_SETTING_KEY)->first();
+        $value = is_array($setting?->value)
+            ? $setting->value
+            : (json_decode((string) $setting?->value, true) ?: []);
+
+        $defaultFeatures = [
+            'Wide range of packaging products for every industry',
+            'Affordable wholesale pricing for small & large businesses',
+            'High-quality, food-grade materials throughout',
+            'Custom packaging & printing solutions available',
+            'Fast delivery across India with reliable logistics',
+            'Trusted by thousands of eCommerce sellers and brands',
+        ];
+
+        $features = collect($value['features'] ?? $defaultFeatures)
+            ->map(fn ($feature) => trim((string) $feature))
+            ->filter(fn ($feature) => $feature !== '')
+            ->values()
+            ->all();
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.setting_fetched_successfully',
+            data: [
+                'enabled' => (bool) ($value['is_active'] ?? true),
+                'eyebrow' => trim((string) ($value['eyebrow'] ?? 'WHY CHOOSE US')),
+                'heading' => trim((string) ($value['heading'] ?? 'Why Buy from Pethiyan?')),
+                'subheading' => trim((string) ($value['subheading'] ?? 'From small businesses to large manufacturers — we\'re your trusted packaging partner across India.')),
+                'placement' => trim((string) ($value['placement'] ?? 'after_video_stories')),
+                'features' => $features,
+            ]
+        );
+    }
+
+    public function promoBannerSection(): JsonResponse
+    {
+        $setting = Setting::query()->where('variable', self::PROMO_BANNER_SECTION_SETTING_KEY)->first();
+        $value = is_array($setting?->value)
+            ? $setting->value
+            : (json_decode((string) $setting?->value, true) ?: []);
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.setting_fetched_successfully',
+            data: [
+                'enabled' => (bool) ($value['is_active'] ?? true),
+                'badgeText' => trim((string) ($value['badge_text'] ?? 'Limited Time Offer')),
+                'heading' => trim((string) ($value['heading'] ?? 'Custom Packaging Solutions for Your Brand')),
+                'subheading' => trim((string) ($value['subheading'] ?? 'Get premium branded packaging with your logo and design. Minimum order from just 100 units.')),
+                'placement' => trim((string) ($value['placement'] ?? 'after_why_choose_us')),
+                'offerPrimary' => trim((string) ($value['offer_primary'] ?? '20%')),
+                'offerSecondary' => trim((string) ($value['offer_secondary'] ?? 'OFF First Order')),
+                'buttonLabel' => trim((string) ($value['button_label'] ?? 'Explore Now')),
+                'buttonLink' => trim((string) ($value['button_link'] ?? '/shop')),
+            ]
+        );
+    }
+
+    public function socialProofSection(): JsonResponse
+    {
+        $setting = Setting::query()->where('variable', self::SOCIAL_PROOF_SECTION_SETTING_KEY)->first();
+        $value = is_array($setting?->value)
+            ? $setting->value
+            : (json_decode((string) $setting?->value, true) ?: []);
+
+        $testimonials = Testimonial::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(function (Testimonial $testimonial) {
+                $testimonial->append('image_url');
+
+                return [
+                    'id' => $testimonial->id,
+                    'name' => trim((string) $testimonial->name),
+                    'title' => trim((string) ($testimonial->title ?? '')),
+                    'quote' => trim((string) $testimonial->quote),
+                    'stars' => max(1, min(5, (int) $testimonial->stars)),
+                    'imageUrl' => $testimonial->image_url,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.setting_fetched_successfully',
+            data: [
+                'enabled' => (bool) ($value['is_active'] ?? true),
+                'eyebrow' => trim((string) ($value['eyebrow'] ?? 'SOCIAL PROOF')),
+                'heading' => trim((string) ($value['heading'] ?? 'What Our Customers Say')),
+                'subheading' => trim((string) ($value['subheading'] ?? 'Trusted by over 10,000 brands worldwide')),
+                'placement' => trim((string) ($value['placement'] ?? 'after_promo_banner')),
+                'testimonials' => $testimonials,
             ]
         );
     }

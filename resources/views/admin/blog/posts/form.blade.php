@@ -88,11 +88,15 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Meta Title</label>
-                            <input type="text" class="form-control" name="meta_title" value="{{ old('meta_title', $post->metadata['meta_title'] ?? '') }}">
+                            <input type="text" class="form-control" name="meta_title" maxlength="255" value="{{ old('meta_title', $post->metadata['meta_title'] ?? '') }}">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Meta Description</label>
-                            <textarea class="form-control" name="meta_description" rows="2">{{ old('meta_description', $post->metadata['meta_description'] ?? '') }}</textarea>
+                            <textarea class="form-control" name="meta_description" rows="2" maxlength="500">{{ old('meta_description', $post->metadata['meta_description'] ?? '') }}</textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Meta Keywords</label>
+                            <input type="text" class="form-control" name="meta_keywords" maxlength="255" value="{{ old('meta_keywords', $post->metadata['meta_keywords'] ?? '') }}" placeholder="packaging, courier bags, custom printing">
                         </div>
                         <div class="col-md-6">
                             <label class="form-check form-switch mt-2">

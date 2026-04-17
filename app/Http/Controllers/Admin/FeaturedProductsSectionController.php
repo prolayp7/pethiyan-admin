@@ -38,8 +38,6 @@ class FeaturedProductsSectionController extends Controller
 
         if (!empty($selectedCategoryIds)) {
             $productsQuery->whereIn('category_id', $selectedCategoryIds);
-        } else {
-            $productsQuery->where('featured', '1');
         }
 
         $products = $productsQuery
@@ -97,8 +95,6 @@ class FeaturedProductsSectionController extends Controller
 
         if (!empty($categoryIds)) {
             $productsQuery->whereIn('category_id', $categoryIds);
-        } else {
-            $productsQuery->where('featured', '1');
         }
 
         $products = $productsQuery
@@ -108,11 +104,10 @@ class FeaturedProductsSectionController extends Controller
 
         $totalQuery = Product::query()
             ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
-            ->where('status', ProductStatusEnum::ACTIVE->value);
+            ->where('status', ProductStatusEnum::ACTIVE->value)
+            ->where('featured', '1');
         if (!empty($categoryIds)) {
             $totalQuery->whereIn('category_id', $categoryIds);
-        } else {
-            $totalQuery->where('featured', '1');
         }
 
         $total = $totalQuery->count();
@@ -172,7 +167,8 @@ class FeaturedProductsSectionController extends Controller
             'variants.storeProductVariants',
         ])
             ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
-            ->where('status', ProductStatusEnum::ACTIVE->value);
+            ->where('status', ProductStatusEnum::ACTIVE->value)
+            ->where('featured', '1');
     }
 
     private function transformPreviewProduct(Product $product): array

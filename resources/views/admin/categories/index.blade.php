@@ -225,27 +225,27 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label">SEO Title</label>
-                                        <input type="text" class="form-control" name="seo_title" id="category-seo-title-input" maxlength="60"
+                                        <input type="text" class="form-control" name="seo_title" id="category-seo-title-input" maxlength="255"
                                                placeholder="e.g. Buy Standup Pouches | Pethiyan"/>
                                         <div class="d-flex justify-content-between mt-1">
-                                            <small class="form-hint">Recommended: 50–60 characters.</small>
-                                            <small class="text-muted" id="catSeoTitleCount">0 / 60</small>
+                                            <small class="form-hint">Up to 255 characters.</small>
+                                            <small class="text-muted" id="catSeoTitleCount">0 / 255</small>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">SEO Keywords</label>
                                         <input type="hidden" name="seo_keywords" id="category-seo-keywords-value"/>
-                                        <input type="text" class="form-control" id="category-seo-keywords-input"
+                                        <input type="text" class="form-control" id="category-seo-keywords-input" maxlength="255"
                                                placeholder="e.g. standup pouch, kraft bag"/>
                                         <small class="form-hint">Comma-separated keywords.</small>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label">SEO Description</label>
-                                        <textarea class="form-control" name="seo_description" id="category-seo-description-input" rows="2" maxlength="160"
+                                        <textarea class="form-control" name="seo_description" id="category-seo-description-input" rows="2" maxlength="500"
                                                   placeholder="e.g. Shop premium standup pouches at Pethiyan. GST invoice, bulk pricing."></textarea>
                                         <div class="d-flex justify-content-between mt-1">
-                                            <small class="form-hint">Recommended: 120–160 characters.</small>
-                                            <small class="text-muted" id="catSeoDescCount">0 / 160</small>
+                                            <small class="form-hint">Up to 500 characters.</small>
+                                            <small class="text-muted" id="catSeoDescCount">0 / 500</small>
                                         </div>
                                     </div>
                                 </div>
@@ -636,8 +636,8 @@
         }
 
         function refreshCounters() {
-            updateCounter(seoTitleInput, seoTitleCount, 60);
-            updateCounter(seoDescriptionInput, seoDescriptionCount, 160);
+            updateCounter(seoTitleInput, seoTitleCount, 255);
+            updateCounter(seoDescriptionInput, seoDescriptionCount, 500);
         }
 
         function toggleSchemaJsonLdField() {

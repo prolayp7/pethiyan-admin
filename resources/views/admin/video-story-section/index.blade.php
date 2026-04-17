@@ -129,6 +129,26 @@
                                         <textarea class="form-control" id="videoStorySubheading" name="subheading" rows="3" maxlength="255" placeholder="Short supporting copy">{{ $settings['subheading'] }}</textarea>
                                     </div>
 
+                                    <div class="mb-4">
+                                        <label class="form-label" for="videoStoryPlacement">Show Video Stories After</label>
+                                        <select class="form-select" id="videoStoryPlacement" name="placement">
+                                            @foreach([
+                                                'after_hero' => 'Hero Section',
+                                                'after_categories' => 'Categories',
+                                                'after_featured_products' => 'Featured Products',
+                                                'after_your_items' => 'Your Items',
+                                                'after_recently_viewed' => 'Recently Viewed Products',
+                                                'after_why_choose_us' => 'Why Choose Us',
+                                                'after_promo_banner' => 'Promo Banner',
+                                                'after_social_proof' => 'Social Proof',
+                                                'after_newsletter' => 'Newsletter',
+                                            ] as $value => $label)
+                                                <option value="{{ $value }}" {{ $settings['placement'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="form-hint">Choose which homepage section should appear immediately before the Video Stories block.</div>
+                                    </div>
+
                                     <div class="row g-3">
                                         <div class="col-md-6">
                                             <label class="form-label fw-semibold">Autoplay</label>
@@ -186,8 +206,8 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label required" for="videoStoryVideo">Video File</label>
-                            <input type="file" class="form-control" id="videoStoryVideo" name="video" accept="video/mp4,video/webm,video/quicktime">
-                            <div class="form-hint">Allowed formats: MP4, WebM, MOV. Max upload size: 50 MB.</div>
+                            <input type="file" class="filepond" id="videoStoryVideo" name="video" accept="video/mp4,video/webm,video/quicktime">
+                            <div class="form-hint">Allowed formats: MP4, WebM, MOV. Max upload size: 5 MB.</div>
                         </div>
                         <div class="col-12">
                             <div id="videoStoryPreviewWrap" style="display: none;">
@@ -226,6 +246,59 @@
 <script>
 window.addEventListener('load', function () {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+    const videoStoryFileInput = document.getElementById('videoStoryVideo');
+    let videoStoryFilePond = null;
+    let localPreviewUrl = null;
+
+    function clearLocalPreviewUrl() {
+        if (localPreviewUrl) {
+            URL.revokeObjectURL(localPreviewUrl);
+            localPreviewUrl = null;
+        }
+    }
+
+    function setVideoPreview(url) {
+        const previewWrap = document.getElementById('videoStoryPreviewWrap');
+        const preview = document.getElementById('videoStoryPreview');
+        if (!previewWrap || !preview) {
+            return;
+        }
+
+        if (url) {
+            preview.src = url;
+            previewWrap.style.display = 'block';
+            return;
+        }
+
+        previewWrap.style.display = 'none';
+        preview.removeAttribute('src');
+        preview.load();
+    }
+
+    if (videoStoryFileInput && typeof FilePond !== 'undefined') {
+        videoStoryFilePond = FilePond.create(videoStoryFileInput, {
+            credits: false,
+            storeAsFile: true,
+            allowImagePreview: false,
+            acceptedFileTypes: ['video/mp4', 'video/webm', 'video/quicktime'],
+            maxFileSize: '5MB',
+            labelIdle: 'Drag and drop a video or <span class="filepond--label-action">Browse</span>',
+            onupdatefiles: (items) => {
+                clearLocalPreviewUrl();
+
+                const file = items[0]?.file ?? null;
+                if (file) {
+                    localPreviewUrl = URL.createObjectURL(file);
+                    setVideoPreview(localPreviewUrl);
+                    return;
+                }
+
+                if (!document.getElementById('videoStoryId')?.value) {
+                    setVideoPreview(null);
+                }
+            },
+        });
+    }
 
     function withBoolean(fd, key, value) {
         fd.set(key, value ? '1' : '0');
@@ -256,15 +329,13 @@ window.addEventListener('load', function () {
         const titleInput = document.getElementById('videoStoryTitle');
         const fileInput = document.getElementById('videoStoryVideo');
         const statusInput = document.getElementById('videoStoryStatus');
-        const previewWrap = document.getElementById('videoStoryPreviewWrap');
-        const preview = document.getElementById('videoStoryPreview');
 
         form.reset();
         idInput.value = '';
         fileInput.required = true;
-        previewWrap.style.display = 'none';
-        preview.removeAttribute('src');
-        preview.load();
+        clearLocalPreviewUrl();
+        videoStoryFilePond?.removeFiles();
+        setVideoPreview(null);
 
         if (id && videoStoryData[id]) {
             const current = videoStoryData[id];
@@ -275,8 +346,7 @@ window.addEventListener('load', function () {
             fileInput.required = false;
 
             if (current.video_url) {
-                preview.src = current.video_url;
-                previewWrap.style.display = 'block';
+                setVideoPreview(current.video_url);
             }
         } else {
             title.textContent = 'Add Video';
@@ -305,9 +375,23 @@ window.addEventListener('load', function () {
         const id = document.getElementById('videoStoryId').value;
         const submitBtn = document.getElementById('videoStorySubmitBtn');
         const fd = new FormData(form);
+        const selectedVideoFile = videoStoryFilePond?.getFiles()?.[0]?.file ?? null;
+        const originalButtonHtml = submitBtn.innerHTML;
+
+        if (selectedVideoFile) {
+            fd.delete('video');
+            fd.append('video', selectedVideoFile, selectedVideoFile.name);
+        }
+
+        if (!id && !selectedVideoFile) {
+            alert('Please select a video file to upload.');
+            return;
+        }
+
         withBoolean(fd, 'is_active', document.getElementById('videoStoryStatus').checked);
 
         submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Uploading...';
         try {
             await sendRequest(
                 id ? `/admin/video-stories-section/videos/${id}` : '{{ route('admin.video-stories-section.videos.store') }}',
@@ -321,6 +405,7 @@ window.addEventListener('load', function () {
             alert(error.message);
         } finally {
             submitBtn.disabled = false;
+            submitBtn.innerHTML = originalButtonHtml;
         }
     });
 

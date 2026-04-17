@@ -18,6 +18,7 @@ return [
     'minimum_cart_amount_not_met' => 'Monto mínimo del carrito no alcanzado para :amount',
     'checkout_type_single_store_error' => 'El tipo de pago es tienda única. Por favor, elimine artículos de otras tiendas para continuar.',
     'wallet_settings' => 'Configuración de Billetera',
+    'enable_email_otp' => 'Habilitar OTP por correo electrónico',
     'maintenance_mode' => 'Modo Mantenimiento',
     'referral_earn_program' => 'Programa de Referidos y Ganancias',
     'app_name' => 'Nombre de la App',
@@ -67,6 +68,9 @@ return [
     'number_of_times_bonus_applicable' => 'Número de Veces que Aplica el Bono',
     'number_of_times_bonus_applicable_placeholder' => 'Ingrese número de veces que se da el bono',
     'submit' => 'Enviar',
+    'sms_gateway' => 'Pasarela SMS',
+    'otp_length' => 'Longitud del OTP',
+    'otp_expiry_minutes' => 'Minutos de Expiración del OTP',
 
     // Web Settings Labels
     'web_settings' => 'Configuración Web',

@@ -204,4 +204,8 @@ return [
     'category_cannot_be_deactivated_with_products' => "Category can't be deactivated because it contains products.",
     'service_account_file_description' => 'The service file is stored in a private directory, so it cannot be accessed directly via URL. If you try to open it in the browser, it will show a 403 Forbidden error. This is expected behavior and there is no issue with the setup.',
     'upload_too_large' => 'The uploaded file is too large. Please reduce the file size and try again.',
+    'sms_otp_enable_hint' => 'Enable this to require SMS OTP verification during supported authentication flows.',
+    'email_otp_enable_hint' => 'Enable this to send the same registration OTP to the user email address. Delivery follows Email Settings and its demo mode.',
+    'otp_length_hint' => 'Choose how many digits each OTP should contain. Recommended: 4 to 8 digits.',
+    'otp_expiry_hint' => 'Set how long each OTP remains valid before it expires automatically.',
 ];

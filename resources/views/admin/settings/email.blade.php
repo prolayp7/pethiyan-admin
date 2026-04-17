@@ -35,6 +35,7 @@
                         <h3>{{ __('labels.menu') }}</h3>
                         <nav class="nav nav-vertical nav-pills" id="pills">
                             <a class="nav-link" href="#pills-demo-mode">Demo Mode</a>
+                            <a class="nav-link" href="#pills-otp">OTP</a>
                             <a class="nav-link" href="#pills-smtp">{{ __('labels.smtp') }}</a>
                         </nav>
                     </div>
@@ -72,6 +73,25 @@
                                             <small class="form-hint d-block mt-1">
                                                 When ON: emails are skipped entirely — no SMTP connection is made.
                                             </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card mb-4" id="pills-otp">
+                                    <div class="card-header">
+                                        <h4 class="card-title">OTP</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-0">
+                                            <label class="form-label">{{ __('labels.enable_email_otp') }}</label>
+                                            <div>
+                                                <label class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" name="email_otp_enabled"
+                                                           value="1" {{ !empty($settings['email_otp_enabled']) ? 'checked' : '' }}>
+                                                    <span class="form-check-label">{{ __('labels.enabled') }}</span>
+                                                </label>
+                                            </div>
+                                            <small class="form-hint">{{ __('messages.email_otp_enable_hint') }}</small>
                                         </div>
                                     </div>
                                 </div>

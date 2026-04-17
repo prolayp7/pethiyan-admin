@@ -13,6 +13,7 @@ class EmailSettingType implements SettingInterface
     use SettingTrait;
 
     public bool   $email_demo_mode = false;
+    public bool   $email_otp_enabled = false;
     public string $smtpHost = '';
     public string $smtpPort = '';
     public string $smtpUsername = '';
@@ -26,6 +27,7 @@ class EmailSettingType implements SettingInterface
     {
         return [
             'email_demo_mode' => 'nullable|boolean',
+            'email_otp_enabled' => 'nullable|boolean',
             // When demo mode is ON, SMTP fields are fully excluded from validation.
             'smtpHost'        => 'exclude_if:email_demo_mode,1|required|string|max:255',
             'smtpPort'        => 'exclude_if:email_demo_mode,1|required|integer|min:1|max:65535',

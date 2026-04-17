@@ -46,6 +46,10 @@ return [
     'order_not_found' => 'Commande non trouvée',
     'order_retrieved_successfully' => 'Commande récupérée avec succès',
     'orders_retrieved_successfully' => 'Commandes récupérées avec succès',
+    'sms_otp_enable_hint' => 'Activez ceci pour exiger une vérification OTP par SMS dans les parcours d’authentification pris en charge.',
+    'email_otp_enable_hint' => 'Activez ceci pour envoyer le même OTP d’inscription à l’adresse e-mail de l’utilisateur. L’envoi suit les paramètres e-mail et leur mode démo.',
+    'otp_length_hint' => 'Choisissez le nombre de chiffres que chaque OTP doit contenir. Recommandé : 4 à 8 chiffres.',
+    'otp_expiry_hint' => 'Définissez la durée de validité de chaque OTP avant son expiration automatique.',
 
     // Language Names
     'languages' => [

@@ -1946,6 +1946,10 @@ return [
     // SMS Settings
     'sms_settings'      => 'SMS Settings',
     'enable_sms_otp'    => 'Enable SMS OTP',
+    'enable_email_otp'  => 'Enable Email OTP',
+    'sms_gateway'       => 'SMS Gateway',
+    'otp_length'        => 'OTP Length',
+    'otp_expiry_minutes'=> 'OTP Expiry Minutes',
     'sms_otp_not_enabled' => 'SMS OTP service is not enabled. Please contact support.',
 
     // GST Settings

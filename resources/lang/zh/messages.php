@@ -46,6 +46,10 @@ return [
     'order_not_found' => '未找到订单',
     'order_retrieved_successfully' => '订单检索成功',
     'orders_retrieved_successfully' => '订单检索成功',
+    'sms_otp_enable_hint' => '启用后，系统会在受支持的身份验证流程中要求短信 OTP 验证。',
+    'email_otp_enable_hint' => '启用后，系统会将同一个注册 OTP 发送到用户邮箱。发送行为遵循电子邮件设置及其演示模式。',
+    'otp_length_hint' => '设置每个 OTP 包含的数字位数。建议为 4 到 8 位。',
+    'otp_expiry_hint' => '设置每个 OTP 在自动失效前可保持有效的时间。',
 
     // Language Names
     'languages' => [

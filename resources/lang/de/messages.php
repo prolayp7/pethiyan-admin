@@ -46,6 +46,10 @@ return [
     'order_not_found' => 'Bestellung nicht gefunden',
     'order_retrieved_successfully' => 'Bestellung erfolgreich abgerufen',
     'orders_retrieved_successfully' => 'Bestellungen erfolgreich abgerufen',
+    'sms_otp_enable_hint' => 'Aktivieren Sie dies, um in unterstützten Authentifizierungsabläufen eine SMS-OTP-Prüfung zu verlangen.',
+    'email_otp_enable_hint' => 'Aktivieren Sie dies, um dasselbe Registrierungs-OTP an die E-Mail-Adresse des Benutzers zu senden. Die Zustellung folgt den E-Mail-Einstellungen und deren Demo-Modus.',
+    'otp_length_hint' => 'Legen Sie fest, wie viele Ziffern jedes OTP enthalten soll. Empfohlen: 4 bis 8 Ziffern.',
+    'otp_expiry_hint' => 'Bestimmen Sie, wie lange jedes OTP gültig bleibt, bevor es automatisch abläuft.',
 
     // Language Names
     'languages' => [

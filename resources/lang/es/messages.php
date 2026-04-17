@@ -49,6 +49,10 @@ return [
     'order_status_updated_successfully' => 'Estado del pedido actualizado correctamente',
     'order_status_update_failed' => 'No se pudo actualizar el estado del pedido',
     'online_payment_status_managed_by_gateway' => 'El estado del pago en linea se actualiza automaticamente desde el webhook o la verificacion de la pasarela de pago y no puede cambiarse manualmente aqui.',
+    'sms_otp_enable_hint' => 'Activa esto para exigir verificación por SMS OTP en los flujos de autenticación compatibles.',
+    'email_otp_enable_hint' => 'Activa esto para enviar el mismo OTP de registro al correo del usuario. El envío respeta la Configuración de correo y su modo demo.',
+    'otp_length_hint' => 'Elige cuántos dígitos debe tener cada OTP. Recomendado: de 4 a 8 dígitos.',
+    'otp_expiry_hint' => 'Define cuánto tiempo seguirá siendo válido cada OTP antes de expirar automáticamente.',
 
     // Language Names
     'languages' => [

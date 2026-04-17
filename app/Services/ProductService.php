@@ -383,19 +383,37 @@ class ProductService
     private function processSimpleProduct($product, $request, array $pricingData, string $mode): void
     {
         $variant = null;
+        $simpleVariantData = $this->extractSimpleVariantData($request);
 
         if ($mode === 'update') {
             // Get the existing variant or create a new one if it doesn't exist
             $variant = $product->variants()->first();
         }
 
+        $submittedAvailability = $simpleVariantData['availability'] ?? null;
+        $availability = match ($submittedAvailability) {
+            'yes', 1, '1', true => true,
+            'no', 0, '0', false => false,
+            default => $variant?->availability ?? true,
+        };
+
+        $submittedWeight = $simpleVariantData['weight'] ?? null;
+        $weight = $submittedWeight !== null && $submittedWeight !== ''
+            ? $submittedWeight
+            : ($variant?->weight ?? null);
+
+        $metadata = array_merge($variant?->metadata ?? [], $simpleVariantData['metadata'] ?? []);
+
         $variantData = [
             'uuid' => (string)Str::uuid(),
             'product_id' => $product->id,
             'title' => $product->title,
             'slug' => $product->slug,
-            'availability' => 1,
+            'availability' => $availability,
             'is_default' => true,
+            'weight' => $weight,
+            'weight_unit' => $simpleVariantData['weight_unit'] ?? ($variant?->weight_unit ?? 'g'),
+            'metadata' => $metadata,
         ];
 
         if ($variant) {
@@ -405,6 +423,7 @@ class ProductService
         }
 
         $this->syncSimpleVariantAttributes($product, $variant, $request);
+        $this->handleVariantSeoImageUploads($variant, $request, (string) ($simpleVariantData['id'] ?? 'v_simple'));
 
         if (!empty($pricingData['store_pricing'])) {
             // Delete existing store pricing if updating
@@ -415,6 +434,24 @@ class ProductService
             // Create new store pricing
             $this->createStoreProductVariants($variant->id, $pricingData['store_pricing']);
         }
+    }
+
+    private function extractSimpleVariantData($request): array
+    {
+        $variantsJson = is_array($request)
+            ? ($request['variants_json'] ?? null)
+            : $request->input('variants_json');
+
+        if (empty($variantsJson)) {
+            return [];
+        }
+
+        $variants = json_decode($variantsJson, true);
+        if (!is_array($variants) || empty($variants[0]) || !is_array($variants[0])) {
+            return [];
+        }
+
+        return $variants[0];
     }
 
     private function syncSimpleVariantAttributes(Product $product, ProductVariant $variant, $request): void

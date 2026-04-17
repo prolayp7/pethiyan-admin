@@ -266,8 +266,8 @@
             <div class="mb-3">
                 <label class="form-label">X Title (twitter:title)</label>
                 <input type="text" class="form-control" name="twitterTitle" form="web-seo-settings-form"
-                        placeholder="Enter X title"
-                        value="{{ $settings['twitterTitle'] ?? '' }}" maxlength="255"/>
+                    placeholder="Enter X title"
+                    value="{{ $settings['twitterTitle'] ?? '' }}" maxlength="250"/>
             </div>
             <div class="mb-3">
                 <label class="form-label">X Description (twitter:description)</label>

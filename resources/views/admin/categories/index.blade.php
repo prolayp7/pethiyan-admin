@@ -255,7 +255,7 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label">OG Title</label>
-                                        <input type="text" class="form-control" name="og_title"
+                                             <input type="text" class="form-control" name="og_title" maxlength="255"
                                                placeholder="Leave blank to use SEO title"/>
                                     </div>
                                     <div class="col-md-6">
@@ -265,7 +265,7 @@
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label">OG Description</label>
-                                        <textarea class="form-control" name="og_description" rows="2"
+                                        <textarea class="form-control" name="og_description" rows="2" maxlength="500"
                                                   placeholder="Leave blank to use SEO description"></textarea>
                                     </div>
                                 </div>
@@ -275,7 +275,7 @@
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label">Twitter Title</label>
-                                        <input type="text" class="form-control" name="twitter_title"
+                                             <input type="text" class="form-control" name="twitter_title" maxlength="250"
                                                placeholder="Leave blank to use SEO title"/>
                                     </div>
                                     <div class="col-md-6">
@@ -295,7 +295,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Twitter Description</label>
-                                        <textarea class="form-control" name="twitter_description" rows="2"
+                                        <textarea class="form-control" name="twitter_description" rows="2" maxlength="500"
                                                   placeholder="Leave blank to use SEO description"></textarea>
                                     </div>
                                 </div>

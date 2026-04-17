@@ -531,8 +531,8 @@ function renderVariantSeoSection(v) {
                                value="${v.seo_keywords || ''}">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label mb-1">OG Title</label>
-                        <input type="text" class="form-control" value="${v.og_title || ''}"
+                           <label class="form-label mb-1">OG Title <span class="text-muted">(max 255)</span></label>
+                           <input type="text" class="form-control" maxlength="255" value="${v.og_title || ''}"
                                placeholder="Leave blank to use variant SEO title"
                                oninput="updateVariant('${v.id}', 'og_title', this.value)">
                     </div>
@@ -542,14 +542,14 @@ function renderVariantSeoSection(v) {
                         ${ogImageLink}
                     </div>
                     <div class="col-12">
-                        <label class="form-label mb-1">OG Description</label>
-                        <textarea class="form-control" rows="3"
+                        <label class="form-label mb-1">OG Description <span class="text-muted">(max 500)</span></label>
+                        <textarea class="form-control" rows="3" maxlength="500"
                                   placeholder="Leave blank to use variant SEO description"
                                   oninput="updateVariant('${v.id}', 'og_description', this.value)">${v.og_description || ''}</textarea>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label mb-1">Twitter Title</label>
-                        <input type="text" class="form-control" value="${v.twitter_title || ''}"
+                           <label class="form-label mb-1">Twitter Title <span class="text-muted">(max 250)</span></label>
+                           <input type="text" class="form-control" maxlength="250" value="${v.twitter_title || ''}"
                                placeholder="Leave blank to use variant SEO title"
                                oninput="updateVariant('${v.id}', 'twitter_title', this.value)">
                     </div>
@@ -569,8 +569,8 @@ function renderVariantSeoSection(v) {
                         ${twitterImageLink}
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label mb-1">Twitter Description</label>
-                        <textarea class="form-control" rows="3"
+                        <label class="form-label mb-1">Twitter Description <span class="text-muted">(max 500)</span></label>
+                        <textarea class="form-control" rows="3" maxlength="500"
                                   placeholder="Leave blank to use variant SEO description"
                                   oninput="updateVariant('${v.id}', 'twitter_description', this.value)">${v.twitter_description || ''}</textarea>
                     </div>

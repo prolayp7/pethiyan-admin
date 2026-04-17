@@ -143,7 +143,7 @@ class WebSettingType implements SettingInterface
             'twitterCard' => 'nullable|in:summary,summary_large_image,app,player',
             'twitterSite' => 'nullable|string|max:100',
             'twitterCreator' => 'nullable|string|max:100',
-            'twitterTitle' => 'nullable|string|max:255',
+            'twitterTitle' => 'nullable|string|max:250',
             'twitterDescription' => 'nullable|string|max:500',
             'twitterImage' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:4096',
             'seoSchemaJson' => 'nullable|string',

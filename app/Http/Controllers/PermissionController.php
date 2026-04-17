@@ -8,6 +8,8 @@ use App\Enums\GuardNameEnum;
 use App\Enums\SellerPermissionEnum;
 use App\Exceptions\SellerNotFoundException;
 use App\Http\Requests\Permission\StorePermissionRequest;
+use App\Models\AdminUser;
+use App\Models\User;
 use App\Traits\ChecksPermissions;
 use App\Traits\PanelAware;
 use App\Types\Api\ApiResponseType;
@@ -24,26 +26,41 @@ class PermissionController extends Controller
 
     protected bool $editPermission = false;
 
+    /**
+     * @return AdminUser|User|null
+     */
+    protected function currentPanelUser()
+    {
+        $guard = $this->getPanel() === 'seller' ? GuardNameEnum::SELLER() : GuardNameEnum::ADMIN();
+
+        return auth()->guard($guard)->user();
+    }
+
     public function __construct()
     {
         $enum = $this->getPanel() === 'seller' ? SellerPermissionEnum::class : AdminPermissionEnum::class;
-        $user = auth()->user();
-        $this->editPermission = $this->hasPermission($enum::ROLE_PERMISSIONS_EDIT()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
+        $user = $this->currentPanelUser();
+        $this->editPermission = $this->hasPermission($enum::ROLE_PERMISSIONS_EDIT()) || ($user?->hasRole(DefaultSystemRolesEnum::SELLER()) ?? false);
     }
 
     public function index($role): View
     {
         try {
             if ($this->getPanel() === 'seller') {
-                $user = auth()->user();
+                $user = $this->currentPanelUser();
+                if (!$user) {
+                    abort(403, 'Unauthorized action.');
+                }
                 $seller = $user->seller();
                 if (!empty($seller)) {
+                    /** @var Role $role */
                     $role = Role::where('name', $role)
                         ->where('guard_name', GuardNameEnum::SELLER())
                         ->where('team_id', $seller->id)
                         ->firstOrFail();
                 }
             } else {
+                /** @var Role $role */
                 $role = Role::where('name', $role)->where('guard_name', GuardNameEnum::ADMIN())->firstOrFail();
             }
             $this->authorize('viewPermission', $role);
@@ -57,7 +74,7 @@ class PermissionController extends Controller
             $editPermission = $this->editPermission;
 
             // Prevent users from editing permissions of their own assigned role (UI-level)
-            $user = auth()->user();
+            $user = $this->currentPanelUser();
             $isOwnRole = $user?->hasRole($role->name, $role->guard_name) ?? false;
             // Super Admins are allowed to edit even if it's their own role (matches policy)
             $isSuperAdmin = $user?->hasRole(\App\Enums\DefaultSystemRolesEnum::SUPER_ADMIN()) ?? false;
@@ -76,15 +93,20 @@ class PermissionController extends Controller
         try {
             $request->validated();
             if ($this->getPanel() === 'seller') {
-                $user = auth()->user();
+                $user = $this->currentPanelUser();
+                if (!$user) {
+                    return ApiResponseType::sendJsonResponse(false, __('labels.unauthorized_access') ?? 'Unauthorized.', null, 403);
+                }
                 $seller = $user->seller();
                 if (!empty($seller)) {
+                    /** @var Role $role */
                     $role = Role::where('name', $request->role)
                         ->where('guard_name', GuardNameEnum::SELLER())
                         ->where('team_id', $seller->id)
                         ->firstOrFail();
                 }
             } else {
+                /** @var Role $role */
                 $role = Role::where('name', $request->role)->where('guard_name', GuardNameEnum::ADMIN())->firstOrFail();
             }
             $this->authorize('storePermission', $role);

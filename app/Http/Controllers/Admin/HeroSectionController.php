@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionEnum;
 use App\Http\Controllers\Controller;
 use App\Models\HeroSlide;
 use App\Models\HeroTrustBadge;
 use App\Models\Setting;
 use App\Services\ImageWebpService;
+use App\Traits\ChecksPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -16,6 +18,19 @@ use Illuminate\View\View;
 
 class HeroSectionController extends Controller
 {
+    use ChecksPermissions;
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeHomePagePermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // Index
     // ──────────────────────────────────────────────────────────────────────────
@@ -318,5 +333,24 @@ class HeroSectionController extends Controller
             'lock'           => 'Lock',
             'smile'          => 'Smile',
         ];
+    }
+
+    private function authorizeHomePagePermission(Request $request)
+    {
+        $permission = match ($request->route()?->getActionMethod()) {
+            'show' => AdminPermissionEnum::HOME_PAGE_VIEW->value,
+            'storeSlide', 'updateSlide', 'destroySlide', 'toggleSlide', 'reorderSlides', 'storeBadge', 'updateBadge', 'destroyBadge', 'toggleBadge', 'reorderBadges', 'updateSettings' => AdminPermissionEnum::HOME_PAGE_EDIT->value,
+            default => null,
+        };
+
+        if ($permission === null || $this->hasPermission($permission)) {
+            return null;
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->unauthorizedResponse();
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

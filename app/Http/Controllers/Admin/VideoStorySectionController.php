@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\VideoStorySlide;
+use App\Traits\ChecksPermissions;
 use App\Types\Api\ApiResponseType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,19 @@ use Illuminate\View\View;
 
 class VideoStorySectionController extends Controller
 {
+    use ChecksPermissions;
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeHomePagePermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
+
     public function show(): View
     {
         $videos = VideoStorySlide::orderBy('sort_order')->orderBy('id')->get();
@@ -246,5 +261,24 @@ class VideoStorySectionController extends Controller
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function authorizeHomePagePermission(Request $request)
+    {
+        $permission = match ($request->route()?->getActionMethod()) {
+            'show' => AdminPermissionEnum::HOME_PAGE_VIEW->value,
+            'store', 'update', 'destroy', 'toggle', 'reorder', 'updateSettings' => AdminPermissionEnum::HOME_PAGE_EDIT->value,
+            default => null,
+        };
+
+        if ($permission === null || $this->hasPermission($permission)) {
+            return null;
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->unauthorizedResponse();
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

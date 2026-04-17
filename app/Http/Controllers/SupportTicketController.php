@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AdminPermissionEnum;
 use App\Enums\SupportTicketStatusEnum;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketMessage;
 use App\Models\SupportTicketType;
+use App\Traits\ChecksPermissions;
 use App\Traits\PanelAware;
 use App\Types\Api\ApiResponseType;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +18,18 @@ use Illuminate\View\View;
 
 class SupportTicketController extends Controller
 {
-    use PanelAware;
+    use ChecksPermissions, PanelAware;
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeSupportTicketPermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
 
     // ─── Index (datatable view) ───────────────────────────────────────────────
 
@@ -240,5 +253,25 @@ class SupportTicketController extends Controller
                 </button>
             </div>
         HTML;
+    }
+
+    private function authorizeSupportTicketPermission(Request $request)
+    {
+        $permission = match ($request->route()?->getActionMethod()) {
+            'index', 'datatable', 'show' => AdminPermissionEnum::SUPPORT_TICKET_VIEW->value,
+            'updateStatus', 'reply', 'storeType', 'updateType', 'destroyType' => AdminPermissionEnum::SUPPORT_TICKET_EDIT->value,
+            'destroy' => AdminPermissionEnum::SUPPORT_TICKET_DELETE->value,
+            default => null,
+        };
+
+        if ($permission === null || $this->hasPermission($permission)) {
+            return null;
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->unauthorizedResponse();
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

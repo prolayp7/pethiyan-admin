@@ -90,6 +90,27 @@ use ArchTech\Enums\Values;
  * @method static CUSTOMER_EDIT()
  * @method static CUSTOMER_DELETE()
  * @method static CUSTOMER_EXPORT()
+ * @method static REPORT_VIEW()
+ * @method static REPORT_EXPORT()
+ * @method static BLOG_VIEW()
+ * @method static BLOG_CREATE()
+ * @method static BLOG_EDIT()
+ * @method static BLOG_DELETE()
+ * @method static MENU_VIEW()
+ * @method static MENU_CREATE()
+ * @method static MENU_EDIT()
+ * @method static MENU_DELETE()
+ * @method static SUPPORT_TICKET_VIEW()
+ * @method static SUPPORT_TICKET_EDIT()
+ * @method static SUPPORT_TICKET_DELETE()
+ * @method static PAGE_VIEW()
+ * @method static PAGE_EDIT()
+ * @method static ENQUIRY_VIEW()
+ * @method static ENQUIRY_DELETE()
+ * @method static PRODUCT_IMPORT_VIEW()
+ * @method static PRODUCT_IMPORT_IMPORT()
+ * @method static HOME_PAGE_VIEW()
+ * @method static HOME_PAGE_EDIT()
  *
  * Module-wise setting permissions
  * @method static SETTING_SYSTEM_VIEW()
@@ -230,6 +251,27 @@ enum AdminPermissionEnum: string
     case CUSTOMER_EDIT   = 'customer.edit';
     case CUSTOMER_DELETE = 'customer.delete';
     case CUSTOMER_EXPORT = 'customer.export';
+    case REPORT_VIEW = 'report.view';
+    case REPORT_EXPORT = 'report.export';
+    case BLOG_VIEW = 'blog.view';
+    case BLOG_CREATE = 'blog.create';
+    case BLOG_EDIT = 'blog.edit';
+    case BLOG_DELETE = 'blog.delete';
+    case MENU_VIEW = 'menu.view';
+    case MENU_CREATE = 'menu.create';
+    case MENU_EDIT = 'menu.edit';
+    case MENU_DELETE = 'menu.delete';
+    case SUPPORT_TICKET_VIEW = 'support_ticket.view';
+    case SUPPORT_TICKET_EDIT = 'support_ticket.edit';
+    case SUPPORT_TICKET_DELETE = 'support_ticket.delete';
+    case PAGE_VIEW = 'page.view';
+    case PAGE_EDIT = 'page.edit';
+    case ENQUIRY_VIEW = 'enquiry.view';
+    case ENQUIRY_DELETE = 'enquiry.delete';
+    case PRODUCT_IMPORT_VIEW = 'product_import.view';
+    case PRODUCT_IMPORT_IMPORT = 'product_import.import';
+    case HOME_PAGE_VIEW = 'home_page.view';
+    case HOME_PAGE_EDIT = 'home_page.edit';
 
     public static function groupedPermissions(): array
     {
@@ -244,6 +286,13 @@ enum AdminPermissionEnum: string
                 'name' => 'Orders',
                 'permissions' => [
                     self::ORDER_VIEW(),
+                ],
+            ],
+            'report' => [
+                'name' => 'Reports',
+                'permissions' => [
+                    self::REPORT_VIEW(),
+                    self::REPORT_EXPORT(),
                 ],
             ],
             'return' => [
@@ -279,20 +328,6 @@ enum AdminPermissionEnum: string
                     self::SELLER_DELETE(),
                 ],
             ],
-            'commission' => [
-                'name' => 'Seller Settlement',
-                'permissions' => [
-                    self::COMMISSION_VIEW(),
-                    self::COMMISSION_SETTLE(),
-                ],
-            ],
-            'seller_withdrawal' => [
-                'name' => 'Seller Withdrawals',
-                'permissions' => [
-                    self::SELLER_WITHDRAWAL_VIEW(),
-                    self::SELLER_WITHDRAWAL_PROCESS(),
-                ],
-            ],
             'store' => [
                 'name' => 'Store',
                 'permissions' => [
@@ -323,6 +358,13 @@ enum AdminPermissionEnum: string
                     self::PRODUCT_STATUS_UPDATE(),
                 ],
             ],
+            'product_import' => [
+                'name' => 'Product Import',
+                'permissions' => [
+                    self::PRODUCT_IMPORT_VIEW(),
+                    self::PRODUCT_IMPORT_IMPORT(),
+                ],
+            ],
             'products_faqs' => [
                 'name' => 'Products FAQs',
                 'permissions' => [
@@ -336,44 +378,6 @@ enum AdminPermissionEnum: string
                     self::TAX_CLASS_CREATE(),
                     self::TAX_CLASS_EDIT(),
                     self::TAX_CLASS_DELETE(),
-                ],
-            ],
-            'delivery_boy' => [
-                'name' => 'Delivery Boy',
-                'permissions' => [
-                    self::DELIVERY_BOY_VIEW(),
-                    self::DELIVERY_BOY_EDIT(),
-                    self::DELIVERY_BOY_DELETE(),
-                ],
-            ],
-            'delivery_boy_earning' => [
-                'name' => 'Delivery Boy Earning',
-                'permissions' => [
-                    self::DELIVERY_BOY_EARNING_VIEW(),
-                    self::DELIVERY_BOY_EARNING_PROCESS_PAYMENT(),
-                ],
-            ],
-            'delivery_boy_cash_collection' => [
-                'name' => 'Delivery Boy Cash Collection',
-                'permissions' => [
-                    self::DELIVERY_BOY_CASH_COLLECTION_VIEW(),
-                    self::DELIVERY_BOY_CASH_COLLECTION_PROCESS(),
-                ],
-            ],
-            'delivery_boy_withdrawal' => [
-                'name' => 'Delivery Boy Withdrawal',
-                'permissions' => [
-                    self::DELIVERY_BOY_WITHDRAWAL_VIEW(),
-                    self::DELIVERY_BOY_WITHDRAWAL_PROCESS(),
-                ],
-            ],
-            'banner' => [
-                'name' => 'Banner',
-                'permissions' => [
-                    self::BANNER_VIEW(),
-                    self::BANNER_CREATE(),
-                    self::BANNER_EDIT(),
-                    self::BANNER_DELETE(),
                 ],
             ],
             'featured_section' => [
@@ -401,6 +405,53 @@ enum AdminPermissionEnum: string
                     self::PROMO_DELETE(),
                 ],
             ],
+            'home_page' => [
+                'name' => 'Home Page',
+                'permissions' => [
+                    self::HOME_PAGE_VIEW(),
+                    self::HOME_PAGE_EDIT(),
+                ],
+            ],
+            'blog' => [
+                'name' => 'Blog',
+                'permissions' => [
+                    self::BLOG_VIEW(),
+                    self::BLOG_CREATE(),
+                    self::BLOG_EDIT(),
+                    self::BLOG_DELETE(),
+                ],
+            ],
+            'menu' => [
+                'name' => 'Menus',
+                'permissions' => [
+                    self::MENU_VIEW(),
+                    self::MENU_CREATE(),
+                    self::MENU_EDIT(),
+                    self::MENU_DELETE(),
+                ],
+            ],
+            'support_ticket' => [
+                'name' => 'Support Tickets',
+                'permissions' => [
+                    self::SUPPORT_TICKET_VIEW(),
+                    self::SUPPORT_TICKET_EDIT(),
+                    self::SUPPORT_TICKET_DELETE(),
+                ],
+            ],
+            'page' => [
+                'name' => 'Pages',
+                'permissions' => [
+                    self::PAGE_VIEW(),
+                    self::PAGE_EDIT(),
+                ],
+            ],
+            'enquiry' => [
+                'name' => 'Enquiries',
+                'permissions' => [
+                    self::ENQUIRY_VIEW(),
+                    self::ENQUIRY_DELETE(),
+                ],
+            ],
             'faq' => [
                 'name' => 'FAQ',
                 'permissions' => [
@@ -408,15 +459,6 @@ enum AdminPermissionEnum: string
                     self::FAQ_CREATE(),
                     self::FAQ_EDIT(),
                     self::FAQ_DELETE(),
-                ],
-            ],
-            'delivery_zone' => [
-                'name' => 'Delivery Zone',
-                'permissions' => [
-                    self::DELIVERY_ZONE_VIEW(),
-                    self::DELIVERY_ZONE_CREATE(),
-                    self::DELIVERY_ZONE_EDIT(),
-                    self::DELIVERY_ZONE_DELETE(),
                 ],
             ],
             'notification' => [
@@ -500,27 +542,6 @@ enum AdminPermissionEnum: string
                 'permissions' => [
                     self::SETTING_WEB_VIEW(),
                     self::SETTING_WEB_EDIT(),
-                ],
-            ],
-            'setting_app' => [
-                'name' => 'App Settings',
-                'permissions' => [
-                    self::SETTING_APP_VIEW(),
-                    self::SETTING_APP_EDIT(),
-                ],
-            ],
-            'setting_delivery_boy' => [
-                'name' => 'Delivery Boy Settings',
-                'permissions' => [
-                    self::SETTING_DELIVERY_BOY_VIEW(),
-                    self::SETTING_DELIVERY_BOY_EDIT(),
-                ],
-            ],
-            'setting_home_general' => [
-                'name' => 'Home General Settings',
-                'permissions' => [
-                    self::SETTING_HOME_GENERAL_SETTINGS_VIEW(),
-                    self::SETTING_HOME_GENERAL_SETTINGS_EDIT(),
                 ],
             ],
         ];

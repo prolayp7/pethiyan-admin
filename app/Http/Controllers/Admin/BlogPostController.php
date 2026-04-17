@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionEnum;
 use App\Http\Controllers\Controller;
 use App\Models\BlogCategory;
 use App\Models\BlogPost;
 use App\Services\ImageWebpService;
+use App\Traits\ChecksPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -16,6 +18,19 @@ use Illuminate\View\View;
 
 class BlogPostController extends Controller
 {
+    use ChecksPermissions;
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeBlogPermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
+
     public function index(Request $request): View
     {
         $posts = BlogPost::with('category')
@@ -237,5 +252,22 @@ class BlogPostController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Blog post revalidation failed.', ['message' => $e->getMessage()]);
         }
+    }
+
+    private function authorizeBlogPermission(Request $request)
+    {
+        $permission = match ($request->route()?->getActionMethod()) {
+            'index' => AdminPermissionEnum::BLOG_VIEW->value,
+            'create', 'store' => AdminPermissionEnum::BLOG_CREATE->value,
+            'edit', 'update' => AdminPermissionEnum::BLOG_EDIT->value,
+            'destroy' => AdminPermissionEnum::BLOG_DELETE->value,
+            default => null,
+        };
+
+        if ($permission === null || $this->hasPermission($permission)) {
+            return null;
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

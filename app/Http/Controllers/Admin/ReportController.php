@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionEnum;
 use App\Enums\DateRangeFilterEnum;
 use App\Enums\Payment\PaymentTypeEnum;
 use App\Enums\PaymentStatusEnum;
@@ -15,6 +16,7 @@ use App\Models\PaymentRefund;
 use App\Models\PaymentSettlement;
 use App\Models\PaymentWebhookLog;
 use App\Models\Product;
+use App\Traits\ChecksPermissions;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -27,7 +29,18 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    use AuthorizesRequests;
+    use AuthorizesRequests, ChecksPermissions;
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeReportPermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
 
     // ── Views ──────────────────────────────────────────────────────────────
 
@@ -1187,5 +1200,28 @@ class ReportController extends Controller
         }, $filename, [
             'Content-Type' => 'text/csv',
         ]);
+    }
+
+    private function authorizeReportPermission(Request $request)
+    {
+        $actionMethod = $request->route()?->getActionMethod();
+
+        if ($actionMethod === null) {
+            return null;
+        }
+
+        $permission = str_starts_with($actionMethod, 'export')
+            ? AdminPermissionEnum::REPORT_EXPORT->value
+            : AdminPermissionEnum::REPORT_VIEW->value;
+
+        if ($this->hasPermission($permission)) {
+            return null;
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->unauthorizedResponse();
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

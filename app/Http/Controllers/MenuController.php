@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AdminPermissionEnum;
 use App\Enums\Menu\MenuItemTypeEnum;
 use App\Http\Requests\MegaMenu\StoreColumnRequest;
 use App\Http\Requests\MegaMenu\StoreLinkRequest;
@@ -37,6 +38,17 @@ use Illuminate\View\View;
 class MenuController extends Controller
 {
     use ChecksPermissions, PanelAware;
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeMenuPermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
 
     /* ═══════════════════════════════════════════════════════════════
      |  MENUS
@@ -915,5 +927,32 @@ HTML;
                 $records[(int) $id]->update(['sort_order' => $index + 1]);
             }
         });
+    }
+
+    private function authorizeMenuPermission(Request $request)
+    {
+        $actionMethod = $request->route()?->getActionMethod();
+
+        if ($actionMethod === null) {
+            return null;
+        }
+
+        $permission = match (true) {
+            in_array($actionMethod, ['index', 'show', 'datatable', 'itemsIndex', 'itemsDatatable', 'showItem', 'megaMenuIndex', 'showPanel', 'showColumn', 'showLink'], true) => AdminPermissionEnum::MENU_VIEW->value,
+            in_array($actionMethod, ['store', 'storeItem', 'storePanel', 'storeColumn', 'storeLink'], true) => AdminPermissionEnum::MENU_CREATE->value,
+            in_array($actionMethod, ['update', 'toggleActive', 'reorderItems', 'updateItem', 'toggleItemActive', 'reorderPanels', 'updatePanel', 'togglePanelActive', 'reorderColumns', 'updateColumn', 'reorderLinks', 'updateLink'], true) => AdminPermissionEnum::MENU_EDIT->value,
+            in_array($actionMethod, ['destroy', 'destroyItem', 'destroyPanel', 'destroyColumn', 'destroyLink'], true) => AdminPermissionEnum::MENU_DELETE->value,
+            default => null,
+        };
+
+        if ($permission === null || $this->hasPermission($permission)) {
+            return null;
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->unauthorizedResponse();
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

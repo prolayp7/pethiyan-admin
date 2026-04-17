@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionEnum;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProductImportJob;
 use App\Services\FrontendRevalidateService;
 use App\Services\ProductCsvImportService;
 use App\Services\ProductService;
+use App\Traits\ChecksPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +18,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductImportController extends Controller
 {
+    use ChecksPermissions;
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeProductImportPermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
+
     public function downloadTemplate(ProductCsvImportService $importService): StreamedResponse
     {
         $fileName = 'product-import-template.csv';
@@ -136,5 +151,24 @@ class ProductImportController extends Controller
         }
 
         return Storage::disk('local')->download($path, 'product-import-failed-rows-' . $reportId . '.csv');
+    }
+
+    private function authorizeProductImportPermission(Request $request)
+    {
+        $permission = match ($request->route()?->getActionMethod()) {
+            'import' => AdminPermissionEnum::PRODUCT_IMPORT_IMPORT->value,
+            'downloadTemplate', 'status', 'downloadFailedReport' => AdminPermissionEnum::PRODUCT_IMPORT_VIEW->value,
+            default => null,
+        };
+
+        if ($permission === null || $this->hasPermission($permission)) {
+            return null;
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->unauthorizedResponse();
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

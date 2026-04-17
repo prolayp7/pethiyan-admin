@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminPermissionEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Traits\ChecksPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -12,7 +14,20 @@ use Illuminate\View\View;
 
 class HighlightTickerController extends Controller
 {
+    use ChecksPermissions;
+
     private const SETTING_KEY = 'highlight_ticker_section';
+
+    public function __construct()
+    {
+        $this->middleware(function (Request $request, $next) {
+            if ($response = $this->authorizeHomePagePermission($request)) {
+                return $response;
+            }
+
+            return $next($request);
+        });
+    }
 
     // ──────────────────────────────────────────────────────────────────────────
     // Index
@@ -117,5 +132,24 @@ class HighlightTickerController extends Controller
         } catch (\Throwable $e) {
             Log::warning('Highlight Ticker revalidation failed.', ['message' => $e->getMessage()]);
         }
+    }
+
+    private function authorizeHomePagePermission(Request $request)
+    {
+        $permission = match ($request->route()?->getActionMethod()) {
+            'show' => AdminPermissionEnum::HOME_PAGE_VIEW->value,
+            'updateSettings' => AdminPermissionEnum::HOME_PAGE_EDIT->value,
+            default => null,
+        };
+
+        if ($permission === null || $this->hasPermission($permission)) {
+            return null;
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return $this->unauthorizedResponse();
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }

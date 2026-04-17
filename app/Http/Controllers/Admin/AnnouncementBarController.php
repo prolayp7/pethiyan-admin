@@ -30,6 +30,11 @@ class AnnouncementBarController extends Controller
 
     public function updateSettings(Request $request): JsonResponse
     {
+        $request->merge([
+            'top_bar_active' => $request->boolean('top_bar_active'),
+            'ticker_active' => $request->boolean('ticker_active'),
+        ]);
+
         $data = $request->validate([
             'top_bar_active' => 'required|boolean',
             'top_bar_text'   => 'nullable|string|max:255',

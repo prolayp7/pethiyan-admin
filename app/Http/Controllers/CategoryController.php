@@ -45,11 +45,15 @@ class CategoryController extends Controller
 
     public function __construct()
     {
-        if ($this->getPanel() === 'admin') {
-            $this->editPermission = $this->hasPermission(AdminPermissionEnum::CATEGORY_EDIT->value);
-            $this->deletePermission = $this->hasPermission(AdminPermissionEnum::CATEGORY_DELETE->value);
-            $this->createPermission = $this->hasPermission(AdminPermissionEnum::CATEGORY_CREATE->value);
-        }
+        $this->middleware(function ($request, $next) {
+            if ($this->getPanel() === 'admin') {
+                $this->editPermission = $this->hasPermission(AdminPermissionEnum::CATEGORY_EDIT->value);
+                $this->deletePermission = $this->hasPermission(AdminPermissionEnum::CATEGORY_DELETE->value);
+                $this->createPermission = $this->hasPermission(AdminPermissionEnum::CATEGORY_CREATE->value);
+            }
+
+            return $next($request);
+        });
     }
 
     /**

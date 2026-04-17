@@ -115,7 +115,9 @@
                                                 <span class="col">{{ __('labels.enable_razorpay_payment') }}</span>
                                                 <span class="col-auto">
                                                     <label class="form-check form-check-single form-switch">
+                                                        <input type="hidden" name="razorpayPayment" value="0" />
                                                         <input class="form-check-input" type="checkbox"
+                                                            id="razorpayPaymentToggle"
                                                                name="razorpayPayment" value="1" {{ isset($settings['razorpayPayment']) && $settings['razorpayPayment'] ? 'checked' : '' }} />
                                                     </label>
                                                 </span>
@@ -222,7 +224,9 @@
                                                 <span class="col">Enable Easebuzz Payment</span>
                                                 <span class="col-auto">
                                                     <label class="form-check form-check-single form-switch">
+                                                        <input type="hidden" name="easepayPayment" value="0" />
                                                         <input class="form-check-input" type="checkbox"
+                                                            id="easepayPaymentToggle"
                                                                name="easepayPayment" value="1"
                                                                {{ isset($settings['easepayPayment']) && $settings['easepayPayment'] ? 'checked' : '' }} />
                                                     </label>
@@ -307,6 +311,7 @@
                                                 <span class="col">{{ __('labels.enable_cash_on_delivery') }}</span>
                                                 <span class="col-auto">
                                                     <label class="form-check form-check-single form-switch">
+                                                        <input type="hidden" name="{{ PaymentTypeEnum::COD() }}" value="0" />
                                                         <input class="form-check-input" type="checkbox"
                                                                name="{{PaymentTypeEnum::COD()}}"
                                                                value="1" {{ isset($settings['cod']) && $settings['cod'] ? 'checked' : '' }} />
@@ -339,9 +344,9 @@
 @push('script')
     <script>
         (function () {
-            const razorpayToggle = document.querySelector('input[name="razorpayPayment"]');
+            const razorpayToggle = document.getElementById('razorpayPaymentToggle');
             const razorpayFields = document.getElementById('razorpayFields');
-            const easepayToggle  = document.querySelector('input[name="easepayPayment"]');
+            const easepayToggle  = document.getElementById('easepayPaymentToggle');
             const easepayFields  = document.getElementById('easepayFields');
             const sensitiveFields = document.querySelectorAll('.sensitive-field');
             const visibilityButtons = document.querySelectorAll('.toggle-visibility-btn');

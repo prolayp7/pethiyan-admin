@@ -14,6 +14,7 @@ use App\Events\Product\ProductAfterCreate;
 use App\Events\Product\ProductAfterUpdate;
 use App\Events\Product\ProductBeforeCreate;
 use App\Http\Requests\Product\StoreUpdateProductRequest;
+use App\Models\AdminUser;
 use App\Models\Category;
 use App\Models\GlobalProductAttribute;
 use App\Models\Product;
@@ -56,22 +57,29 @@ class ProductController extends Controller
 
     public function __construct()
     {
-        $user = auth()->user();
-        $seller = $user?->seller();
-        $this->sellerId = $seller ? $seller->id : 0;
+        $this->middleware(function ($request, $next) {
+            $guard = $this->getPanel() === 'seller' ? 'seller' : 'admin';
+            /** @var AdminUser|\App\Models\User|null $user */
+            $user = auth()->guard($guard)->user();
+            $seller = $user?->seller();
 
-        if ($this->getPanel() === 'seller') {
-            $this->viewPermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_VIEW()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-            $this->editPermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_EDIT()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-            $this->deletePermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_DELETE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-            $this->createPermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_CREATE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-        } elseif ($this->getPanel() === 'admin') {
-            $this->viewPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_VIEW());
-            $this->createPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_CREATE());
-            $this->editPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_EDIT());
-            $this->deletePermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_DELETE());
-            $this->updateStatusPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_STATUS_UPDATE());
-        }
+            $this->sellerId = $seller ? $seller->id : 0;
+
+            if ($this->getPanel() === 'seller') {
+                $this->viewPermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_VIEW->value) || ($user?->hasRole(DefaultSystemRolesEnum::SELLER()) ?? false);
+                $this->editPermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_EDIT->value) || ($user?->hasRole(DefaultSystemRolesEnum::SELLER()) ?? false);
+                $this->deletePermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_DELETE->value) || ($user?->hasRole(DefaultSystemRolesEnum::SELLER()) ?? false);
+                $this->createPermission = $this->hasPermission(SellerPermissionEnum::PRODUCT_CREATE->value) || ($user?->hasRole(DefaultSystemRolesEnum::SELLER()) ?? false);
+            } elseif ($this->getPanel() === 'admin') {
+                $this->viewPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_VIEW->value);
+                $this->createPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_CREATE->value);
+                $this->editPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_EDIT->value);
+                $this->deletePermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_DELETE->value);
+                $this->updateStatusPermission = $this->hasPermission(AdminPermissionEnum::PRODUCT_STATUS_UPDATE->value);
+            }
+
+            return $next($request);
+        });
     }
 
     /**

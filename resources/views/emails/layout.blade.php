@@ -37,9 +37,39 @@
     </style>
 </head>
 <body>
+@php
+    $systemSettings = \App\Models\Setting::find(\App\Enums\SettingTypeEnum::SYSTEM())?->value ?? [];
+    $appName = $systemSettings['appName'] ?? config('app.name');
+    $rawLogo = (string)($systemSettings['logo'] ?? '');
+    $logoUrl = asset('logos/hyper-local-logo.png');
+    $logoPath = public_path('logos/hyper-local-logo.png');
+
+    if ($rawLogo !== '') {
+        if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://') || str_starts_with($rawLogo, 'data:')) {
+            $logoUrl = $rawLogo;
+        } else {
+            $normalizedLogo = ltrim($rawLogo, '/');
+            $storageRelativeLogo = str_starts_with($normalizedLogo, 'storage/')
+                ? ltrim(substr($normalizedLogo, strlen('storage/')), '/')
+                : $normalizedLogo;
+
+            $logoUrl = url('storage/' . $storageRelativeLogo);
+
+            $candidateStoragePath = storage_path('app/public/' . $storageRelativeLogo);
+            $candidatePublicPath = public_path($normalizedLogo);
+
+            if (is_file($candidateStoragePath)) {
+                $logoPath = $candidateStoragePath;
+            } elseif (is_file($candidatePublicPath)) {
+                $logoPath = $candidatePublicPath;
+            }
+        }
+    }
+@endphp
 <div class="wrapper">
     <div class="header">
-        <h1>{{ config('app.name') }}</h1>
+        <img src="{{ (isset($message) && is_file($logoPath)) ? $message->embed($logoPath) : $logoUrl }}" alt="{{ $appName }}" width="72" height="72" style="display:block; margin:0 auto 12px; border:0; background:#ffffff; border-radius:12px; padding:6px; object-fit:contain;">
+        <h1>{{ $appName }}</h1>
         <p>@yield('header-sub', 'Transactional Email')</p>
     </div>
     <div class="body">
@@ -47,8 +77,8 @@
     </div>
     <div class="footer">
         <p>
-            You are receiving this email because you have an account with {{ config('app.name') }}.<br>
-            &copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
+            You are receiving this email because you have an account with {{ $appName }}.<br>
+            &copy; {{ date('Y') }} {{ $appName }}. All rights reserved.
         </p>
     </div>
 </div>

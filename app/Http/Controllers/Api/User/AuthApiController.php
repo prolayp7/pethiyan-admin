@@ -95,10 +95,19 @@ class AuthApiController extends Controller
             }
 
             $otpRecord->update(['verified_at' => now()]);
-            $user->update(['mobile_verified_at' => now()]);
+
+            $verificationUpdates = [
+                'mobile_verified_at' => now(),
+            ];
+
+            if (!empty($user->email) && is_null($user->email_verified_at)) {
+                $verificationUpdates['email_verified_at'] = now();
+            }
+
+            $user->update($verificationUpdates);
 
             return ApiResponseType::sendJsonResponse(true, 'labels.mobile_verified_successfully', [
-                'user' => new UserResource($user),
+                'user' => new UserResource($user->fresh()),
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

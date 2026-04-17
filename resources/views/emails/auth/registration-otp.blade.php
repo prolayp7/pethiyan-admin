@@ -1,20 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registration OTP</title>
-</head>
-<body style="margin:0;padding:24px;background:#f6f7fb;font-family:Arial,sans-serif;color:#1f2937;">
-    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;border:1px solid #e5e7eb;">
-        <h2 style="margin:0 0 16px;font-size:24px;">Registration OTP</h2>
-        <p style="margin:0 0 16px;line-height:1.6;">Hello {{ $name }},</p>
-        <p style="margin:0 0 20px;line-height:1.6;">Use the following one-time password to complete your registration:</p>
-        <div style="margin:0 0 20px;padding:18px 24px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;font-size:30px;font-weight:700;letter-spacing:8px;text-align:center;">
-            {{ $otp }}
-        </div>
-        <p style="margin:0 0 12px;line-height:1.6;">This OTP will expire in {{ $expiryMinutes }} minutes.</p>
-        <p style="margin:0;line-height:1.6;color:#6b7280;">If you did not try to create an account, you can ignore this email.</p>
+@extends('emails.layout')
+
+@section('title', 'Registration OTP')
+@section('header-sub', 'Account Verification')
+
+@section('content')
+    <h2>Registration OTP</h2>
+    <p>Hi <strong>{{ $name }}</strong>,</p>
+    <p>Use the one-time password below to complete your registration.</p>
+
+    <div style="margin:20px 0; padding:18px 20px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; text-align:center;">
+        <div style="font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#1d4ed8; margin-bottom:8px;">Verification Code</div>
+        <div style="font-size:32px; font-weight:800; letter-spacing:8px; color:#111827;">{{ $otp }}</div>
     </div>
-</body>
-</html>
+
+    <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:16px 18px; margin:20px 0;">
+        <p style="margin:0 0 8px;"><strong>Expires in:</strong> {{ $expiryMinutes }} minutes</p>
+        <p style="margin:0; color:#6b7280; font-size:13px;">For your security, do not share this code with anyone.</p>
+    </div>
+
+    <hr class="divider">
+    <p style="color:#6b7280; font-size:13px; margin-bottom:0;">If you did not try to create an account, you can safely ignore this email.</p>
+@endsection

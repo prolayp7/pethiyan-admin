@@ -195,6 +195,16 @@ class OtpAuthController extends Controller
             event(new UserLoggedIn($user));
         }
 
+        $verificationUpdates = [
+            'mobile_verified_at' => now(),
+        ];
+
+        if (!empty($user->email) && is_null($user->email_verified_at)) {
+            $verificationUpdates['email_verified_at'] = now();
+        }
+
+        $user->update($verificationUpdates);
+
         $token = $user->createToken('otp-auth')->plainTextToken;
 
         return $this->respondWithFrontendAuthCookie(ApiResponseType::toArray(
@@ -204,7 +214,7 @@ class OtpAuthController extends Controller
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'is_new_user'  => $isNew,
-            'user'         => new UserResource($user),
+            'user'         => new UserResource($user->fresh()),
             ]
         ), $token);
     }

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\AdminPermissionEnum;
+use App\Enums\DefaultSystemRolesEnum;
 use App\Enums\SellerPermissionEnum;
 use App\Models\Banner;
 use App\Models\Brand;
@@ -63,6 +64,7 @@ use App\Support\InstallationState;
 use App\Models\Wallet;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 
@@ -110,6 +112,19 @@ class AuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->registerPolicies();
+
+        Gate::before(function ($user, string $ability) {
+            if (!method_exists($user, 'hasRole') || !method_exists($user, 'getDefaultGuardName')) {
+                return null;
+            }
+
+            if ($user->getDefaultGuardName() !== 'admin') {
+                return null;
+            }
+
+            return $user->hasRole(DefaultSystemRolesEnum::SUPER_ADMIN()) ? true : null;
+        });
+
         $admin_defined = AdminPermissionEnum::values();
         if ($admin_defined && InstallationState::hasTable('permissions')) {
             foreach ($admin_defined as $perm) {

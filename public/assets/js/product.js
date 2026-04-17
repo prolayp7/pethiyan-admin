@@ -524,8 +524,8 @@ function renderVariantSeoSection(v) {
                                   oninput="handleVariantSeoDescriptionInput('${v.id}', this.value)">${v.seo_description || ''}</textarea>
                     </div>
                     <div class="col-12">
-                        <label class="form-label mb-1">SEO Keywords</label>
-                        <input type="text" class="form-control variant-seo-keywords-input" maxlength="255"
+                           <label class="form-label mb-1">SEO Keywords <span class="text-muted">(max 1000)</span></label>
+                           <input type="text" class="form-control variant-seo-keywords-input" maxlength="1000"
                                data-variant-id="${v.id}"
                                placeholder="keyword1, keyword2"
                                value="${v.seo_keywords || ''}">

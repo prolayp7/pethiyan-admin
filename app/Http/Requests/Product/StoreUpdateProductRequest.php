@@ -63,7 +63,7 @@ class StoreUpdateProductRequest extends FormRequest
             'metadata' => 'nullable|array',
             'metadata.seo_title' => 'nullable|string|max:255',
             'metadata.seo_description' => 'nullable|string|max:500',
-            'metadata.seo_keywords' => 'nullable|string|max:255',
+            'metadata.seo_keywords' => 'nullable|string|max:1000',
             'metadata.og_title' => 'nullable|string|max:255',
             'metadata.og_description' => 'nullable|string|max:500',
             'metadata.twitter_title' => 'nullable|string|max:255',

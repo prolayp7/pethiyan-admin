@@ -65,7 +65,7 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Meta Keywords</label>
-                            <input type="text" class="form-control" name="meta_keywords" maxlength="255" value="{{ old('meta_keywords', $category->metadata['meta_keywords'] ?? '') }}" placeholder="packaging news, shipping tips, ecommerce">
+                            <input type="text" class="form-control" name="meta_keywords" maxlength="1000" value="{{ old('meta_keywords', $category->metadata['meta_keywords'] ?? '') }}" placeholder="packaging news, shipping tips, ecommerce">
                         </div>
                     </div>
 

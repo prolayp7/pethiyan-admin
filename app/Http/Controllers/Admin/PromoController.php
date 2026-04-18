@@ -30,11 +30,14 @@ class PromoController extends Controller
 
     public function __construct()
     {
-        if ($this->getPanel() === 'admin') {
-            $this->editPermission = $this->hasPermission(AdminPermissionEnum::PROMO_EDIT());
-            $this->deletePermission = $this->hasPermission(AdminPermissionEnum::PROMO_DELETE());
-            $this->createPermission = $this->hasPermission(AdminPermissionEnum::PROMO_CREATE());
-        }
+        $this->middleware(function ($request, $next) {
+            if ($this->getPanel() === 'admin') {
+                $this->editPermission   = $this->hasPermission(AdminPermissionEnum::PROMO_EDIT());
+                $this->deletePermission = $this->hasPermission(AdminPermissionEnum::PROMO_DELETE());
+                $this->createPermission = $this->hasPermission(AdminPermissionEnum::PROMO_CREATE());
+            }
+            return $next($request);
+        });
     }
 
     /**

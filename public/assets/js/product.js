@@ -1742,9 +1742,17 @@ function bindVariantGstPreviewEvents() {
     const pricingContainer = document.getElementById('storePricingAccordion');
     if (pricingContainer && !pricingContainer.dataset.gstEventsBound) {
         pricingContainer.addEventListener('input', function (event) {
-            if (event.target && event.target.classList.contains('store-price')) {
-                recalculateVariantGstRow(event.target.closest('.variant-pricing-row'));
+            const target = event.target;
+            if (!target) return;
+            const row = target.closest('.variant-pricing-row');
+            if (target.classList.contains('store-price')) {
+                handlePriceChangeForDiscount(row);
+                recalculateVariantGstRow(row);
                 recalculateVisiblePanIndiaTables();
+            } else if (target.classList.contains('store-disc-pct')) {
+                handleDiscPctChange(row);
+            } else if (target.classList.contains('store-special-price')) {
+                handleSpecialPriceChange(row);
             }
         });
         pricingContainer.dataset.gstEventsBound = '1';
@@ -1773,9 +1781,17 @@ function bindSimpleGstPreviewEvents() {
     const pricingContainer = document.getElementById('simplePricingAccordion');
     if (pricingContainer && !pricingContainer.dataset.gstEventsBound) {
         pricingContainer.addEventListener('input', function (event) {
-            if (event.target && event.target.classList.contains('store-price')) {
-                recalculateSimpleGstRow(event.target.closest('.simple-pricing-row'));
+            const target = event.target;
+            if (!target) return;
+            const row = target.closest('.simple-pricing-row');
+            if (target.classList.contains('store-price')) {
+                handlePriceChangeForDiscount(row);
+                recalculateSimpleGstRow(row);
                 recalculateVisiblePanIndiaTables();
+            } else if (target.classList.contains('store-disc-pct')) {
+                handleDiscPctChange(row);
+            } else if (target.classList.contains('store-special-price')) {
+                handleSpecialPriceChange(row);
             }
         });
         pricingContainer.dataset.gstEventsBound = '1';
@@ -1800,6 +1816,58 @@ function bindSimpleGstPreviewEvents() {
 document.addEventListener('DOMContentLoaded', function () {
     ensureGstSlabPreselected();
 });
+
+// ============================================================
+// Discount helpers (Disc % ↔ Special Price)
+// ============================================================
+
+function handleDiscPctChange(row) {
+    if (!row) return;
+    const price = parseFloat(row.querySelector('.store-price')?.value);
+    const discInput = row.querySelector('.store-disc-pct');
+    const spInput = row.querySelector('.store-special-price');
+    if (!discInput || !spInput) return;
+    const disc = parseFloat(discInput.value);
+    if (!isNaN(price) && price > 0 && !isNaN(disc) && disc >= 0 && disc <= 100) {
+        spInput.value = (price * (1 - disc / 100)).toFixed(2);
+    } else {
+        spInput.value = '';
+    }
+}
+
+function handleSpecialPriceChange(row) {
+    if (!row) return;
+    const price = parseFloat(row.querySelector('.store-price')?.value);
+    const discInput = row.querySelector('.store-disc-pct');
+    const spInput = row.querySelector('.store-special-price');
+    if (!discInput || !spInput) return;
+    const special = parseFloat(spInput.value);
+    if (!isNaN(price) && price > 0 && !isNaN(special) && special > 0 && special < price) {
+        discInput.value = (((price - special) / price) * 100).toFixed(2);
+    } else {
+        discInput.value = '';
+        if (!isNaN(special) && !isNaN(price) && special >= price) {
+            spInput.value = '';
+        }
+    }
+}
+
+function handlePriceChangeForDiscount(row) {
+    if (!row) return;
+    const price = parseFloat(row.querySelector('.store-price')?.value);
+    const discInput = row.querySelector('.store-disc-pct');
+    const spInput = row.querySelector('.store-special-price');
+    if (!discInput || !spInput) return;
+    const disc = parseFloat(discInput.value);
+    if (!isNaN(price) && price > 0 && !isNaN(disc) && disc > 0) {
+        spInput.value = (price * (1 - disc / 100)).toFixed(2);
+    } else if (!isNaN(price) && price > 0 && spInput.value !== '') {
+        const sp = parseFloat(spInput.value);
+        if (!isNaN(sp) && sp < price) {
+            discInput.value = (((price - sp) / price) * 100).toFixed(2);
+        }
+    }
+}
 
 // ============================================================
 // Pan India GST Breakdown
@@ -2044,6 +2112,8 @@ function initializeSimplePricing() {
             let storePrice = '';
             let storeStock = '';
             let storeSku = '';
+            let storeSpecialPrice = '';
+            let storeDiscPct = '';
 
             // If we're in edit mode and have pricing data
             if (productPricing && productPricing.variant_pricing) {
@@ -2060,8 +2130,14 @@ function initializeSimplePricing() {
                         storePrice = storePricing.price || '';
                         storeStock = storePricing.stock || '';
                         storeSku = storePricing.sku || '';
+                        storeSpecialPrice = storePricing.special_price || '';
                     }
                 }
+            }
+            if (storeSpecialPrice && storePrice && parseFloat(storePrice) > 0) {
+                const _sp = parseFloat(storeSpecialPrice), _p = parseFloat(storePrice);
+                if (_sp < _p) storeDiscPct = (((_p - _sp) / _p) * 100).toFixed(2);
+                else storeSpecialPrice = '';
             }
             html += `
                 <div class="accordion-item store-pricing-card" data-store-id="${store.id}">
@@ -2081,6 +2157,8 @@ function initializeSimplePricing() {
                                     <thead class="table-light">
                                         <tr>
                                             <th>Price</th>
+                                            <th>Disc %</th>
+                                            <th>Special Price</th>
                                             <th>Stock</th>
                                             <th>SKU</th>
                                             <th>Supply</th>
@@ -2097,6 +2175,18 @@ function initializeSimplePricing() {
                                                 <div class="input-group input-group-sm">
                                                     <span class="input-group-text">${currencySymbol}</span>
                                                     <input type="number" class="form-control store-price" name="store_pricing[${store.id}][price]" step="0.01" min="0" value="${storePrice}">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" class="form-control store-disc-pct" step="0.01" min="0" max="100" placeholder="0" value="${storeDiscPct}">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">${currencySymbol}</span>
+                                                    <input type="number" class="form-control store-special-price" name="store_pricing[${store.id}][special_price]" step="0.01" min="0" placeholder="—" value="${storeSpecialPrice}">
                                                 </div>
                                             </td>
                                             <td>
@@ -2196,6 +2286,8 @@ function updateVariantPricing() {
                                         <tr>
                                             <th>Variant</th>
                                             <th>Price</th>
+                                            <th>Disc %</th>
+                                            <th>Special Price</th>
                                             <th>Stock</th>
                                             <th>SKU</th>
                                             <th>Supply</th>
@@ -2215,6 +2307,8 @@ function updateVariantPricing() {
                 let storePrice = '';
                 let storeStock = '';
                 let storeSku = '';
+                let storeSpecialPrice = '';
+                let storeDiscPct = '';
 
                 if (productPricing && productPricing.variant_pricing) {
                     if (productPricing.variant_pricing[variantId]) {
@@ -2226,6 +2320,7 @@ function updateVariantPricing() {
                             storePrice = storePricing.price || '';
                             storeStock = storePricing.stock || '';
                             storeSku = storePricing.sku || '';
+                            storeSpecialPrice = storePricing.special_price || '';
                         }
                     } else {
                         const serverVariants = window.productData && window.productData.variants ? window.productData.variants : [];
@@ -2253,10 +2348,16 @@ function updateVariantPricing() {
                                     storePrice = storePricing.price || '';
                                     storeStock = storePricing.stock || '';
                                     storeSku = storePricing.sku || '';
+                                    storeSpecialPrice = storePricing.special_price || '';
                                 }
                             }
                         }
                     }
+                }
+                if (storeSpecialPrice && storePrice && parseFloat(storePrice) > 0) {
+                    const _sp = parseFloat(storeSpecialPrice), _p = parseFloat(storePrice);
+                    if (_sp < _p) storeDiscPct = (((_p - _sp) / _p) * 100).toFixed(2);
+                    else storeSpecialPrice = '';
                 }
 
                 const variantAttributeBadges = Object.entries(variant.attributes).map(([attrId, valueId]) => {
@@ -2287,6 +2388,18 @@ function updateVariantPricing() {
                                                         <div class="input-group input-group-sm">
                                                             <span class="input-group-text">${currencySymbol}</span>
                                                             <input type="number" class="form-control store-price" name="variant_pricing[${store.id}][${variantId}][price]" step="0.01" min="0" value="${storePrice}">
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="input-group input-group-sm">
+                                                            <input type="number" class="form-control store-disc-pct" step="0.01" min="0" max="100" placeholder="0" value="${storeDiscPct}">
+                                                            <span class="input-group-text">%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="input-group input-group-sm">
+                                                            <span class="input-group-text">${currencySymbol}</span>
+                                                            <input type="number" class="form-control store-special-price" name="variant_pricing[${store.id}][${variantId}][special_price]" step="0.01" min="0" placeholder="—" value="${storeSpecialPrice}">
                                                         </div>
                                                     </td>
                                                     <td>

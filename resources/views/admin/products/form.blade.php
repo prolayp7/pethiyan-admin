@@ -449,25 +449,25 @@
                                                 @endforeach
                                             </select>
                                         </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ __('labels.tax_group') }}</label>
+                                            <select class="form-select" name="tax_group_id" id="select-tax-group">
+                                                <option value="">— Select Tax Group —</option>
+                                                @php
+                                                    $selectedTaxId = old('tax_group_id', $selectedTaxGroupId ?? (!empty($product) ? optional($product->taxClasses->first())->id : null));
+                                                @endphp
+                                                @foreach($taxClasses as $taxClass)
+                                                    @php
+                                                        $rateSum = (float) ($taxClass->taxRates->sum('rate') ?? 0);
+                                                        $nearest = collect([0, 5, 12, 18, 28])->sortBy(fn($s) => abs($s - $rateSum))->first();
+                                                    @endphp
+                                                    <option value="{{ $taxClass->id }}" data-gst-rate="{{ $nearest }}" {{ $selectedTaxId == $taxClass->id ? 'selected' : '' }}>{{ $taxClass->title }}</option>
+                                                @endforeach
+                                            </select>
+                                            <small class="form-hint">You can select multiple tags</small>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">{{ __('labels.tax_group') }}</label>
-                                <select class="form-select" name="tax_group_id" id="select-tax-group">
-                                    <option value="">— Select Tax Group —</option>
-                                    @php
-                                        $selectedTaxId = old('tax_group_id', $selectedTaxGroupId ?? (!empty($product) ? optional($product->taxClasses->first())->id : null));
-                                    @endphp
-                                    @foreach($taxClasses as $taxClass)
-                                        @php
-                                            $rateSum = (float) ($taxClass->taxRates->sum('rate') ?? 0);
-                                            $nearest = collect([0, 5, 12, 18, 28])->sortBy(fn($s) => abs($s - $rateSum))->first();
-                                        @endphp
-                                        <option value="{{ $taxClass->id }}" data-gst-rate="{{ $nearest }}" {{ $selectedTaxId == $taxClass->id ? 'selected' : '' }}>{{ $taxClass->title }}</option>
-                                    @endforeach
-                                </select>
-                                <small class="form-hint">You can select multiple tags</small>
                             </div>
                             <div class="card">
                                 <div class="card-header bg-transparent border-bottom gap-1 px-0">

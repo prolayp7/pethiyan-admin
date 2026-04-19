@@ -38,6 +38,7 @@ class OrderResource extends JsonResource
             'id' => $this->id,
             'uuid' => $this->uuid,
             'invoice_number' => $this->invoice_number,
+            'order_number' => $this->order_number,
             'slug' => $this->slug,
             'user_id' => $this->user_id,
             'email' => $this->email,

@@ -112,6 +112,17 @@
                         </svg>
                         {{ __('labels.description') }}
                     </button>
+                    <button type="button" class="nav-link" data-step="8" aria-selected="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                             class="icon icon-tabler icons-tabler-outline icon-tabler-help-circle">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <circle cx="12" cy="12" r="9"/>
+                            <path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 3-3 3"/>
+                            <line x1="12" y1="17" x2="12" y2="17.01"/>
+                        </svg>
+                        {{ __('labels.product_faqs') }}
+                    </button>
                     <button type="button" class="nav-link" data-step="7" aria-selected="false">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -502,6 +513,59 @@
                         </div>
                     </div>
                 </div>
+                {{-- Step 8: Product FAQs --}}
+                <div class="wizard-step d-none" data-step="8">
+                    <div class="container">
+                        <div class="mb-3 d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">{{ __('labels.product_faqs') }}</h4>
+                            @if(!empty($product) && auth()->user()?->can('create', App\Models\ProductFaq::class))
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#product-faq-modal" data-product-id="{{ $product->id }}">
+                                    <i class="ti ti-plus me-1"></i> {{ __('labels.add_product_faq') }}
+                                </button>
+                            @endif
+                        </div>
+
+                        @if(empty($product))
+                            <div class="alert alert-info">Save the product first to add product-specific FAQs.</div>
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>{{ __('labels.question') }}</th>
+                                            <th>{{ __('labels.answer') }}</th>
+                                            <th>{{ __('labels.status') }}</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="product-faqs-tbody">
+                                        @forelse($product->faqs ?? [] as $faq)
+                                            <tr>
+                                                <td>{{ $faq->id }}</td>
+                                                <td>{{ Str::limit($faq->question, 80) }}</td>
+                                                <td>{{ Str::limit($faq->answer, 120) }}</td>
+                                                <td class="text-capitalize">{{ $faq->status }}</td>
+                                                <td class="text-end">
+                                                    @can('update', $faq)
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#product-faq-modal" data-id="{{ $faq->id }}">{{ __('labels.edit') }}</button>
+                                                    @endcan
+                                                    @can('delete', $faq)
+                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-product-faq" data-id="{{ $faq->id }}">{{ __('labels.delete') }}</button>
+                                                    @endcan
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="5">{{ __('labels.no_product_faqs_found') }}</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
 
             <div class="card-footer d-flex justify-content-between pt-4">
@@ -524,6 +588,71 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product FAQ Modal (included in product form) -->
+    <div class="modal modal-blur fade" id="product-faq-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="product-faq-modal-title">{{ __('labels.add_product_faq') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form class="form-submit" id="product-faq-form" method="POST" action="{{ route('admin.product_faqs.store') }}">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label required">{{ __('labels.product') }}</label>
+                                    @if(!empty($product))
+                                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                        <input type="text" class="form-control" value="{{ $product->title }}" disabled>
+                                    @else
+                                        <select class="form-select" id="select-product-modal" name="product_id" required>
+                                            <option value="">{{ __('labels.select_product') }}</option>
+                                        </select>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label required">{{ __('labels.question') }}</label>
+                                    <textarea class="form-control" id="question" name="question" rows="3" placeholder="{{ __('labels.enter_question') }}" required></textarea>
+                                </div>
+                            </div>
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label required">{{ __('labels.answer') }}</label>
+                                    <textarea class="form-control" id="answer" name="answer" rows="4" placeholder="{{ __('labels.enter_answer') }}" required></textarea>
+                                </div>
+                            </div>
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ __('labels.status') }}</label>
+                                    <select class="form-select text-capitalize" id="status" name="status">
+                                        @foreach(\App\Enums\ActiveInactiveStatusEnum::values() as $status)
+                                            <option value="{{$status}}">{{ $status }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" class="btn" data-bs-dismiss="modal">{{ __('labels.cancel') }}</a>
+                        <button type="submit" class="btn btn-primary ms-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            {{ __('labels.submit') }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

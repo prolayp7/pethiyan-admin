@@ -32,12 +32,6 @@ return [
                 //     'sub_title'   => 'labels.pending_approval_products',
                 //     'permission'  => 'product.view',
                 // ],
-                'product_faqs' => [
-                    'sub_active' => 'product_faqs',
-                    'sub_route'  => 'admin.product_faqs.index',
-                    'sub_title'  => 'labels.product_faqs',
-                    'permission' => 'product_faqs.view',
-                ],
                 'attributes' => [
                     'sub_active' => 'attributes',
                     'sub_route'  => 'admin.attributes.index',
@@ -577,12 +571,7 @@ return [
                     'permission' => 'product.create'
 
                 ],
-                'product_faqs' => [
-                    'sub_active' => 'product_faqs',
-                    'sub_route' => 'seller.product_faqs.index',
-                    'sub_title' => 'labels.seller_product_faqs',
-                    'permission' => 'product_faq.view'
-                ],
+                
             ],
         ],
         'tax_rates' => [

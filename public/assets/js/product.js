@@ -103,7 +103,8 @@ document.addEventListener('show.bs.modal', event => {
         const form = document.querySelector('#product-faq-modal .form-submit');
         const modalTitle = document.querySelector('#product-faq-modal .modal-title');
         const submitButton = document.querySelector('#product-faq-modal button[type="submit"]');
-        const selectProduct = document.getElementById('select-product');
+        // Prefer modal-specific select to avoid collision with header filter select
+        const selectProduct = document.getElementById('select-product-modal') || document.getElementById('select-product');
         let selectProductTom = selectProduct && selectProduct.tomselect ? selectProduct.tomselect : null;
 
         if (conditionId) {
@@ -116,7 +117,8 @@ document.addEventListener('show.bs.modal', event => {
                     // Fill form fields
                     form.querySelector('textarea[name="question"]').value = data.question || '';
                     form.querySelector('textarea[name="answer"]').value = data.answer || '';
-                    form.querySelector('select[name="product_id"]').value = data.product_id || '';
+                    const productField = form.querySelector('[name="product_id"]');
+                    if (productField) productField.value = data.product_id || '';
                     form.querySelector('select[name="status"]').value = data.status || '';
 
                     if (selectProductTom) {
@@ -140,9 +142,24 @@ document.addEventListener('show.bs.modal', event => {
             if (form) form.reset();
             if (selectProductTom) selectProductTom.clear();
             if (selectProduct) selectProduct.value = '';
+            const productIdFromTrigger = triggerButton ? triggerButton.getAttribute('data-product-id') : null;
             form.querySelector('textarea[name="question"]').value = '';
             form.querySelector('textarea[name="answer"]').value = '';
-            form.querySelector('select[name="product_id"]').value = '';
+            const productFieldCreate = form.querySelector('[name="product_id"]');
+            if (productFieldCreate) productFieldCreate.value = '';
+            if (productIdFromTrigger) {
+                if (selectProductTom) {
+                    // ensure option exists then set
+                    try {
+                        selectProductTom.addOption && selectProductTom.addOption({value: productIdFromTrigger, text: productIdFromTrigger});
+                    } catch (e) {}
+                    selectProductTom.setValue(productIdFromTrigger);
+                } else if (selectProduct) {
+                    selectProduct.value = productIdFromTrigger;
+                }
+                const hiddenInput = form.querySelector('[name="product_id"]');
+                if (hiddenInput) hiddenInput.value = productIdFromTrigger;
+            }
             form.querySelector('select[name="status"]').value = 'active';
             // Set action for create
             form.setAttribute('action', `${base_url}/${panel}/product-faqs`);
@@ -301,6 +318,142 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize wizard
     updateWizard();
+});
+
+// Product FAQ AJAX handlers: submit and delete (updates table without reload)
+document.addEventListener('DOMContentLoaded', function () {
+    const faqForm = document.getElementById('product-faq-form');
+    const faqTbody = document.getElementById('product-faqs-tbody');
+    const modalEl = document.getElementById('product-faq-modal');
+
+    // Helper to render a row for a FAQ
+    function renderFaqRow(faq) {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-id', faq.id);
+        tr.innerHTML = `
+            <td>${faq.id}</td>
+            <td>${escapeHtml(faq.question)}</td>
+            <td>${escapeHtml(faq.answer)}</td>
+            <td class="text-capitalize">${escapeHtml(faq.status || '')}</td>
+            <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#product-faq-modal" data-id="${faq.id}">Edit</button>
+                <button type="button" class="btn btn-sm btn-outline-danger delete-product-faq" data-id="${faq.id}">Delete</button>
+            </td>
+        `;
+        return tr;
+    }
+
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined) return '';
+        return String(unsafe)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    if (faqForm) {
+        faqForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const submitBtn = faqForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn && submitBtn.innerHTML;
+            try {
+                if (submitBtn) submitBtn.disabled = true;
+                if (submitBtn) submitBtn.innerHTML = 'Please wait...';
+
+                const action = faqForm.getAttribute('action');
+                const formData = new FormData(faqForm);
+
+                const res = await fetch(action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const faq = data.data;
+
+                    // If row exists, update it, else append
+                    const existing = faqTbody ? faqTbody.querySelector(`tr[data-id="${faq.id}"]`) : null;
+                    if (existing) {
+                        const newRow = renderFaqRow(faq);
+                        existing.parentNode.replaceChild(newRow, existing);
+                    } else if (faqTbody) {
+                        faqTbody.appendChild(renderFaqRow(faq));
+                    }
+
+                    // Hide modal
+                    if (modalEl) {
+                        try {
+                            const modalObj = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                            modalObj.hide();
+                        } catch (err) {}
+                    }
+
+                    Swal.fire('Success', data.message || 'Saved', 'success');
+                } else {
+                    Swal.fire('Error', data.message || 'Failed', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'There was an error saving the FAQ.', 'error');
+            } finally {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalText; }
+            }
+        });
+    }
+
+    // Delegate delete clicks for product-faqs (prevent global handler)
+    document.addEventListener('click', function (ev) {
+        const btn = ev.target.closest('.delete-product-faq');
+        if (!btn) return;
+        // prevent the global handleDelete from running
+        ev.stopPropagation();
+        ev.preventDefault();
+
+        const id = btn.getAttribute('data-id');
+        const explicitUrl = btn.getAttribute('data-url');
+        const url = explicitUrl || `${base_url}/${panel}/product-faqs/${id}`;
+
+        Swal.fire({
+            title: 'Are you sure?',
+            html: 'You are about to delete this Product Faq.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: primaryColor,
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then(async (result) => {
+            if (!result.isConfirmed) return;
+            try {
+                const res = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // remove row if present
+                    if (faqTbody) {
+                        const row = faqTbody.querySelector(`tr[data-id="${id}"]`);
+                        if (row) row.parentNode.removeChild(row);
+                    }
+                    Swal.fire('Deleted!', data.message || 'Deleted', 'success');
+                } else {
+                    Swal.fire('Error!', data.message || 'Failed to delete', 'error');
+                }
+            } catch (err) {
+                Swal.fire('Error!', 'There was a problem deleting the FAQ.', 'error');
+            }
+        });
+    });
 });
 
 function initHsnCodeSync() {

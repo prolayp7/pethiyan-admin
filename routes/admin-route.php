@@ -541,7 +541,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::prefix('product-faqs')->name('product_faqs.')->group(function () {
             Route::get('/', [ProductFaqController::class, 'index'])->name('index');
             Route::get('/datatable', [ProductFaqController::class, 'getProductFaqs'])->name('datatable');
-//            Route::get('/search', [ProductFaqController::class, 'search'])->name('search');
+            Route::post('/', [ProductFaqController::class, 'store'])->name('store');
+            Route::get('/{id}/edit', [ProductFaqController::class, 'edit'])->name('edit');
+            Route::post('/{id}', [ProductFaqController::class, 'update'])->name('update');
+            Route::delete('/{id}', [ProductFaqController::class, 'destroy'])->name('delete');
+    //            Route::get('/search', [ProductFaqController::class, 'search'])->name('search');
         });
 
         // cms pages

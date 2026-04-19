@@ -41,6 +41,18 @@
                                     @endforeach
                                 </select>
                             </div>
+                            @if(auth()->user()?->can('create', App\Models\ProductFaq::class))
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#product-faq-modal">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                            <line x1="12" y1="5" x2="12" y2="19"/>
+                                            <line x1="5" y1="12" x2="19" y2="12"/>
+                                        </svg>
+                                        {{ __('labels.add_product_faq') }}
+                                    </button>
+                                </div>
+                            @endif
                             <div class="col-auto">
                                 <button class="btn btn-outline-primary" id="refresh">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -64,6 +76,66 @@
                                      :options="['order' => [[0, 'desc']],'pageLength' => 10,]"/>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Product FAQ Modal (admin) -->
+    <div class="modal modal-blur fade" id="product-faq-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="product-faq-modal-title">{{ __('labels.add_product_faq') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form class="form-submit" id="product-faq-form" method="POST" action="{{ route('admin.product_faqs.store') }}">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label required">{{ __('labels.product') }}</label>
+                                    <select class="form-select" id="select-product-modal" name="product_id" required>
+                                        <option value="">{{ __('labels.select_product') }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label required">{{ __('labels.question') }}</label>
+                                    <textarea class="form-control" id="question" name="question" rows="3" placeholder="{{ __('labels.enter_question') }}" required></textarea>
+                                </div>
+                            </div>
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label required">{{ __('labels.answer') }}</label>
+                                    <textarea class="form-control" id="answer" name="answer" rows="4" placeholder="{{ __('labels.enter_answer') }}" required></textarea>
+                                </div>
+                            </div>
+                            <div class="col-lg-12">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ __('labels.status') }}</label>
+                                    <select class="form-select text-capitalize" id="status" name="status">
+                                        @foreach(\App\Enums\ActiveInactiveStatusEnum::values() as $status)
+                                            <option value="{{$status}}">{{ $status }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#" class="btn" data-bs-dismiss="modal">{{ __('labels.cancel') }}</a>
+                        <button type="submit" class="btn btn-primary ms-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            {{ __('labels.submit') }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

@@ -63,6 +63,38 @@ document.addEventListener('show.bs.modal', event => {
             submitButton.innerHTML = '<i class="ti ti-plus me-1"></i> Create';
         }
     }
+    if (event.target.id === 'faq-modal') {
+        const triggerButton = event.relatedTarget;
+        const faqId = triggerButton ? triggerButton.getAttribute('data-id') : null;
+
+        const form = document.querySelector('#faq-modal .form-submit');
+        const modalTitle = document.querySelector('#faq-modal .modal-title');
+        const submitButton = document.querySelector('#faq-modal button[type="submit"]');
+        if (!form) return;
+
+        if (faqId) {
+            fetch(`${base_url}/${panel}/faqs/${faqId}/edit`, {method: 'GET'})
+                .then(response => response.json())
+                .then(responseData => {
+                    const data = responseData.data;
+                    form.querySelector('textarea[name="question"]').value = data.question || '';
+                    form.querySelector('textarea[name="answer"]').value = data.answer || '';
+                    form.querySelector('select[name="status"]').value = data.status || 'active';
+                    form.setAttribute('action', `${base_url}/${panel}/faqs/${faqId}`);
+                    modalTitle.textContent = 'Edit FAQ';
+                    submitButton.innerHTML = '<i class="ti ti-edit me-1"></i> Update';
+                })
+                .catch(error => console.error('AJAX Error:', error));
+        } else {
+            form.reset();
+            form.querySelector('textarea[name="question"]').value = '';
+            form.querySelector('textarea[name="answer"]').value = '';
+            form.querySelector('select[name="status"]').value = 'active';
+            form.setAttribute('action', `${base_url}/${panel}/faqs`);
+            modalTitle.textContent = 'Add FAQ';
+            submitButton.innerHTML = '<i class="ti ti-plus me-1"></i> Create';
+        }
+    }
     if (event.target.id === 'product-faq-modal') {
         const triggerButton = event.relatedTarget;
         const conditionId = triggerButton ? triggerButton.getAttribute('data-id') : null;
@@ -123,6 +155,7 @@ document.addEventListener('click', function (event) {
     // delete soft store
     handleDelete(event, '.delete-product-condition', `/${panel}/product-conditions/`, 'You are about to delete this Product Condition.');
     handleDelete(event, '.delete-product', `/${panel}/products/`, 'You are about to delete this Product.');
+    handleDelete(event, '.delete-faq', `/${panel}/faqs/`, 'You are about to delete this FAQ.');
     handleDelete(event, '.delete-product-faq', `/${panel}/product-faqs/`, 'You are about to delete this Product Faq.');
 });
 

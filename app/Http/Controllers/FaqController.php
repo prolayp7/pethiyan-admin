@@ -21,16 +21,7 @@ class FaqController extends Controller
 
     use PanelAware, AuthorizesRequests, ChecksPermissions;
 
-    protected bool $editPermission = false;
-    protected bool $deletePermission = false;
-    protected bool $createPermission = false;
-
-    public function __construct()
-    {
-        $this->editPermission = $this->hasPermission(AdminPermissionEnum::FAQ_EDIT());
-        $this->deletePermission = $this->hasPermission(AdminPermissionEnum::FAQ_DELETE());
-        $this->createPermission = $this->hasPermission(AdminPermissionEnum::FAQ_CREATE());
-    }
+    public function __construct() {}
 
     /**
      * Display a listing of the product FAQs.
@@ -45,8 +36,8 @@ class FaqController extends Controller
             ['data' => 'created_at', 'name' => 'created_at', 'title' => __('labels.created_at')],
             ['data' => 'action', 'name' => 'action', 'title' => __('labels.action'), 'orderable' => false, 'searchable' => false],
         ];
-        $createPermission = $this->createPermission;
-        $editPermission = $this->editPermission;
+        $createPermission = $this->hasPermission(AdminPermissionEnum::FAQ_CREATE());
+        $editPermission   = $this->hasPermission(AdminPermissionEnum::FAQ_EDIT());
 
         return view($this->panelView('faqs.index'), compact('columns', 'createPermission', 'editPermission'));
     }
@@ -247,8 +238,8 @@ class FaqController extends Controller
                             'id' => $faq->id,
                             'title' => $faq->question,
                             'mode' => 'model_view',
-                            'editPermission' => $this->editPermission,
-                            'deletePermission' => $this->deletePermission
+                            'editPermission' => $this->hasPermission(AdminPermissionEnum::FAQ_EDIT()),
+                            'deletePermission' => $this->hasPermission(AdminPermissionEnum::FAQ_DELETE()),
                         ])->render(),
                     ];
                 })

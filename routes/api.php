@@ -35,6 +35,7 @@ use App\Http\Controllers\Payments\FlutterwaveController;
 use App\Http\Controllers\Payments\PaystackController;
 use App\Http\Controllers\Payments\RazorpayController;
 use App\Http\Controllers\Payments\StripeController;
+use App\Http\Controllers\Api\AnnouncementBarApiController;
 use App\Http\Controllers\Api\HeroSectionApiController;
 use App\Http\Controllers\Api\NewsletterSectionApiController;
 use App\Http\Controllers\Api\VideoStorySectionApiController;
@@ -51,6 +52,9 @@ Route::prefix('search')->name('search.')->group(function () {
     Route::get('/trending-products', [SearchApiController::class, 'trendingProducts'])->name('trending-products');
     Route::post('/track',            [SearchApiController::class, 'track'])->name('track');
 });
+
+// Announcement Bar (public — consumed by Next.js frontend)
+Route::get('announcement-bar', [AnnouncementBarApiController::class, 'index'])->name('announcement-bar.index');
 
 // Hero Section (public — consumed by Next.js frontend)
 Route::get('hero-section', [HeroSectionApiController::class, 'index'])->name('hero-section.index');

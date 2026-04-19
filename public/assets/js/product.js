@@ -408,6 +408,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Delegate delete clicks for product-faqs (prevent global handler)
+    // Use capture phase so this runs before other bubble-phase handlers.
     document.addEventListener('click', function (ev) {
         const btn = ev.target.closest('.delete-product-faq');
         if (!btn) return;
@@ -453,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 Swal.fire('Error!', 'There was a problem deleting the FAQ.', 'error');
             }
         });
-    });
+    }, true);
 });
 
 function initHsnCodeSync() {

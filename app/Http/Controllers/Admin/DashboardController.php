@@ -7,9 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Services\CurrencyService;
 use App\Services\DashboardService;
 use App\Services\WalletService;
-use App\Models\Seller;
-use App\Models\User;
-use App\Models\Order;
 use App\Traits\ChecksPermissions;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -32,7 +29,6 @@ class DashboardController extends Controller
         $this->dashboardService = $dashboardService;
         $this->currencyService = $currencyService;
         $this->walletService = $walletService;
-        $this->viewPermission = $this->hasPermission(AdminPermissionEnum::DASHBOARD_VIEW());
     }
 
     /**
@@ -56,7 +52,7 @@ class DashboardController extends Controller
         $topSellingProducts = $dashboardService->getTopSellingProducts(days: 30, limit: 5);
         $categoriesWithFilters = $dashboardService->getCategoriesWithFilters(sortBy: 'products_count', filterBy: 'all');
 
-        $viewPermission = $this->viewPermission;
+        $viewPermission = $this->hasPermission(AdminPermissionEnum::DASHBOARD_VIEW());
         return view('admin.dashboard', compact(
             'currencyService',
             'adminInsights',

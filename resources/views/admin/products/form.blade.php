@@ -539,9 +539,9 @@
                                             <th></th>
                                         </tr>
                                     </thead>
-                                    <tbody id="product-faqs-tbody">
+                                    <tbody id="product-faqs-tbody" data-empty-text="{{ __('labels.no_product_faqs_found') }}">
                                         @forelse($product->faqs ?? [] as $faq)
-                                            <tr>
+                                            <tr data-id="{{ $faq->id }}">
                                                 <td>{{ $faq->id }}</td>
                                                 <td>{{ Str::limit($faq->question, 80) }}</td>
                                                 <td>{{ Str::limit($faq->answer, 120) }}</td>

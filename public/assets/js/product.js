@@ -377,6 +377,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     const faq = data.data;
 
+                    // Remove any placeholder empty row
+                    const emptyRows = faqTbody ? Array.from(faqTbody.querySelectorAll('tr')).filter(r => {
+                        const tds = r.querySelectorAll('td');
+                        return tds.length === 1 && tds[0].hasAttribute('colspan');
+                    }) : [];
+                    emptyRows.forEach(r => r.parentNode.removeChild(r));
+
                     // If row exists, update it, else append
                     const existing = faqTbody ? faqTbody.querySelector(`tr[data-id="${faq.id}"]`) : null;
                     if (existing) {
@@ -445,6 +452,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (faqTbody) {
                         const row = faqTbody.querySelector(`tr[data-id="${id}"]`);
                         if (row) row.parentNode.removeChild(row);
+
+                        // if no rows remain, insert empty placeholder row
+                        if (!faqTbody.querySelector('tr')) {
+                            const emptyText = faqTbody.getAttribute('data-empty-text') || 'No product FAQs found';
+                            const tr = document.createElement('tr');
+                            const td = document.createElement('td');
+                            td.setAttribute('colspan', '5');
+                            td.textContent = emptyText;
+                            tr.appendChild(td);
+                            faqTbody.appendChild(tr);
+                        }
                     }
                     Swal.fire('Deleted!', data.message || 'Deleted', 'success');
                 } else {

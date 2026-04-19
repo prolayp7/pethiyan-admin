@@ -1979,9 +1979,9 @@ function buildPanIndiaTableHtml(wrapper) {
             <table class="table table-sm table-bordered table-hover mb-0" style="border-collapse:separate;border-spacing:0;">
                 <thead class="sticky-top">
                     <tr class="table-dark">
-                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:0;z-index:3;background:#1d273b;min-width:130px;">STATE</th>
-                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:130px;z-index:3;background:#1d273b;min-width:52px;">GST</th>
-                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:182px;z-index:3;background:#1d273b;min-width:90px;">SUPPLY</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:0;z-index:3;min-width:130px;">STATE</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:130px;z-index:3;min-width:52px;">GST</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:182px;z-index:3;min-width:90px;">SUPPLY</th>
                         ${headerPriceCols}
                     </tr>
                     ${priceEntries.length > 1 ? `<tr class="table-secondary">${subHeaderCols}</tr>` : ''}

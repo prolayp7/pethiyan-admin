@@ -96,7 +96,7 @@
                         <table role="presentation" width="100%" class="meta" cellpadding="0" cellspacing="0" style="margin-top:16px; border-radius:8px;">
                             <tr>
                                 <td class="p" style="padding:12px 14px;">
-                                    <strong>Order ID:</strong> #{{ $order->slug ?? $order->id }}<br>
+                                    <strong>Order ID:</strong> #{{ $order->order_number ?? $order->slug ?? $order->id }}<br>
                                     <strong>Order Date:</strong> {{ $order->created_at?->format('d M Y, h:i A') }}<br>
                                     <strong>Payment Status:</strong> <span class="badge">{{ $paymentStatus }}</span>
                                 </td>

@@ -1956,11 +1956,12 @@ function buildPanIndiaTableHtml(wrapper) {
             `;
         }).join('');
 
+        const stickyBg = isIntra ? '#d1e7dd' : 'var(--tblr-body-bg, #fff)';
         return `
             <tr class="${rowCls}">
-                <td class="text-nowrap small">${state.name}</td>
-                <td class="text-center"><span class="badge bg-blue-lt text-blue">${state.gst_code || ''}</span></td>
-                <td><span class="badge ${badgeCls} small">${supplyLbl}</span></td>
+                <td class="text-nowrap small" style="position:sticky;left:0;z-index:1;background:${stickyBg};min-width:130px;">${state.name}</td>
+                <td class="text-center" style="position:sticky;left:130px;z-index:1;background:${stickyBg};min-width:52px;"><span class="badge bg-blue-lt text-blue">${state.gst_code || ''}</span></td>
+                <td style="position:sticky;left:182px;z-index:1;background:${stickyBg};min-width:90px;"><span class="badge ${badgeCls} small">${supplyLbl}</span></td>
                 ${priceCols}
             </tr>
         `;
@@ -1975,12 +1976,12 @@ function buildPanIndiaTableHtml(wrapper) {
             <span class="badge bg-blue-lt text-blue ms-auto">Seller State: ${sellerLabel}</span>
         </div>
         <div class="table-responsive border rounded" style="max-height:400px;overflow-y:auto;">
-            <table class="table table-sm table-bordered table-hover mb-0">
+            <table class="table table-sm table-bordered table-hover mb-0" style="border-collapse:separate;border-spacing:0;">
                 <thead class="sticky-top">
                     <tr class="table-dark">
-                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}">State</th>
-                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}">GST</th>
-                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}">Supply</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:0;z-index:3;background:#1d273b;min-width:130px;">STATE</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:130px;z-index:3;background:#1d273b;min-width:52px;">GST</th>
+                        <th rowspan="${priceEntries.length > 1 ? 2 : 1}" style="position:sticky;left:182px;z-index:3;background:#1d273b;min-width:90px;">SUPPLY</th>
                         ${headerPriceCols}
                     </tr>
                     ${priceEntries.length > 1 ? `<tr class="table-secondary">${subHeaderCols}</tr>` : ''}

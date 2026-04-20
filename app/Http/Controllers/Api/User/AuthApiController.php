@@ -198,7 +198,18 @@ class AuthApiController extends Controller
                     ], 422);
                 }
                 // Unverified account exists — update credentials and resend OTP
+                // If mobile changed, ensure it isn't taken by a different account
+                if ($validated['mobile'] != $existingUser->mobile) {
+                    if (User::where('mobile', $validated['mobile'])->where('id', '!=', $existingUser->id)->exists()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => __('labels.mobile_already_registered'),
+                            'data'    => [],
+                        ], 422);
+                    }
+                }
                 $existingUser->name     = $validated['name'];
+                $existingUser->mobile   = $validated['mobile']; // keep in sync so verifyMobile lookup works
                 $existingUser->password = Hash::make($validated['password']);
                 $existingUser->save();
                 $user = $existingUser;

@@ -120,7 +120,7 @@ class SystemUserController extends Controller
         $newUser->name = $validated['name'];
         $newUser->email = $validated['email'];
         $newUser->mobile = $validated['mobile'];
-        $newUser->password = bcrypt($validated['password']); // Encrypt the password
+        $newUser->password = $validated['password'];
         // System users are created by an admin and don't require email verification
         $newUser->email_verified_at = now();
         if ($this->getPanel() !== 'admin') {

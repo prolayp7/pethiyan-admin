@@ -238,6 +238,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{id}/edit', [StoreController::class, 'edit'])->name('edit');
             Route::post('/{id}', [StoreController::class, 'update'])->name('update');
             Route::delete('/{id}', [StoreController::class, 'destroy'])->name('destroy');
+            Route::get('/{id}', [StoreController::class, 'show'])->name('show');
+            Route::post('/{id}/verify', [StoreController::class, 'verify'])->name('verify');
+        });
 
         // reviews (admin UI)
         Route::prefix('reviews')->name('reviews.')->group(function () {
@@ -245,17 +248,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/', [\App\Http\Controllers\ReviewController::class, 'store'])->name('store');
             Route::post('/{id}/approve', [\App\Http\Controllers\ReviewController::class, 'approve'])->name('approve');
             Route::post('/{id}/reject', [\App\Http\Controllers\ReviewController::class, 'reject'])->name('reject');
-        });
-        
-        // Expose top-level /admin/reviews routes so admin menu links work
-        Route::prefix('reviews')->name('reviews.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\ReviewController::class, 'index'])->name('index');
-            Route::post('/', [\App\Http\Controllers\ReviewController::class, 'store'])->name('store');
-            Route::post('/{id}/approve', [\App\Http\Controllers\ReviewController::class, 'approve'])->name('approve');
-            Route::post('/{id}/reject', [\App\Http\Controllers\ReviewController::class, 'reject'])->name('reject');
-        });
-            Route::get('/{id}', [StoreController::class, 'show'])->name('show');
-            Route::post('/{id}/verify', [StoreController::class, 'verify'])->name('verify');
         });
 
         // stores list (used by product form pricing section)

@@ -175,82 +175,112 @@ class AuthApiController extends Controller
     {
         try {
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|unique:users',
-                'mobile' => 'required|unique:users|numeric',
+                'name'         => 'required|string|max:255',
+                'email'        => 'required|string|email|max:255',
+                'mobile'       => 'required|numeric',
                 'company_name' => 'nullable|string|max:255',
-                'password' => 'required|string|min:6|confirmed',
-                'country' => 'nullable|string|max:255',
-                'iso_2' => 'nullable|string|max:2',
+                'password'     => 'required|string|min:6|confirmed',
+                'country'      => 'nullable|string|max:255',
+                'iso_2'        => 'nullable|string|max:2',
                 'country_code' => 'nullable|string|max:6',
             ]);
 
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'mobile' => $validated['mobile'],
-                'company_name' => $validated['company_name'] ?? null,
-                'country' => $validated['country'] ?? null,
-                'iso_2' => $validated['iso_2'] ?? null,
-                'password' => Hash::make($validated['password']),
-                'email_verified_at' => now(),
-            ]);
+            $isNewUser = false;
+            $existingUser = User::where('email', $validated['email'])->first();
 
-            try {
-                $systemSettingsResource = $this->settingService->getSettingByVariable(SettingTypeEnum::SYSTEM());
-                $systemSettings = $systemSettingsResource?->toArray($request)['value'] ?? [];
-                $welcomeAmount = (float)($systemSettings['welcomeWalletBalanceAmount'] ?? 0);
-
-                if ($welcomeAmount > 0) {
-                    $walletService = app(WalletService::class);
-                    $walletService->addBalance($user->id, [
-                        'amount' => $welcomeAmount,
-                        'payment_method' => 'system',
-                        'description' => __('labels.welcome_wallet_bonus') ?? 'Welcome bonus added to wallet',
-                    ]);
+            if ($existingUser) {
+                // Already fully verified — tell them to sign in instead
+                if (!is_null($existingUser->email_verified_at)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => __('labels.email_already_registered'),
+                        'data'    => [],
+                    ], 422);
                 }
-            } catch (\Throwable $th) {
-                Log::error('Welcome wallet credit failed for user ' . $user->id . ': ' . $th->getMessage());
+                // Unverified account exists — update credentials and resend OTP
+                $existingUser->name     = $validated['name'];
+                $existingUser->password = Hash::make($validated['password']);
+                $existingUser->save();
+                $user = $existingUser;
+                $successMessage = __('labels.otp_resent_to_unverified');
+            } else {
+                // Brand-new registration — check mobile uniqueness here
+                if (User::where('mobile', $validated['mobile'])->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => __('labels.mobile_already_registered'),
+                        'data'    => [],
+                    ], 422);
+                }
+
+                $user = User::create([
+                    'name'         => $validated['name'],
+                    'email'        => $validated['email'],
+                    'mobile'       => $validated['mobile'],
+                    'company_name' => $validated['company_name'] ?? null,
+                    'country'      => $validated['country'] ?? null,
+                    'iso_2'        => $validated['iso_2'] ?? null,
+                    'password'     => Hash::make($validated['password']),
+                    // email_verified_at intentionally null — set after OTP verification
+                ]);
+
+                $isNewUser = true;
+                $successMessage = __('labels.registration_successful');
+
+                try {
+                    $systemSettingsResource = $this->settingService->getSettingByVariable(SettingTypeEnum::SYSTEM());
+                    $systemSettings = $systemSettingsResource?->toArray($request)['value'] ?? [];
+                    $welcomeAmount = (float)($systemSettings['welcomeWalletBalanceAmount'] ?? 0);
+
+                    if ($welcomeAmount > 0) {
+                        $walletService = app(WalletService::class);
+                        $walletService->addBalance($user->id, [
+                            'amount'         => $welcomeAmount,
+                            'payment_method' => 'system',
+                            'description'    => __('labels.welcome_wallet_bonus') ?? 'Welcome bonus added to wallet',
+                        ]);
+                    }
+                } catch (\Throwable $th) {
+                    Log::error('Welcome wallet credit failed for user ' . $user->id . ': ' . $th->getMessage());
+                }
             }
 
-            $smsSettings = $this->settingService->getSettingByVariable(SettingTypeEnum::SMS())?->value ?? [];
-            $emailSettings = $this->settingService->getSettingByVariable(SettingTypeEnum::EMAIL())?->value ?? [];
-
-            $smsEnabled = (bool)($smsSettings['enabled'] ?? false);
-            $emailOtpEnabled = (bool)($emailSettings['email_otp_enabled'] ?? ($smsSettings['email_enabled'] ?? false));
-            $smsDemoMode = $smsEnabled && (bool)($smsSettings['otp_demo_mode'] ?? false);
-            $emailDemoMode = $emailOtpEnabled && (bool)($emailSettings['email_demo_mode'] ?? false);
-            $countryCode = $validated['country_code'] ?? '+91';
-            $expiryMinutes = (int)($smsSettings['otp_expiry_minutes'] ?? 10);
-            $otpLength = (int)($smsSettings['otp_length'] ?? 6);
-
-            $smsOtpSent = false;
-            $emailOtpSent = false;
+            $smsSettings      = $this->settingService->getSettingByVariable(SettingTypeEnum::SMS())?->value ?? [];
+            $emailSettings    = $this->settingService->getSettingByVariable(SettingTypeEnum::EMAIL())?->value ?? [];
+            $smsEnabled       = (bool)($smsSettings['enabled'] ?? false);
+            $emailOtpEnabled  = (bool)($emailSettings['email_otp_enabled'] ?? ($smsSettings['email_enabled'] ?? false));
+            $smsDemoMode      = $smsEnabled && (bool)($smsSettings['otp_demo_mode'] ?? false);
+            $emailDemoMode    = $emailOtpEnabled && (bool)($emailSettings['email_demo_mode'] ?? false);
+            $countryCode      = $validated['country_code'] ?? '+91';
+            $expiryMinutes    = (int)($smsSettings['otp_expiry_minutes'] ?? 10);
+            $otpLength        = (int)($smsSettings['otp_length'] ?? 6);
+            $smsOtpSent       = false;
+            $emailOtpSent     = false;
 
             if ($smsEnabled || $emailOtpEnabled) {
                 $otp = $smsDemoMode ? '123456' : $this->generateRegistrationOtp($otpLength);
 
-                OtpVerification::invalidatePrevious($validated['mobile'], $countryCode);
+                OtpVerification::invalidatePrevious($user->mobile, $countryCode);
                 OtpVerification::create([
-                    'mobile' => $validated['mobile'],
-                    'country_code' => $countryCode,
-                    'otp' => Hash::make($otp),
-                    'expires_at' => now()->addMinutes($expiryMinutes),
-                    'attempts' => 0,
+                    'mobile'      => $user->mobile,
+                    'country_code'=> $countryCode,
+                    'otp'         => Hash::make($otp),
+                    'expires_at'  => now()->addMinutes($expiryMinutes),
+                    'attempts'    => 0,
                 ]);
 
                 if ($smsEnabled) {
                     try {
                         if ($smsDemoMode) {
                             Log::info('[RegisterOtp] SMS demo OTP generated.', [
-                                'user_id' => $user->id,
-                                'mobile' => $validated['mobile'],
+                                'user_id'      => $user->id,
+                                'mobile'       => $user->mobile,
                                 'country_code' => $countryCode,
-                                'otp' => $otp,
+                                'otp'          => $otp,
                             ]);
                             $smsOtpSent = true;
                         } else {
-                            $smsOtpSent = app(SmsService::class)->sendOtp($validated['mobile'], $countryCode, $otp);
+                            $smsOtpSent = app(SmsService::class)->sendOtp($user->mobile, $countryCode, $otp);
                         }
                     } catch (\Throwable $th) {
                         Log::error('Mobile OTP send failed for user ' . $user->id . ': ' . $th->getMessage());
@@ -262,15 +292,15 @@ class AuthApiController extends Controller
                         if ($emailDemoMode) {
                             Log::info('[RegisterOtp] Email demo OTP generated.', [
                                 'user_id' => $user->id,
-                                'email' => $validated['email'],
-                                'otp' => $otp,
+                                'email'   => $user->email,
+                                'otp'     => $otp,
                             ]);
                             $emailOtpSent = true;
                         } else {
                             $emailOtpSent = app(EmailService::class)->send(
-                                new RegistrationOtpMail($validated['name'], $otp, $expiryMinutes),
-                                $validated['email'],
-                                $validated['name']
+                                new RegistrationOtpMail($user->name, $otp, $expiryMinutes),
+                                $user->email,
+                                $user->name
                             );
                         }
                     } catch (\Throwable $th) {
@@ -278,23 +308,29 @@ class AuthApiController extends Controller
                     }
                 }
             } else {
-                $user->update(['mobile_verified_at' => now()]);
+                // No OTP configured — auto-verify both channels immediately
+                $user->update([
+                    'mobile_verified_at' => now(),
+                    'email_verified_at'  => now(),
+                ]);
             }
 
-            event(new UserRegistered($user));
+            if ($isNewUser) {
+                event(new UserRegistered($user));
+            }
 
-            $token = $user->createToken($validated['email'])->plainTextToken;
+            $token = $user->createToken($user->email)->plainTextToken;
 
             return $this->respondWithFrontendAuthCookie([
-                'success' => true,
-                'message' => __('labels.registration_successful'),
+                'success'      => true,
+                'message'      => $successMessage,
                 'access_token' => $token,
-                'token_type' => 'Bearer',
-                'data' => [
-                    'user' => new UserResource($user->fresh()),
-                    'mobile_verified' => !is_null($user->fresh()->mobile_verified_at),
-                    'otp_sent' => $smsOtpSent || $emailOtpSent,
-                    'sms_otp_sent' => $smsOtpSent,
+                'token_type'   => 'Bearer',
+                'data'         => [
+                    'user'           => new UserResource($user->fresh()),
+                    'mobile_verified'=> !is_null($user->fresh()->mobile_verified_at),
+                    'otp_sent'       => $smsOtpSent || $emailOtpSent,
+                    'sms_otp_sent'   => $smsOtpSent,
                     'email_otp_sent' => $emailOtpSent,
                 ],
             ], $token);
@@ -302,13 +338,13 @@ class AuthApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => __('labels.validation_error') . ':- ' . $e->getMessage(),
-                'data' => []
+                'data'    => [],
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => __('labels.registration_failed', ['error' => $e->getMessage()]),
-                'data' => []
+                'data'    => [],
             ], 500);
         }
     }

@@ -474,6 +474,9 @@ return [
     'login_failed' => 'Login failed: :error',
     'registration_successful' => 'Registration successful',
     'registration_failed' => 'Registration failed: :error',
+    'email_already_registered' => 'This email is already registered. Please sign in.',
+    'mobile_already_registered' => 'This mobile number is already in use.',
+    'otp_resent_to_unverified' => 'Your account is pending verification. A new OTP has been sent.',
     'logged_out_successfully' => 'Logged out successfully',
     'password_reset_failed' => 'Password reset failed: :error',
 

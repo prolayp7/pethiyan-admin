@@ -1310,7 +1310,7 @@ return [
     'total_reviews' => 'Total Reviews',
     'average_rating' => 'Average Rating',
     'unsettled_payments' => 'unsettled payments',
-    'reviews' => 'reviews',
+    'reviews' => 'Reviews',
     'new_this_week' => 'new this week',
     'earnings_last_30_days' => 'Earnings (Last 30 Days)',
     'store_wise_order_distribution' => 'Store-wise Order Distribution',

@@ -35,6 +35,7 @@ class OrderResource extends JsonResource
                 // Customer information
                 'billing_name' => $this->order->billing_name,
                 'billing_phone' => $this->order->billing_phone,
+                'customer_company' => $this->order->user?->company_name,
                 'customer_gstin' => $this->order->user?->gstin,
 
                 // Shipping information
@@ -118,6 +119,7 @@ class OrderResource extends JsonResource
                 // Customer information
                 'billing_name' => $this->billing_name,
                 'billing_phone' => $this->billing_phone,
+                'customer_company' => $this->user?->company_name,
                 'customer_gstin' => $this->user?->gstin,
 
                 // Shipping information

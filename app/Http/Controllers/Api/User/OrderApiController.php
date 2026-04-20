@@ -47,10 +47,19 @@ class OrderApiController extends Controller
         }
         $result = $this->orderService->createOrder($user, $request->validated());
 
+        // When successful, ensure we return a plain array including `slug` so
+        // frontend callers (and non-Laravel JSON consumers) reliably receive it.
+        if ($result['success'] && isset($result['data'])) {
+            $resource = new OrderResource($result['data']);
+            $payload = $resource->toArray($request);
+        } else {
+            $payload = $result['data'] ?? null;
+        }
+
         return ApiResponseType::sendJsonResponse(
             $result['success'],
             $result['message'],
-            $result['success'] ? new OrderResource($result['data']) : $result['data']
+            $payload
         );
     }
 

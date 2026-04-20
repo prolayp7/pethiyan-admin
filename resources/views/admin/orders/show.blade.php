@@ -214,6 +214,12 @@
                                         <div
                                             class="datagrid-content text-capitalize">{{ $order['billing_name'] }}</div>
                                     </div>
+                                    @if(!empty($order['customer_company']))
+                                        <div class="datagrid-item">
+                                            <div class="datagrid-title">{{ __('labels.company') }}</div>
+                                            <div class="datagrid-content text-capitalize">{{ $order['customer_company'] }}</div>
+                                        </div>
+                                    @endif
                                     <div class="datagrid-item">
                                         <div class="datagrid-title">{{ __('labels.email') }}</div>
                                         <div class="datagrid-content">{{ $order['email'] }}</div>

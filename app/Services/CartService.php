@@ -97,6 +97,45 @@ class CartService
             }
 
             $requestedQuantity = $data['quantity'] ?? 1;
+            // Validate product-level quantity rules (min, step, total allowed)
+            $product = $storeProductVariant->productVariant->product ?? null;
+            $minQty = $product->minimum_order_quantity ?? 1;
+            $stepQty = $product->quantity_step_size ?? 1;
+            $totalAllowed = $product->total_allowed_quantity ?? null;
+
+            // When adding, the requested quantity is either new or will be added to existing
+            $effectiveQuantity = $requestedQuantity;
+            if ($cartItem) {
+                $effectiveQuantity = $cartItem->quantity + $requestedQuantity;
+            }
+
+            if ($effectiveQuantity < $minQty) {
+                return [
+                    'success' => false,
+                    'message' => __('messages.quantity_below_minimum_order_quantity'),
+                    'data' => ['minimum_order_quantity' => $minQty]
+                ];
+            }
+
+            // Enforce step size relative to minimum order quantity
+            $stepQty = max(1, (int) $stepQty);
+            if ($stepQty > 1) {
+                if ((($effectiveQuantity - $minQty) % $stepQty) !== 0) {
+                    return [
+                        'success' => false,
+                        'message' => __('messages.quantity_must_be_multiple_of_step'),
+                        'data' => ['quantity_step_size' => $stepQty, 'minimum_order_quantity' => $minQty]
+                    ];
+                }
+            }
+
+            if (!is_null($totalAllowed) && $totalAllowed > 0 && $effectiveQuantity > $totalAllowed) {
+                return [
+                    'success' => false,
+                    'message' => __('messages.quantity_exceeds_total_allowed_quantity'),
+                    'data' => ['total_allowed_quantity' => $totalAllowed]
+                ];
+            }
             DB::beginTransaction();
             if ($cartItem) {
                 if ($cartItem->save_for_later === true) {
@@ -979,6 +1018,39 @@ class CartService
                     'success' => false,
                     'message' => __('messages.insufficient_stock_available'),
                     'data' => ['available_stock' => $storeProductVariant->stock ?? 0]
+                ];
+            }
+
+            // Validate product-level quantity rules (min, step, total allowed)
+            $product = $cartItem->product ?? ($cartItem->variant?->product ?? null);
+            $minQty = $product->minimum_order_quantity ?? 1;
+            $stepQty = $product->quantity_step_size ?? 1;
+            $totalAllowed = $product->total_allowed_quantity ?? null;
+
+            if ($quantity < $minQty) {
+                return [
+                    'success' => false,
+                    'message' => __('messages.quantity_below_minimum_order_quantity'),
+                    'data' => ['minimum_order_quantity' => $minQty]
+                ];
+            }
+
+            $stepQty = max(1, (int) $stepQty);
+            if ($stepQty > 1) {
+                if ((($quantity - $minQty) % $stepQty) !== 0) {
+                    return [
+                        'success' => false,
+                        'message' => __('messages.quantity_must_be_multiple_of_step'),
+                        'data' => ['quantity_step_size' => $stepQty, 'minimum_order_quantity' => $minQty]
+                    ];
+                }
+            }
+
+            if (!is_null($totalAllowed) && $totalAllowed > 0 && $quantity > $totalAllowed) {
+                return [
+                    'success' => false,
+                    'message' => __('messages.quantity_exceeds_total_allowed_quantity'),
+                    'data' => ['total_allowed_quantity' => $totalAllowed]
                 ];
             }
 

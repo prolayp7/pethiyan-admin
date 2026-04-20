@@ -24,7 +24,9 @@ class OrderPlacedMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $orderIdentifier = $this->order->order_number ?: ($this->order->slug ?: $this->order->id);
+        // Ensure we have the freshest order data (id/created_at) before building subject
+        $order = $this->order->fresh() ?? $this->order;
+        $orderIdentifier = $order->order_number ?: ($order->slug ?: $order->id);
 
         return new Envelope(
             subject: 'Order Confirmed — #' . $orderIdentifier,

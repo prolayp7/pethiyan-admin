@@ -61,6 +61,9 @@ return [
     'handling_charges_info_message' => 'Administrative fee that goes to the admin for processing the order. This is separate from delivery charges and is applied to all orders.',
     // Cart Success Messages
     'item_added_to_cart_successfully' => 'Item added to cart successfully',
+    'quantity_below_minimum_order_quantity' => 'Quantity must be at least the minimum order quantity.',
+    'quantity_must_be_multiple_of_step' => 'Quantity must be in multiples of the product quantity step size.',
+    'quantity_exceeds_total_allowed_quantity' => 'Quantity exceeds total allowed quantity for this product.',
     'item_removed_from_cart_successfully' => 'Item removed from cart successfully',
     'cart_item_quantity_updated_successfully' => 'Cart item quantity updated successfully',
     'cart_cleared_successfully' => 'Cart cleared successfully',

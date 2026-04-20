@@ -1256,6 +1256,7 @@ return [
     'total_price' => 'Total Price',
     'customer_information' => 'Customer Information',
     'customer_name' => 'Customer Name',
+    'company' => 'Company',
     'shipping_address' => 'Shipping Address',
     'phone' => 'Phone',
     'order_items' => 'Order Items',

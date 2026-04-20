@@ -32,9 +32,14 @@ class RoleController extends Controller
     {
         $enum = $this->getPanel() === 'seller' ? SellerPermissionEnum::class : AdminPermissionEnum::class;
         $user = auth()->user();
-        $this->editPermission = $this->hasPermission($enum::ROLE_EDIT()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-        $this->deletePermission = $this->hasPermission($enum::ROLE_DELETE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-        $this->createPermission = $this->hasPermission($enum::ROLE_CREATE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
+        $isSellerRole = false;
+        if ($user && method_exists($user, 'hasRole')) {
+            $isSellerRole = (bool) $user->hasRole(DefaultSystemRolesEnum::SELLER());
+        }
+
+        $this->editPermission = $this->hasPermission($enum::ROLE_EDIT()) || $isSellerRole;
+        $this->deletePermission = $this->hasPermission($enum::ROLE_DELETE()) || $isSellerRole;
+        $this->createPermission = $this->hasPermission($enum::ROLE_CREATE()) || $isSellerRole;
     }
 
     public function index(): View

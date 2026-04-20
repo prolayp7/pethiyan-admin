@@ -38,9 +38,14 @@
                             @csrf
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <label class="form-label">Product ID <span class="text-danger">*</span></label>
-                                    <input name="product_id" type="number" class="form-control @error('product_id') is-invalid @enderror"
-                                           value="{{ old('product_id') }}" placeholder="Enter product ID" required />
+                                    <label class="form-label">Product <span class="text-danger">*</span></label>
+                                    <select id="product-search" name="product_id"
+                                            class="form-select @error('product_id') is-invalid @enderror"
+                                            placeholder="Search product…" required>
+                                        @if(old('product_id'))
+                                            <option value="{{ old('product_id') }}" selected>ID: {{ old('product_id') }}</option>
+                                        @endif
+                                    </select>
                                     @error('product_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -220,5 +225,31 @@ function filterReviews() {
         row.style.display = (!val || row.dataset.status === val) ? '' : 'none';
     });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const el = document.getElementById('product-search');
+    if (el && window.TomSelect) {
+        new TomSelect(el, {
+            valueField: 'value',
+            labelField: 'text',
+            searchField: 'text',
+            copyClassesToDropdown: false,
+            dropdownParent: 'body',
+            placeholder: 'Search product by name…',
+            render: {
+                item:   (data, escape) => `<div>${escape(data.text)}</div>`,
+                option: (data, escape) => `<div>${escape(data.text)}</div>`,
+                no_results: () => `<div class="no-results">No products found</div>`,
+            },
+            load: function (query, callback) {
+                if (!query.length) return callback();
+                fetch('{{ route('admin.products.search') }}?search=' + encodeURIComponent(query))
+                    .then(r => r.json())
+                    .then(json => callback(json))
+                    .catch(() => callback());
+            },
+        });
+    }
+});
 </script>
 @endpush

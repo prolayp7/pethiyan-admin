@@ -244,6 +244,7 @@ Route::prefix('products')->name('products.')->middleware('throttle:60,1')->group
     Route::get('/{slug}', [ProductApiController::class, 'show']);
     Route::get('/{slug}/faqs', [ProductFaqApiController::class, 'getByProduct']);
     Route::get('/{slug}/reviews', [ProductReviewApiController::class, 'getProductReviews']);
+    Route::get('/{slug}/available-order-items', [ProductReviewApiController::class, 'getAvailableOrderItemsForProduct'])->middleware('auth:sanctum');
 });
 
 // stores

@@ -95,6 +95,7 @@ class ProductReviewApiController extends Controller
                 );
             }
             DB::beginTransaction();
+            // User-submitted reviews should be pending approval.
             $review = Review::create([
                 'user_id' => $user->id,
                 'product_id' => $orderItem->product_id,
@@ -104,6 +105,7 @@ class ProductReviewApiController extends Controller
                 'rating' => $validated['rating'],
                 'title' => $validated['title'],
                 'comment' => $validated['comment'] ?? null,
+                'status' => 'pending',
             ]);
             if ($request->hasFile('review_images')) {
                 foreach ($request->file('review_images') as $image) {
@@ -235,7 +237,9 @@ class ProductReviewApiController extends Controller
             }
 
             // ✅ Fetch paginated reviews
+            // Only return approved reviews for public product pages
             $reviews = Review::where('product_id', $product->id)
+                ->where('status', 'approved')
                 ->with('user:id,name') // eager load user
                 ->latest()
                 ->paginate(10);
@@ -336,6 +340,44 @@ class ProductReviewApiController extends Controller
                 message: __('labels.something_went_wrong'),
                 data: $e->getMessage()
             );
+        }
+    }
+
+    /**
+     * Get available order items for the given product slug for the authenticated user.
+     */
+    public function getAvailableOrderItemsForProduct(string $slug): JsonResponse
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return ApiResponseType::sendJsonResponse(false, __('labels.user_not_authenticated'), []);
+            }
+
+            $product = Product::select('id')->where('slug', $slug)->first();
+            if (!$product) {
+                return ApiResponseType::sendJsonResponse(false, __('labels.product_not_found'), []);
+            }
+
+            $deliveredOrderItems = OrderItem::where('status', OrderItemStatusEnum::DELIVERED())
+                ->whereHas('order', function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                })
+                ->where('product_id', $product->id)
+                ->select(['id', 'order_id', 'product_id'])
+                ->get();
+
+            $reviewedOrderItemIds = Review::where('user_id', $user->id)
+                ->pluck('order_item_id')
+                ->toArray();
+
+            $unreviewed = $deliveredOrderItems->reject(function ($item) use ($reviewedOrderItemIds) {
+                return in_array($item->id, $reviewedOrderItemIds);
+            })->values();
+
+            return ApiResponseType::sendJsonResponse(true, __('labels.available_order_items_fetched'), $unreviewed);
+        } catch (\Exception $e) {
+            return ApiResponseType::sendJsonResponse(false, __('labels.something_went_wrong'), []);
         }
     }
 }

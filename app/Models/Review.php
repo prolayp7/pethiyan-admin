@@ -21,6 +21,7 @@ class Review extends Model implements HasMedia
         'order_item_id',
         'store_id',
         'rating',
+        'status',
         'title',
         'slug',
         'comment',
@@ -68,6 +69,7 @@ class Review extends Model implements HasMedia
     public static function scopeProductRatingStats(int $id)
     {
         return self::query()->where('product_id', $id)
+            ->where('status', 'approved')
             ->selectRaw('
             COUNT(*) as total_reviews,
             ROUND(AVG(rating), 1) as average_rating,

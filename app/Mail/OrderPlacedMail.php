@@ -26,10 +26,12 @@ class OrderPlacedMail extends Mailable implements ShouldQueue
     {
         // Ensure we have the freshest order data (id/created_at) before building subject
         $order = $this->order->fresh() ?? $this->order;
-        $orderIdentifier = $order->order_number ?: ($order->slug ?: $order->id);
+        // Always prefer the formatted order number (consistent display)
+        $date = $order->created_at?->format('Ymd') ?? now()->format('Ymd');
+        $formattedNumber = 'PET' . $date . str_pad((string) $order->id, 5, '0', STR_PAD_LEFT);
 
         return new Envelope(
-            subject: 'Order Confirmed — #' . $orderIdentifier,
+            subject: 'Order Confirmed — #' . $formattedNumber,
         );
     }
 

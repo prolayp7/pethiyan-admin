@@ -38,11 +38,15 @@ class SystemUserController extends Controller
     public function __construct(SettingService $settingService)
     {
         $this->settingService = $settingService;
-        $enum = $this->getPanel() === 'seller' ? SellerPermissionEnum::class : AdminPermissionEnum::class;
-        $user = auth()->user();
-        $this->editPermission = $this->hasPermission($enum::SYSTEM_USER_EDIT()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-        $this->deletePermission = $this->hasPermission($enum::SYSTEM_USER_DELETE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
-        $this->createPermission = $this->hasPermission($enum::SYSTEM_USER_CREATE()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
+        $this->middleware(function ($request, $next) {
+            $enum = $this->getPanel() === 'seller' ? SellerPermissionEnum::class : AdminPermissionEnum::class;
+            $user = auth()->user();
+            $isSeller = $user && $user->hasRole(DefaultSystemRolesEnum::SELLER());
+            $this->editPermission   = $this->hasPermission($enum::SYSTEM_USER_EDIT())   || $isSeller;
+            $this->deletePermission = $this->hasPermission($enum::SYSTEM_USER_DELETE()) || $isSeller;
+            $this->createPermission = $this->hasPermission($enum::SYSTEM_USER_CREATE()) || $isSeller;
+            return $next($request);
+        });
     }
 
     private function isDemoModeEnabled(): bool

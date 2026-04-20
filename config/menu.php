@@ -38,6 +38,12 @@ return [
                     'sub_title'  => 'labels.attributes',
                     'permission' => 'attribute.view',
                 ],
+                'reviews' => [
+                    'sub_active' => 'reviews',
+                    'sub_route'  => 'admin.reviews.index',
+                    'sub_title'  => 'labels.reviews',
+                    'permission' => 'review.view',
+                ],
             ],
         ],
         'categories' => [

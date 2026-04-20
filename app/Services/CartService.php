@@ -32,7 +32,6 @@ class CartService
             // Verify product variant exists in selected store
             $storeProductVariant = StoreProductVariant::where('store_id', $data['store_id'])
                 ->where('product_variant_id', $data['product_variant_id'])
-                ->where('stock', '>', 0)
                 ->with(['productVariant', 'store'])
                 ->first();
 
@@ -144,15 +143,6 @@ class CartService
                 // Update quantity
                 $newQuantity = $cartItem->quantity + $requestedQuantity;
 
-                // Check if requested quantity is available
-                if ($newQuantity > $storeProductVariant->stock) {
-                    return [
-                        'success' => false,
-                        'message' => __('messages.insufficient_stock_available'),
-                        'data' => ['available_stock' => $storeProductVariant->stock]
-                    ];
-                }
-
                 $cartItem->update(['quantity' => $newQuantity]);
             } elseif ($saveForLaterItem) {
                 $res = $this->validateCartMaxItems($userCart);
@@ -161,14 +151,6 @@ class CartService
                         'success' => false,
                         'message' => __('messages.maximum_items_allowed_in_cart_reached'),
                         'data' => []
-                    ];
-                }
-
-                if ($saveForLaterItem->quantity > $storeProductVariant->stock) {
-                    return [
-                        'success' => false,
-                        'message' => __('messages.insufficient_stock_available'),
-                        'data' => ['available_stock' => $storeProductVariant->stock]
                     ];
                 }
 
@@ -183,13 +165,6 @@ class CartService
                 $saveForLaterItem->delete();
             } else {
                 // Check if requested quantity is available
-                if ($requestedQuantity > $storeProductVariant->stock) {
-                    return [
-                        'success' => false,
-                        'message' => __('messages.insufficient_stock_available'),
-                        'data' => ['available_stock' => $storeProductVariant->stock]
-                    ];
-                }
                 $res = $this->validateCartMaxItems($userCart);
                 if (!$res) {
                     return [
@@ -1013,11 +988,11 @@ class CartService
                 ->where('product_variant_id', $cartItem->product_variant_id)
                 ->first();
 
-            if (!$storeProductVariant || $quantity > $storeProductVariant->stock) {
+            if (!$storeProductVariant) {
                 return [
                     'success' => false,
-                    'message' => __('messages.insufficient_stock_available'),
-                    'data' => ['available_stock' => $storeProductVariant->stock ?? 0]
+                    'message' => __('messages.product_variant_not_available_in_store'),
+                    'data' => []
                 ];
             }
 

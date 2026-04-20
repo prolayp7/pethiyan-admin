@@ -304,15 +304,9 @@ class OrderService
      */
     private function validateStockAndDeliveryAvailability(Cart $cart, Address $address): array
     {
-        // Verify stock availability for all cart items before creating order
-        $stockVerification = $this->verifyCartItemsStock($cart);
-        if ($stockVerification['success'] === false) {
-            return $stockVerification;
-        }
-
+        // Stock shortfalls are no longer a hard blocker — orders proceed regardless of stock.
+        // Shortfall quantities are recorded per order item and the admin is notified.
         // Delivery availability is validated via pincode in validateAddressAndDeliveryZone().
-        // Lat/long-based zone checks are not used in this system.
-
         return ['success' => true];
     }
 
@@ -430,6 +424,30 @@ class OrderService
         // Load order relationships for response
         $order->load(['items.product', 'items.variant', 'items.store', 'user', 'sellerOrders.seller.user']);
         $order->payment_response = $postPayment['data'] ?? null;
+        // notify admins if any order items have stock shortages
+        $shortages = [];
+        foreach ($order->items as $item) {
+            if ($item->stock_shortage && $item->stock_shortage > 0) {
+                $shortages[] = [
+                    'order_item_id' => $item->id,
+                    'product_title' => $item->title,
+                    'ordered_qty' => $item->quantity,
+                    'stock_at_purchase' => $item->stock_at_purchase,
+                    'stock_shortage' => $item->stock_shortage,
+                ];
+            }
+        }
+        if (!empty($shortages)) {
+            try {
+                $adminUsers = \App\Models\User::where('access_panel', 'admin')->whereNotNull('email')->get();
+                foreach ($adminUsers as $admin) {
+                    \Illuminate\Support\Facades\Mail::to($admin->email)->queue(new \App\Mail\AdminStockShortageMail($order, $shortages));
+                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to send stock shortage notification: ' . $e->getMessage());
+            }
+        }
+
         $cart->items()->delete();
         event(new OrderPlaced($order));
 
@@ -625,21 +643,17 @@ class OrderService
     {
         $storeVariant = $this->getStoreVariant($cartItem);
 
-        if ($storeVariant->stock < $cartItem->quantity) {
-            return [
-                'success' => false,
-                'message' => ucfirst($storeVariant->productVariant->title ?? '')
-                    . " " . __('messages.product_variant_not_available_in_store'),
-                'data' => [],
-            ];
-        }
+        // Record stock shortfall but do NOT block the order
+        $availableStock = (int) ($storeVariant->stock ?? 0);
+        $orderedQty     = (int) $cartItem->quantity;
+        $stockShortage  = max(0, $orderedQty - $availableStock);
 
         [$subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, $gstData] =
             $this->calculatePricing($order, $cartItem, $storeVariant);
 
         $storeTotalPrice += $subtotal;
 
-        $orderItem = $this->createOrderItem($order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, $gstData);
+        $orderItem = $this->createOrderItem($order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, $gstData, $stockShortage);
 
         // Attach required attachments to order item using Spatie Media Library
         $this->attachRequiredOrderItemAttachments($orderItem, $cartItem);
@@ -736,7 +750,7 @@ class OrderService
     }
 
     private
-    function createOrderItem(Order $order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, array $gstData = []): OrderItem
+    function createOrderItem(Order $order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, array $gstData = [], int $stockShortage = 0): OrderItem
     {
         return OrderItem::create([
             'order_id' => $order->id,
@@ -758,6 +772,8 @@ class OrderService
             'tax_percent' => (float)$taxPercent,
             'sku' => $storeVariant->sku ?? "N/A",
             'quantity' => (float)$cartItem->quantity,
+            'stock_shortage' => $stockShortage > 0 ? $stockShortage : null,
+            'stock_at_purchase' => $availableStock,
             'price' => (float)$storeVariant->special_price_exclude_tax,
             'subtotal' => (float)$subtotal,
             'status' => $this->determineOrderItemStatus($order),

@@ -39,6 +39,7 @@ class OrderItem extends Model implements HasMedia
         'tax_percent',
         'sku',
         'quantity',
+        'stock_shortage',
         'price',
         'subtotal',
         'status',

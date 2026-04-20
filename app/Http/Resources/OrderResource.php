@@ -87,11 +87,18 @@ class OrderResource extends JsonResource
                             'price' => $item->price,
                             'quantity' => $item->quantity,
                             'subtotal' => $item->price * $item->quantity,
+                            'stock_shortage' => $item->stock_shortage,
+                            'stock_at_purchase' => $item->stock_at_purchase,
                         ];
                     });
                 }),
 
                 'created_at' => $this->created_at?->format('M d, Y h:i A'),
+                'has_stock_shortage' => $this->whenLoaded('items', function () {
+                    return $this->items->contains(function ($i) {
+                        return (isset($i->stock_shortage) && $i->stock_shortage > 0);
+                    });
+                }),
             ];
         } else {
             // This is a regular Order
@@ -210,11 +217,18 @@ class OrderResource extends JsonResource
                             'price' => $item->price,
                             'quantity' => $item->quantity,
                             'subtotal' => $item->price * $item->quantity,
+                            'stock_shortage' => $item->stock_shortage,
+                            'stock_at_purchase' => $item->stock_at_purchase,
                         ];
                     });
                 }),
 
                 'created_at' => $this->created_at?->format('M d, Y h:i A'),
+                'has_stock_shortage' => $this->whenLoaded('items', function () {
+                    return $this->items->contains(function ($i) {
+                        return (isset($i->stock_shortage) && $i->stock_shortage > 0);
+                    });
+                }),
             ];
         }
     }

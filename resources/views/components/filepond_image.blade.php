@@ -7,6 +7,7 @@
         data-image-url="{{ $imageUrl ?? '' }}"
         disabled="{{ $disabled ?? 'false' }}"
         multiple="{{ $multiple ?? 'false' }}"
+        {{ $attributes }}
     />
 </div>
 <script>
@@ -30,7 +31,7 @@
         };
 
         FilePond.registerPlugin(FilePondPluginImagePreview);
-        const input = document.querySelector('[name="{{ $name }}"]');
+            const input = document.querySelector('[name="{{ $name }}"]');
         if (input) {
             let imageUrl = normalizeLocalhostOrigin(input.getAttribute('data-image-url'));
             FilePond.create(input, {
@@ -46,6 +47,34 @@
                             .then(blob => load(blob))
                             .catch(err => error(err));
                         return { abort: () => {} };
+                    },
+                    // If the input provides model/collection data attributes, call server to remove the media
+                    remove: (source, load, error) => {
+                        try {
+                            const modelId = input.dataset.modelId || null;
+                            const collection = input.dataset.collection || null;
+                            if (modelId && collection) {
+                                const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                                const headers = { 'Content-Type': 'application/json' };
+                                if (tokenMeta) headers['X-CSRF-TOKEN'] = tokenMeta.getAttribute('content');
+                                fetch(`/admin/products/${modelId}/media`, {
+                                    method: 'DELETE',
+                                    headers,
+                                    body: JSON.stringify({ collection })
+                                }).then(res => {
+                                    if (res.ok) {
+                                        load();
+                                    } else {
+                                        error('Failed to delete media on server');
+                                    }
+                                }).catch(err => error(err));
+                            } else {
+                                // no model info — just succeed client-side
+                                load();
+                            }
+                        } catch (e) {
+                            error(e);
+                        }
                     }
                 },
                 files: imageUrl ? [{

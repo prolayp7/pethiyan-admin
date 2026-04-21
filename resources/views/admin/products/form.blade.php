@@ -372,7 +372,7 @@
                     <div class="container">
                         <div class="mb-3">
                             <label class="form-label required">{{ __('labels.main_image') }}</label>
-                            <x-filepond_image name="main_image" imageUrl="{{ $product->main_image ?? '' }}"/>
+                            <x-filepond_image name="main_image" imageUrl="{{ $product->main_image ?? '' }}" data-model-id="{{ $product->id ?? '' }}" data-collection="{{ \App\Enums\SpatieMediaCollectionName::PRODUCT_MAIN_IMAGE->value }}"/>
                             <small class="form-hint">Recommended: 1200 x 1200 px. Max upload size: 2 MB.</small>
                         </div>
                         <div class="mb-3">

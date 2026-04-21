@@ -762,4 +762,35 @@ class ProductController extends Controller
             return ApiResponseType::sendJsonResponse(success: false, message: 'labels.something_went_wrong', data: ['error' => $e->getMessage()]);
         }
     }
+
+    /**
+     * Delete media for a product (by collection name)
+     */
+    public function deleteMedia(Request $request, string $id): JsonResponse
+    {
+        try {
+            $product = Product::findOrFail($id);
+            $this->authorize('update', $product);
+
+            $collection = $request->input('collection');
+
+            // Validate collection
+            $validCollections = array_map(fn($c) => $c->value, \App\Enums\SpatieMediaCollectionName::cases());
+            if (empty($collection) || !in_array($collection, $validCollections, true)) {
+                return ApiResponseType::sendJsonResponse(success: false, message: 'labels.invalid_request', data: []);
+            }
+
+            // Clear the media collection
+            $product->clearMediaCollection($collection);
+            FrontendRevalidateService::revalidateProducts();
+
+            return ApiResponseType::sendJsonResponse(success: true, message: 'Media deleted', data: []);
+        } catch (AuthorizationException $e) {
+            return ApiResponseType::sendJsonResponse(success: false, message: 'labels.permission_denied', data: []);
+        } catch (ModelNotFoundException $e) {
+            return ApiResponseType::sendJsonResponse(success: false, message: 'labels.product_not_found', data: []);
+        } catch (\Exception $e) {
+            return ApiResponseType::sendJsonResponse(success: false, message: 'labels.something_went_wrong', data: ['error' => $e->getMessage()]);
+        }
+    }
 }

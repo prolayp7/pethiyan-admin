@@ -62,7 +62,7 @@ class ProductCatalogResource extends JsonResource
                     'store_state_name' => $storeVariant->store->state_name ?? null,
                     'sku' => $storeVariant->sku,
                     'price' => $storeVariant->price,
-                    'special_price' => $storeVariant->special_price,
+                    'special_price' => $specialPriceExcludingTax > 0 ? $specialPriceExcludingTax : null,
                     'cost' => $storeVariant->cost,
                     'stock' => (int) ($storeVariant->stock ?? 0),
                     'stock_status' => ((int) ($storeVariant->stock ?? 0) > 0) ? 'in_stock' : 'out_of_stock',

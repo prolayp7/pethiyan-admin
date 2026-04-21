@@ -774,15 +774,33 @@ class ProductController extends Controller
             $this->authorize('update', $product);
 
             $collection = $request->input('collection');
+            $mediaId = $request->input('media_id');
 
-            // Validate collection
-            $validCollections = array_map(fn($c) => $c->value, \App\Enums\SpatieMediaCollectionName::cases());
-            if (empty($collection) || !in_array($collection, $validCollections, true)) {
-                return ApiResponseType::sendJsonResponse(success: false, message: 'labels.invalid_request', data: []);
+            if (!empty($mediaId)) {
+                $media = Media::findOrFail($mediaId);
+
+                // Validate ownership via model_type/model_id
+                $mediaModelType = $media->model_type ?? null;
+                $mediaModelId = $media->model_id ?? null;
+                if (!in_array($mediaModelType, [Product::class, 'App\\Models\\Product'], true)) {
+                    return ApiResponseType::sendJsonResponse(success: false, message: 'labels.invalid_request', data: []);
+                }
+                if ((string)$mediaModelId !== (string)$product->getKey()) {
+                    return ApiResponseType::sendJsonResponse(success: false, message: 'labels.invalid_request', data: []);
+                }
+
+                $media->delete();
+            } else {
+                // Validate collection
+                $validCollections = array_map(fn($c) => $c->value, \App\Enums\SpatieMediaCollectionName::cases());
+                if (empty($collection) || !in_array($collection, $validCollections, true)) {
+                    return ApiResponseType::sendJsonResponse(success: false, message: 'labels.invalid_request', data: []);
+                }
+
+                // Clear the media collection
+                $product->clearMediaCollection($collection);
             }
 
-            // Clear the media collection
-            $product->clearMediaCollection($collection);
             FrontendRevalidateService::revalidateProducts();
 
             return ApiResponseType::sendJsonResponse(success: true, message: 'Media deleted', data: []);

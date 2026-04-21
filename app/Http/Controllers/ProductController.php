@@ -96,7 +96,6 @@ class ProductController extends Controller
             ['data' => 'product_type', 'name' => 'product_type', 'title' => __('labels.product_type')],
             ['data' => 'category', 'name' => 'category', 'title' => __('labels.category')],
             ['data' => 'status', 'name' => 'status', 'title' => __('labels.status')],
-            ['data' => 'admin_approval_status', 'name' => 'admin_approval_status', 'title' => __('labels.admin_approval_status')],
             ['data' => 'featured', 'name' => 'featured', 'title' => __('labels.featured')],
             ['data' => 'created_at', 'name' => 'created_at', 'title' => __('labels.created_at')],
             ['data' => 'action', 'name' => 'action', 'title' => __('labels.action'), 'orderable' => false, 'searchable' => false],

@@ -2036,7 +2036,7 @@ function handleDiscPctChange(row) {
     if (!isNaN(price) && price > 0 && !isNaN(disc) && disc >= 0 && disc <= 100) {
         spInput.value = (price * (1 - disc / 100)).toFixed(2);
     } else {
-        spInput.value = '';
+        spInput.value = '0';
     }
 }
 
@@ -2052,7 +2052,7 @@ function handleSpecialPriceChange(row) {
     } else {
         discInput.value = '';
         if (!isNaN(special) && !isNaN(price) && special >= price) {
-            spInput.value = '';
+            spInput.value = '0';
         }
     }
 }
@@ -2318,7 +2318,7 @@ function initializeSimplePricing() {
             let storePrice = '';
             let storeStock = '';
             let storeSku = '';
-            let storeSpecialPrice = '';
+            let storeSpecialPrice = '0';
             let storeDiscPct = '';
 
             // If we're in edit mode and have pricing data
@@ -2336,14 +2336,14 @@ function initializeSimplePricing() {
                         storePrice = storePricing.price || '';
                         storeStock = storePricing.stock || '';
                         storeSku = storePricing.sku || '';
-                        storeSpecialPrice = storePricing.special_price || '';
+                        storeSpecialPrice = storePricing.special_price ?? '0';
                     }
                 }
             }
             if (storeSpecialPrice && storePrice && parseFloat(storePrice) > 0) {
                 const _sp = parseFloat(storeSpecialPrice), _p = parseFloat(storePrice);
                 if (_sp < _p) storeDiscPct = (((_p - _sp) / _p) * 100).toFixed(2);
-                else storeSpecialPrice = '';
+                else storeSpecialPrice = '0';
             }
             html += `
                 <div class="accordion-item store-pricing-card" data-store-id="${store.id}">
@@ -2392,7 +2392,7 @@ function initializeSimplePricing() {
                                             <td>
                                                 <div class="input-group input-group-sm">
                                                     <span class="input-group-text">${currencySymbol}</span>
-                                                    <input type="number" class="form-control store-special-price" name="store_pricing[${store.id}][special_price]" step="0.01" min="0" placeholder="—" value="${storeSpecialPrice}">
+                                                    <input type="number" class="form-control store-special-price" name="store_pricing[${store.id}][special_price]" step="0.01" min="0" placeholder="0" value="${storeSpecialPrice}">
                                                 </div>
                                             </td>
                                             <td>
@@ -2513,7 +2513,7 @@ function updateVariantPricing() {
                 let storePrice = '';
                 let storeStock = '';
                 let storeSku = '';
-                let storeSpecialPrice = '';
+                let storeSpecialPrice = '0';
                 let storeDiscPct = '';
 
                 if (productPricing && productPricing.variant_pricing) {
@@ -2526,7 +2526,7 @@ function updateVariantPricing() {
                             storePrice = storePricing.price || '';
                             storeStock = storePricing.stock || '';
                             storeSku = storePricing.sku || '';
-                            storeSpecialPrice = storePricing.special_price || '';
+                            storeSpecialPrice = storePricing.special_price ?? '0';
                         }
                     } else {
                         const serverVariants = window.productData && window.productData.variants ? window.productData.variants : [];
@@ -2554,7 +2554,7 @@ function updateVariantPricing() {
                                     storePrice = storePricing.price || '';
                                     storeStock = storePricing.stock || '';
                                     storeSku = storePricing.sku || '';
-                                    storeSpecialPrice = storePricing.special_price || '';
+                                    storeSpecialPrice = storePricing.special_price ?? '0';
                                 }
                             }
                         }
@@ -2563,7 +2563,7 @@ function updateVariantPricing() {
                 if (storeSpecialPrice && storePrice && parseFloat(storePrice) > 0) {
                     const _sp = parseFloat(storeSpecialPrice), _p = parseFloat(storePrice);
                     if (_sp < _p) storeDiscPct = (((_p - _sp) / _p) * 100).toFixed(2);
-                    else storeSpecialPrice = '';
+                    else storeSpecialPrice = '0';
                 }
 
                 const variantAttributeBadges = Object.entries(variant.attributes).map(([attrId, valueId]) => {
@@ -2605,7 +2605,7 @@ function updateVariantPricing() {
                                                     <td>
                                                         <div class="input-group input-group-sm">
                                                             <span class="input-group-text">${currencySymbol}</span>
-                                                            <input type="number" class="form-control store-special-price" name="variant_pricing[${store.id}][${variantId}][special_price]" step="0.01" min="0" placeholder="—" value="${storeSpecialPrice}">
+                                                            <input type="number" class="form-control store-special-price" name="variant_pricing[${store.id}][${variantId}][special_price]" step="0.01" min="0" placeholder="0" value="${storeSpecialPrice}">
                                                         </div>
                                                     </td>
                                                     <td>
@@ -2813,7 +2813,7 @@ function restructureFormData(originalFormData) {
                 if (!storePricingTemp[storeId]) {
                     storePricingTemp[storeId] = {store_id: storeId};
                 }
-                storePricingTemp[storeId][field] = value;
+                storePricingTemp[storeId][field] = normalizePricingFieldValue(field, value);
             }
         }
         // Handle variant pricing
@@ -2833,7 +2833,7 @@ function restructureFormData(originalFormData) {
                         variant_id: variantId
                     };
                 }
-                variantPricingTemp[key][field] = value;
+                variantPricingTemp[key][field] = normalizePricingFieldValue(field, value);
             }
         }
         // Pass through all other fields unchanged
@@ -2858,6 +2858,14 @@ function restructureFormData(originalFormData) {
     }));
 
     return newFormData;
+}
+
+function normalizePricingFieldValue(field, value) {
+    if (field === 'special_price' && (value === '' || value === null || value === undefined)) {
+        return '0';
+    }
+
+    return value;
 }
 
 function getErrorSummaryContainer(form) {

@@ -44,6 +44,11 @@ class ProductCatalogResource extends JsonResource
                     ? $specialPriceExcludingTax
                     : $priceExcludingTax;
 
+                $discountPercent = null;
+                if ($specialPriceExcludingTax > 0 && $priceExcludingTax > 0 && $specialPriceExcludingTax < $priceExcludingTax) {
+                    $discountPercent = (int) round(($priceExcludingTax - $specialPriceExcludingTax) / $priceExcludingTax * 100);
+                }
+
                 $storeStateCode = $storeVariant->store->state_code ?? null;
                 $supplyType = $gstService->supplyType($storeStateCode, $customerStateCode);
                 $gst = $gstService->calculateLineItem(
@@ -63,6 +68,7 @@ class ProductCatalogResource extends JsonResource
                     'sku' => $storeVariant->sku,
                     'price' => $storeVariant->price,
                     'special_price' => $specialPriceExcludingTax > 0 ? $specialPriceExcludingTax : null,
+                    'discount_percent' => $discountPercent,
                     'cost' => $storeVariant->cost,
                     'stock' => (int) ($storeVariant->stock ?? 0),
                     'stock_status' => ((int) ($storeVariant->stock ?? 0) > 0) ? 'in_stock' : 'out_of_stock',

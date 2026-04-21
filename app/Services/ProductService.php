@@ -511,9 +511,9 @@ class ProductService
                 ? (float) $pricing['price']
                 : null;
 
-            $specialPrice = (isset($pricing['special_price']) && is_numeric($pricing['special_price']) && (float) $pricing['special_price'] > 0)
+            $specialPrice = (isset($pricing['special_price']) && $pricing['special_price'] !== '' && is_numeric($pricing['special_price']))
                 ? (float) $pricing['special_price']
-                : null;
+                : 0.0;
 
             $cost = (isset($pricing['cost']) && is_numeric($pricing['cost']))
                 ? (float) $pricing['cost']

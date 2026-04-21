@@ -338,9 +338,14 @@ class MenuApiController extends Controller
             return null;
         }
 
+        $frontendUrl = rtrim((string) config('app.frontend_url', config('app.frontendUrl', 'https://pethiyan.com')), '/');
         $variant = $product->variants->first();
         $storeVariant = $variant?->storeProductVariants->first();
-        $price = $storeVariant?->special_price ?? $storeVariant?->price ?? 0;
+        $priceExcludingTax = (float) ($storeVariant?->price_exclude_tax ?? $storeVariant?->getRawOriginal('price') ?? 0);
+        $specialPriceExcludingTax = (float) ($storeVariant?->special_price_exclude_tax ?? $storeVariant?->getRawOriginal('special_price') ?? 0);
+        $price = $specialPriceExcludingTax > 0
+            ? $specialPriceExcludingTax
+            : $priceExcludingTax;
 
         return [
             'image' => $product->main_image,
@@ -348,6 +353,8 @@ class MenuApiController extends Controller
             'price' => (float) $price,
             'currency_symbol' => $currency->getSymbol(),
             'currency_code' => $currency->getCode(),
+            'slug' => $product->slug,
+            'product_url' => $frontendUrl . '/products/' . ltrim((string) $product->slug, '/'),
         ];
     }
 }

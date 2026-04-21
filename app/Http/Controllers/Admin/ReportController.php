@@ -181,8 +181,10 @@ class ReportController extends Controller
 
     public function exportSales(Request $request): StreamedResponse
     {
-        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
-        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+        $fromInput = $request->input('from', $request->input('from_date', now()->subDays(29)->toDateString()));
+        $toInput = $request->input('to', $request->input('to_date', now()->toDateString()));
+        $from = Carbon::parse($fromInput)->startOfDay();
+        $to = Carbon::parse($toInput)->endOfDay();
 
         $rows = Order::whereBetween('created_at', [$from, $to])
             ->where('payment_status', 'completed')
@@ -238,8 +240,10 @@ class ReportController extends Controller
 
     public function exportOrders(Request $request): StreamedResponse
     {
-        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
-        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+        $fromInput = $request->input('from', $request->input('from_date', now()->subDays(29)->toDateString()));
+        $toInput = $request->input('to', $request->input('to_date', now()->toDateString()));
+        $from = Carbon::parse($fromInput)->startOfDay();
+        $to = Carbon::parse($toInput)->endOfDay();
 
         $rows = [];
         $serialNumber = 1;
@@ -339,8 +343,10 @@ class ReportController extends Controller
 
     public function exportProducts(Request $request): StreamedResponse
     {
-        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
-        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+        $fromInput = $request->input('from', $request->input('from_date', now()->subDays(29)->toDateString()));
+        $toInput = $request->input('to', $request->input('to_date', now()->toDateString()));
+        $from = Carbon::parse($fromInput)->startOfDay();
+        $to = Carbon::parse($toInput)->endOfDay();
         $limit = (int) $request->input('limit', 15);
 
         $rows = OrderItem::whereBetween('created_at', [$from, $to])
@@ -405,8 +411,10 @@ class ReportController extends Controller
 
     public function exportCustomers(Request $request): StreamedResponse
     {
-        $from = Carbon::parse($request->input('from', now()->subDays(29)->toDateString()))->startOfDay();
-        $to = Carbon::parse($request->input('to', now()->toDateString()))->endOfDay();
+        $fromInput = $request->input('from', $request->input('from_date', now()->subDays(29)->toDateString()));
+        $toInput = $request->input('to', $request->input('to_date', now()->toDateString()));
+        $from = Carbon::parse($fromInput)->startOfDay();
+        $to = Carbon::parse($toInput)->endOfDay();
 
         $rows = User::query()
             ->whereBetween('created_at', [$from, $to])

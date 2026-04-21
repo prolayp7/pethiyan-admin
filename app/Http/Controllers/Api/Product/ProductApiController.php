@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\GetProductsByLocationRequest;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\Product\ProductCatalogResource;
+use App\Http\Resources\Product\ProductFeaturedResource;
 use App\Http\Resources\Product\ProductListResource;
 use App\Http\Resources\Product\ProductResource;
 use App\Enums\Product\ProductStatusEnum;
@@ -467,7 +468,7 @@ class ProductApiController extends Controller
                 ]);
 
             $products = $query->orderByDesc('id')->get()
-                ->map(fn($product) => new ProductCatalogResource($product))
+                ->map(fn($product) => new ProductFeaturedResource($product))
                 ->values();
 
             return ApiResponseType::sendJsonResponse(

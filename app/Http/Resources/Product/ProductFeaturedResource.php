@@ -75,7 +75,7 @@ class ProductFeaturedResource extends JsonResource
                 'id'           => $variant->id,
                 'title'        => $variant->title,
                 'slug'         => $variant->slug,
-                'image'        => $variant->image,
+                'image'        => $variant->image ?: $this->main_image,
                 'barcode'      => $variant->barcode,
                 'is_default'   => (bool) $variant->is_default,
                 'availability' => (bool) $variant->availability,

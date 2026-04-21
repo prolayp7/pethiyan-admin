@@ -381,8 +381,17 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">{{ __('labels.additional_images') }}</label>
+                            @php
+                                $additionalMedia = [];
+                                if (!empty($product)) {
+                                    $additionalMedia = $product->getMedia(\App\Enums\SpatieMediaCollectionName::PRODUCT_ADDITIONAL_IMAGE())->map(function($m){
+                                        return ['id' => $m->id, 'url' => $m->getUrl()];
+                                    })->toArray();
+                                }
+                            @endphp
                             <input type="file" name="additional_images[]" class="form-control"
-                                   data-images='@json($product->additional_images ?? [])' multiple>
+                                   data-model-id="{{ $product->id ?? '' }}"
+                                   data-images='@json($additionalMedia)' multiple>
                             <small class="form-hint">Recommended: 1200 x 1200 px each. Max upload size: 2 MB per image. You can select multiple images at once.</small>
                         </div>
                         <div class="mb-3">

@@ -116,10 +116,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.querySelector(`[name="additional_images[]"]`);
     if (input) {
         const imagesJson = input.getAttribute('data-images');
-        let imageUrls = [];
+        let imageFiles = [];
+        const mediaMap = {}; // url -> mediaId
         if (imagesJson !== null && imagesJson !== '' && imagesJson !== undefined) {
-            imageUrls = imagesJson ? JSON.parse(imagesJson).map(normalizeLocalhostOrigin) : [];
+            try {
+                const parsed = JSON.parse(imagesJson);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(item => {
+                        const url = normalizeLocalhostOrigin(item.url || item);
+                        imageFiles.push({ source: url, options: { type: 'local' } });
+                        if (item.id) mediaMap[url] = item.id;
+                    });
+                }
+            } catch (e) {
+                // fallback: treat as simple array of urls
+                try {
+                    const arr = JSON.parse(imagesJson);
+                    arr.forEach(u => {
+                        const url = normalizeLocalhostOrigin(u);
+                        imageFiles.push({ source: url, options: { type: 'local' } });
+                    });
+                } catch (_e) {
+                    // ignore
+                }
+            }
         }
+
+        const serverOptions = Object.assign({}, filePondServerLoad, {
+            remove: (source, load, error) => {
+                try {
+                    const modelId = input.dataset.modelId || null;
+                    const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (tokenMeta) headers['X-CSRF-TOKEN'] = tokenMeta.getAttribute('content');
+
+                    const body = {};
+                    if (modelId) body.model_id = modelId;
+                    // lookup media id by URL
+                    const mediaId = mediaMap[source] || null;
+                    if (mediaId) body.media_id = mediaId;
+
+                    if (modelId && (mediaId || input.dataset.collection)) {
+                        // prefer media_id when available
+                        if (!body.collection && input.dataset.collection) body.collection = input.dataset.collection;
+                        fetch(`/admin/products/${modelId}/media`, {
+                            method: 'DELETE',
+                            headers,
+                            body: JSON.stringify(body)
+                        }).then(res => {
+                            if (res.ok) {
+                                load();
+                            } else {
+                                error('Failed to delete media on server');
+                            }
+                        }).catch(err => error(err));
+                    } else {
+                        // no server info — proceed client-side
+                        load();
+                    }
+                } catch (e) {
+                    error(e);
+                }
+            }
+        });
 
         FilePond.create(input, {
             allowImagePreview: true,
@@ -127,13 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
             storeAsFile: true,
             maxFileSize: '2MB',
             acceptedFileTypes: ['image/*'],
-            server: filePondServerLoad,
-            files: imageUrls.map(url => ({
-                source: url,
-                options: {
-                    type: 'local'
-                }
-            }))
+            server: serverOptions,
+            files: imageFiles
         });
     }
 });

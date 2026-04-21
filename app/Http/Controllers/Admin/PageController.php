@@ -39,13 +39,41 @@ class PageController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'nullable|string',
+            'content_blocks' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
         ]);
 
-        $page->update($validated);
+        $data = $validated;
+        if (!empty($data['content_blocks'])) {
+            $decoded = json_decode($data['content_blocks'], true);
+            $data['content_blocks'] = $decoded ?: null;
+        }
+
+        $page->update($data);
 
         return redirect()->route('admin.pages.index')->with('success', 'Page updated successfully.');
+    }
+
+    public function uploadMedia(Request $request, Page $page)
+    {
+        $this->authorizePagePermission($request);
+
+        $request->validate([
+            'file' => 'required|file|mimes:jpg,jpeg,png,gif,webp|max:5120',
+        ]);
+
+        if ($request->hasFile('file')) {
+            $media = $page->addMediaFromRequest('file')->toMediaCollection('page_images');
+
+            return response()->json([
+                'success' => true,
+                'media_id' => $media->id,
+                'url' => $media->getUrl(),
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'No file uploaded'], 422);
     }
 
     private function authorizePagePermission(Request $request)

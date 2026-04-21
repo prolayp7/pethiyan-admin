@@ -43,10 +43,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Page Content</label>
-                            <textarea class="form-control hugerte-mytextarea @error('content') is-invalid @enderror" name="content" rows="15">{{ old('content', $page->content) }}</textarea>
-                            @error('content')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                            <label class="form-label">Page Content (Block editor)</label>
+                            <div id="block-editor" class="border rounded p-2" style="min-height:250px; background:#fff"></div>
+                            <input type="hidden" name="content_blocks" id="content_blocks_input" value='{{ old('content_blocks', json_encode($page->content_blocks ?? [])) }}'>
+                            <div class="mt-2">
+                                <button type="button" id="add-paragraph" class="btn btn-sm btn-outline-secondary">Add Paragraph</button>
+                                <button type="button" id="add-heading" class="btn btn-sm btn-outline-secondary">Add Heading</button>
+                                <button type="button" id="add-image" class="btn btn-sm btn-outline-secondary">Add Image</button>
+                            </div>
+                            @error('content_blocks')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
 
@@ -67,6 +73,91 @@
                             <button type="submit" class="btn btn-primary">Save Changes</button>
                         </div>
                     </form>
+                    <script src="https://unpkg.com/@tiptap/core@2.0.0-beta.79/dist/tiptap-core.umd.js"></script>
+                    <script src="https://unpkg.com/@tiptap/starter-kit@2.0.0-beta.79/dist/tiptap-starter-kit.umd.js"></script>
+                    <script src="https://unpkg.com/@tiptap/extension-image@2.0.0-beta.28/dist/tiptap-extension-image.umd.js"></script>
+                    <script>
+                        (function(){
+                            const hidden = document.getElementById('content_blocks_input');
+                            const editorEl = document.getElementById('block-editor');
+
+                            // helper: convert existing simple blocks to HTML for editor initial content
+                            function blocksToHtml(blocks){
+                                if(!blocks || !blocks.length) return '';
+                                return blocks.map(b=>{
+                                    if(b.type === 'heading') return `<h2>${escapeHtml(b.data?.text||'')}</h2>`;
+                                    if(b.type === 'image') return `<p><img src="${escapeHtml(b.data?.url||'')}"/></p>`;
+                                    return `<p>${escapeHtml(b.data?.text||'')}</p>`;
+                                }).join('');
+                            }
+
+                            function escapeHtml(unsafe){
+                                return unsafe.replace(/[&<>\"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]; });
+                            }
+
+                            // initialize TipTap editor
+                            const { Editor } = window['@tiptap/core'];
+                            const StarterKit = window['@tiptap/starter-kit'].default;
+                            const Image = window['@tiptap/extension-image'].default;
+
+                            let initialHtml = '';
+                            try {
+                                const parsed = JSON.parse(hidden.value || '[]');
+                                if(Array.isArray(parsed) && parsed.length) {
+                                    initialHtml = blocksToHtml(parsed);
+                                } else {
+                                    initialHtml = `{!! addslashes(old('content', $page->content ?? '')) !!}`;
+                                }
+                            } catch (e){
+                                initialHtml = `{!! addslashes(old('content', $page->content ?? '')) !!}`;
+                            }
+
+                            const editor = new Editor({
+                                element: editorEl,
+                                extensions: [StarterKit, Image],
+                                content: initialHtml,
+                            });
+
+                            // image upload button
+                            document.getElementById('add-image').addEventListener('click', async ()=>{
+                                const fileInput = document.createElement('input');
+                                fileInput.type = 'file';
+                                fileInput.accept = 'image/*';
+                                fileInput.onchange = async () => {
+                                    const file = fileInput.files[0];
+                                    if(!file) return;
+                                    const form = new FormData();
+                                    form.append('file', file);
+                                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                    const resp = await fetch("{{ url('/admin/pages') }}/{{ $page->id }}/media", {
+                                        method: 'POST',
+                                        headers: token ? { 'X-CSRF-TOKEN': token } : {},
+                                        body: form
+                                    });
+                                    if(resp.ok){
+                                        const json = await resp.json();
+                                        if(json.success){
+                                            editor.chain().focus().setImage({ src: json.url }).run();
+                                            return;
+                                        }
+                                    }
+                                    alert('Upload failed');
+                                };
+                                fileInput.click();
+                            });
+
+                            // on submit save editor JSON
+                            const form = editorEl.closest('form');
+                            form.addEventListener('submit', ()=>{
+                                try {
+                                    const doc = editor.getJSON();
+                                    hidden.value = JSON.stringify(doc);
+                                } catch(e){
+                                    hidden.value = '';
+                                }
+                            });
+                        })();
+                    </script>
                 </div>
             </div>
         </div>

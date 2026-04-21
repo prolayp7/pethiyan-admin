@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\AnnouncementBarApiController;
 use App\Http\Controllers\Api\HeroSectionApiController;
 use App\Http\Controllers\Api\NewsletterSectionApiController;
 use App\Http\Controllers\Api\VideoStorySectionApiController;
+use App\Http\Controllers\Api\PageApiController;
 use App\Http\Controllers\Api\SearchApiController;
 use Illuminate\Support\Facades\Route;
 
@@ -223,6 +224,9 @@ Route::prefix('seller-feedback')->group(function () {
 
 // get banners
 Route::get('banners', [BannerApiController::class, 'index']);
+
+// Pages (public)
+Route::get('pages/{slug}', [PageApiController::class, 'show'])->name('pages.show');
 
 // get categories
 Route::get('categories', [CategoryApiController::class, 'index']);

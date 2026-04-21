@@ -562,6 +562,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\PageController::class, 'index'])->name('index');
             Route::get('/{page}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('edit');
             Route::post('/{page}', [\App\Http\Controllers\Admin\PageController::class, 'update'])->name('update');
+            Route::post('/{page}/media', [\App\Http\Controllers\Admin\PageController::class, 'uploadMedia'])->name('media.store');
         });
 
         // blog

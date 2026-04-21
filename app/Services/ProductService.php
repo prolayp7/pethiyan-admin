@@ -511,10 +511,9 @@ class ProductService
                 ? (float) $pricing['price']
                 : null;
 
-            // Temporary fallback while Special Price and Cost fields are hidden in UI.
-            $specialPrice = (isset($pricing['special_price']) && is_numeric($pricing['special_price']))
+            $specialPrice = (isset($pricing['special_price']) && is_numeric($pricing['special_price']) && (float) $pricing['special_price'] > 0)
                 ? (float) $pricing['special_price']
-                : $price;
+                : null;
 
             $cost = (isset($pricing['cost']) && is_numeric($pricing['cost']))
                 ? (float) $pricing['cost']

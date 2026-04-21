@@ -64,8 +64,6 @@ class ProductApiController extends Controller
                 ->where('status', ProductStatusEnum::ACTIVE->value)
                 ->with([
                     'category:id,title,slug',
-                    'taxClasses:id,title',
-                    'taxClasses.taxRates:id,title,rate',
                     'variants.attributes.attribute:id,title,slug',
                     'variants.attributes.attributeValue:id,title,swatche_value',
                     'variants.storeProductVariants.store:id,name,slug,state_code,state_name',
@@ -135,7 +133,7 @@ class ProductApiController extends Controller
             };
 
             $products = $query->paginate($perPage);
-            $products->getCollection()->transform(fn($p) => new ProductCatalogResource($p));
+            $products->getCollection()->transform(fn($p) => new ProductFeaturedResource($p));
 
             return ApiResponseType::sendJsonResponse(
                 success: true,

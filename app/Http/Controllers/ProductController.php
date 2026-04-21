@@ -43,9 +43,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Enum;
 use Illuminate\View\View;
 use phpDocumentor\Reflection\PseudoTypes\Numeric_;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class ProductController extends Controller
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 {
     use PanelAware, ChecksPermissions, AuthorizesRequests;
 

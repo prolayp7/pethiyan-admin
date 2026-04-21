@@ -613,7 +613,7 @@
                     <h5 class="modal-title" id="product-faq-modal-title">{{ __('labels.add_product_faq') }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form class="form-submit" id="product-faq-form" method="POST" action="{{ route('admin.product_faqs.store') }}">
+                <form id="product-faq-form" method="POST" action="{{ route('admin.product_faqs.store') }}">
                     @csrf
                     <div class="modal-body">
                         <div class="row">

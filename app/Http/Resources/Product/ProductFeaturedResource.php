@@ -24,6 +24,11 @@ class ProductFeaturedResource extends JsonResource
 
                 $effectiveExcl = $specialPriceExcludingTax > 0 ? $specialPriceExcludingTax : $priceExcludingTax;
 
+                $discountPercent = null;
+                if ($specialPriceExcludingTax > 0 && $priceExcludingTax > 0 && $specialPriceExcludingTax < $priceExcludingTax) {
+                    $discountPercent = (int) round(($priceExcludingTax - $specialPriceExcludingTax) / $priceExcludingTax * 100);
+                }
+
                 $storeStateCode = $storeVariant->store->state_code ?? null;
                 $supplyType = $gstService->supplyType($storeStateCode, $customerStateCode);
                 $gst = $gstService->calculateLineItem(
@@ -42,6 +47,7 @@ class ProductFeaturedResource extends JsonResource
                     'price' => $storeVariant->price,
                     'special_price' => $specialPriceExcludingTax > 0 ? $specialPriceExcludingTax : $storeVariant->special_price,
                     'cost' => $storeVariant->cost,
+                    'discount_percent' => $discountPercent,
                     'stock' => (int) ($storeVariant->stock ?? 0),
                     'stock_status' => ((int) ($storeVariant->stock ?? 0) > 0) ? 'in_stock' : 'out_of_stock',
                     'gst' => $gst,
@@ -56,7 +62,6 @@ class ProductFeaturedResource extends JsonResource
             'slug' => $this->slug,
             'thumbnail' => $this->main_image,
             'images' => array_values(array_filter(array_unique(array_merge([$this->main_image], $this->additional_images ?? [])))),
-            'tags' => $this->tags,
             'rating' => null,
             'reviews_count' => null,
             'store_pricing' => $storePricing,

@@ -45,6 +45,7 @@ use Illuminate\View\View;
 use phpDocumentor\Reflection\PseudoTypes\Numeric_;
 
 class ProductController extends Controller
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 {
     use PanelAware, ChecksPermissions, AuthorizesRequests;
 

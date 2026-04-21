@@ -53,14 +53,18 @@
                         try {
                             const modelId = input.dataset.modelId || null;
                             const collection = input.dataset.collection || null;
+                            const mediaId = input.dataset.mediaId || null;
                             if (modelId && collection) {
                                 const tokenMeta = document.querySelector('meta[name="csrf-token"]');
                                 const headers = { 'Content-Type': 'application/json' };
                                 if (tokenMeta) headers['X-CSRF-TOKEN'] = tokenMeta.getAttribute('content');
+                                const body = {};
+                                if (collection) body.collection = collection;
+                                if (mediaId) body.media_id = mediaId;
                                 fetch(`/admin/products/${modelId}/media`, {
                                     method: 'DELETE',
                                     headers,
-                                    body: JSON.stringify({ collection })
+                                    body: JSON.stringify(body)
                                 }).then(res => {
                                     if (res.ok) {
                                         load();

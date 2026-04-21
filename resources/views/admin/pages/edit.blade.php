@@ -73,52 +73,68 @@
                             <button type="submit" class="btn btn-primary">Save Changes</button>
                         </div>
                     </form>
-                    <script src="https://unpkg.com/@tiptap/core@2.0.0-beta.79/dist/tiptap-core.umd.js"></script>
-                    <script src="https://unpkg.com/@tiptap/starter-kit@2.0.0-beta.79/dist/tiptap-starter-kit.umd.js"></script>
-                    <script src="https://unpkg.com/@tiptap/extension-image@2.0.0-beta.28/dist/tiptap-extension-image.umd.js"></script>
                     <script>
                         (function(){
+                            const editor = document.getElementById('block-editor');
                             const hidden = document.getElementById('content_blocks_input');
-                            const editorEl = document.getElementById('block-editor');
 
-                            // helper: convert existing simple blocks to HTML for editor initial content
-                            function blocksToHtml(blocks){
-                                if(!blocks || !blocks.length) return '';
-                                return blocks.map(b=>{
-                                    if(b.type === 'heading') return `<h2>${escapeHtml(b.data?.text||'')}</h2>`;
-                                    if(b.type === 'image') return `<p><img src="${escapeHtml(b.data?.url||'')}"/></p>`;
-                                    return `<p>${escapeHtml(b.data?.text||'')}</p>`;
-                                }).join('');
-                            }
-
-                            function escapeHtml(unsafe){
-                                return unsafe.replace(/[&<>\"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]; });
-                            }
-
-                            // initialize TipTap editor
-                            const { Editor } = window['@tiptap/core'];
-                            const StarterKit = window['@tiptap/starter-kit'].default;
-                            const Image = window['@tiptap/extension-image'].default;
-
-                            let initialHtml = '';
-                            try {
-                                const parsed = JSON.parse(hidden.value || '[]');
-                                if(Array.isArray(parsed) && parsed.length) {
-                                    initialHtml = blocksToHtml(parsed);
-                                } else {
-                                    initialHtml = `{!! addslashes(old('content', $page->content ?? '')) !!}`;
+                            function renderBlocks(blocks){
+                                editor.innerHTML = '';
+                                blocks.forEach((b, idx)=>{
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'mb-3 p-2 border rounded';
+                                    const removeBtn = document.createElement('button');
+                                    removeBtn.type = 'button';
+                                    removeBtn.className = 'btn btn-sm btn-danger float-end';
+                                    removeBtn.textContent = 'Remove';
+                                    removeBtn.onclick = ()=>{ blocks.splice(idx,1); renderBlocks(blocks); saveBlocks(blocks); };
+                                    if(b.type === 'heading'){
+                                        const h = document.createElement('input');
+                                        h.className = 'form-control mb-2';
+                                        h.value = b.data?.text || '';
+                                        h.oninput = ()=>{ b.data = { text: h.value }; saveBlocks(blocks); };
+                                        wrapper.appendChild(removeBtn);
+                                        wrapper.appendChild(h);
+                                    } else if(b.type === 'image'){
+                                        const img = document.createElement('img');
+                                        img.src = b.data?.url || '';
+                                        img.className = 'img-fluid mb-2';
+                                        img.style.maxWidth = '100%';
+                                        wrapper.appendChild(removeBtn);
+                                        wrapper.appendChild(img);
+                                    } else {
+                                        const ta = document.createElement('textarea');
+                                        ta.className = 'form-control mb-2';
+                                        ta.rows = 4;
+                                        ta.value = b.data?.text || '';
+                                        ta.oninput = ()=>{ b.data = { text: ta.value }; saveBlocks(blocks); };
+                                        wrapper.appendChild(removeBtn);
+                                        wrapper.appendChild(ta);
+                                    }
+                                    editor.appendChild(wrapper);
+                                });
+                                if(blocks.length === 0){
+                                    editor.innerHTML = '<div class="text-muted">No blocks yet — add one.</div>';
                                 }
-                            } catch (e){
-                                initialHtml = `{!! addslashes(old('content', $page->content ?? '')) !!}`;
                             }
 
-                            const editor = new Editor({
-                                element: editorEl,
-                                extensions: [StarterKit, Image],
-                                content: initialHtml,
-                            });
+                            function saveBlocks(blocks){
+                                hidden.value = JSON.stringify(blocks);
+                            }
 
-                            // image upload button
+                            // init
+                            let initial = [];
+                            try { initial = JSON.parse(hidden.value || '[]'); } catch(e){ initial = [] }
+                            // fallback: if no blocks but old content exists, create a paragraph block
+                            if(initial.length === 0){
+                                const old = `{!! addslashes(old('content', $page->content ?? '')) !!}`.trim();
+                                if(old){ initial = [{ type:'paragraph', data:{ text: old } }]; }
+                            }
+
+                            renderBlocks(initial);
+
+                            document.getElementById('add-paragraph').addEventListener('click', ()=>{ initial.push({type:'paragraph', data:{ text: '' }}); renderBlocks(initial); saveBlocks(initial); });
+                            document.getElementById('add-heading').addEventListener('click', ()=>{ initial.push({type:'heading', data:{ text: '' }}); renderBlocks(initial); saveBlocks(initial); });
                             document.getElementById('add-image').addEventListener('click', async ()=>{
                                 const fileInput = document.createElement('input');
                                 fileInput.type = 'file';
@@ -137,7 +153,8 @@
                                     if(resp.ok){
                                         const json = await resp.json();
                                         if(json.success){
-                                            editor.chain().focus().setImage({ src: json.url }).run();
+                                            initial.push({ type:'image', data:{ url: json.url, media_id: json.media_id } });
+                                            renderBlocks(initial); saveBlocks(initial);
                                             return;
                                         }
                                     }
@@ -146,16 +163,9 @@
                                 fileInput.click();
                             });
 
-                            // on submit save editor JSON
-                            const form = editorEl.closest('form');
-                            form.addEventListener('submit', ()=>{
-                                try {
-                                    const doc = editor.getJSON();
-                                    hidden.value = JSON.stringify(doc);
-                                } catch(e){
-                                    hidden.value = '';
-                                }
-                            });
+                            // ensure hidden input updated before submit
+                            const form = editor.closest('form');
+                            form.addEventListener('submit', ()=> saveBlocks(initial));
                         })();
                     </script>
                 </div>

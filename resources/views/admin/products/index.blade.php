@@ -271,6 +271,79 @@
                 }
             }
 
+            // Freeze first two columns (id, title) and the last column (action)
+            function freezeProductColumns() {
+                const selector = '#products-table';
+                const table = document.querySelector(selector);
+                if (!table) return;
+
+                const thead = table.querySelector('thead');
+                if (!thead) return;
+
+                const ths = thead.querySelectorAll('th');
+                const colCount = ths.length;
+                if (colCount === 0) return;
+
+                // helper to clear previous styles
+                function clear() {
+                    table.querySelectorAll('th, td').forEach(el => {
+                        el.style.position = '';
+                        el.style.left = '';
+                        el.style.right = '';
+                        el.style.zIndex = '';
+                        el.style.background = '';
+                    });
+                }
+
+                function apply() {
+                    clear();
+                    // freeze left 2 columns
+                    let leftOffset = 0;
+                    for (let i = 0; i < 2; i++) {
+                        const th = ths[i];
+                        if (!th) continue;
+                        const width = th.offsetWidth;
+                        const cells = table.querySelectorAll(`thead th:nth-child(${i+1}), tbody td:nth-child(${i+1})`);
+                        cells.forEach(el => {
+                            el.style.position = 'sticky';
+                            el.style.left = leftOffset + 'px';
+                            el.style.zIndex = 4;
+                            el.style.background = window.getComputedStyle(th).backgroundColor || '#fff';
+                        });
+                        leftOffset += width;
+                    }
+
+                    // freeze last column (action)
+                    const lastIdx = colCount; // nth-child is 1-based
+                    const lastTh = ths[colCount - 1];
+                    if (lastTh) {
+                        const cells = table.querySelectorAll(`thead th:nth-child(${lastIdx}), tbody td:nth-child(${lastIdx})`);
+                        cells.forEach(el => {
+                            el.style.position = 'sticky';
+                            el.style.right = '0px';
+                            el.style.zIndex = 4;
+                            el.style.background = window.getComputedStyle(lastTh).backgroundColor || '#fff';
+                        });
+                    }
+                }
+
+                // Re-apply when datatable redraws or window resizes
+                try {
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable(selector)) {
+                        $(selector).on('draw.dt', apply);
+                    }
+                } catch (e) {
+                    // ignore if DataTable isn't ready yet
+                }
+
+                window.addEventListener('resize', () => setTimeout(apply, 50));
+                // initial apply after a short delay to allow widths to settle
+                setTimeout(apply, 300);
+            }
+
+            // initialize freezing for products table
+            freezeProductColumns();
+
             form.addEventListener('submit', async function (event) {
                 event.preventDefault();
 

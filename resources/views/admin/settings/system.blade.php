@@ -59,7 +59,7 @@
                                 <a class="nav-link" href="#pills-web-footer-seo">Footer SEO Content</a>
                                 {{--<a class="nav-link" href="#pills-web-app">{{ __('labels.app_download_section') }}</a>--}}
                                 {{--<a class="nav-link" href="#pills-web-features">{{ __('labels.feature_sections') }}</a>--}}
-                                <a class="nav-link" href="#pills-web-policies">{{ __('labels.policy_settings') }}</a>
+                                {{-- Policy settings removed per request --}}
                                 {{--<a class="nav-link" href="#pills-web-pwa-manifest">{{ __('labels.pwa_manifest_settings') }}</a>
                                 <a class="nav-link" href="#pills-web-scripts">{{ __('labels.scripts') }}</a>--}}
                             @endcan

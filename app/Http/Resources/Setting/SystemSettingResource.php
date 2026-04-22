@@ -25,6 +25,7 @@ class SystemSettingResource extends JsonResource
                 'logo' => $this->value['logo'] ? url('storage/' . $this->value['logo']) : '',
                 'favicon' => $this->value['favicon'] ? url('storage/' . $this->value['favicon']) : '',
                 'companyAddress' => $this->value['companyAddress'] ?? '',
+                'companyGstin' => $this->value['companyGstin'] ?? '',
                 'adminSignature' => !empty($this->value['adminSignature']) ? url('storage/' . $this->value['adminSignature']) : '',
                 'enableThirdPartyStoreSync' => $this->value['enableThirdPartyStoreSync'] ?? false,
                 'Shopify' => $this->value['Shopify'] ?? false,

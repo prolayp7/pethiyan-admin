@@ -201,6 +201,17 @@ class SettingController extends Controller
             $section = $request->input('_section');
             if ($type === SettingTypeEnum::SYSTEM() && $section && isset(self::SYSTEM_SECTION_FIELDS[$section])) {
                 $sectionKeys = self::SYSTEM_SECTION_FIELDS[$section];
+                
+                // Validate only the submitted section keys, not the entire System settings model
+                $rules = $method::validationRules($sectionKeys);
+                $validationPayload = $payload;
+                foreach (['logo', 'favicon', 'adminSignature'] as $mediaField) {
+                    if (!$request->hasFile($mediaField)) {
+                        unset($validationPayload[$mediaField]);
+                    }
+                }
+                validator($validationPayload, $rules)->validate();
+
                 // Seed with class defaults so required fields from other sections
                 // always have valid values even when no DB row exists yet.
                 $defaults = get_object_vars(new $method());
@@ -212,7 +223,7 @@ class SettingController extends Controller
                 $payload = $merged;
 
                 // The merge re-introduces logo/favicon/adminSignature as stored path strings.
-                // Strip them again so the image validation rules only run against actual uploads.
+                // Strip them again so the object correctly receives empty strings for unmodified media.
                 foreach (['logo', 'favicon', 'adminSignature'] as $mediaField) {
                     if (!$request->hasFile($mediaField)) {
                         unset($payload[$mediaField]);
@@ -221,7 +232,10 @@ class SettingController extends Controller
             }
 
             // Initialize settings object from request data
-            $settings = $type === SettingTypeEnum::WEB()
+            // Bypass fromArray() (which validates all rules) if we just manually validated a specific section
+            $useHydrator = $type === SettingTypeEnum::WEB() || ($type === SettingTypeEnum::SYSTEM() && $section && isset(self::SYSTEM_SECTION_FIELDS[$section]));
+            
+            $settings = $useHydrator
                 ? $this->hydrateSettingsObject($method, $payload)
                 : $method::fromArray($payload);
 

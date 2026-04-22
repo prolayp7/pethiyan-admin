@@ -99,7 +99,8 @@ Route::prefix('settings')->name('api.')->group(function () {
     Route::get('why-choose-us-section', [SettingApiController::class, 'whyChooseUsSection'])->name('settings.why-choose-us-section');
     Route::get('promo-banner-section', [SettingApiController::class, 'promoBannerSection'])->name('settings.promo-banner-section');
     Route::get('social-proof-section', [SettingApiController::class, 'socialProofSection'])->name('settings.social-proof-section');
-    Route::get('firebase-config', [SettingApiController::class, 'firebaseConfig'])->name('settings.firebase-config');;
+    Route::get('auth-config', [SettingApiController::class, 'authConfig'])->name('settings.auth-config');
+    Route::get('firebase-config', [SettingApiController::class, 'firebaseConfig'])->name('settings.firebase-config');
     Route::get('seo', [SettingApiController::class, 'seo'])->name('settings.seo');
     Route::get('seo-advanced', [SettingApiController::class, 'seoAdvanced'])->name('settings.seo-advanced');
     Route::get('/variables', [SettingApiController::class, 'settingVariables'])->name('settings.variables');

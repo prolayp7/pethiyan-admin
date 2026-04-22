@@ -13,6 +13,7 @@ class OtpVerification extends Model
 {
     protected $fillable = [
         'mobile',
+        'email',
         'country_code',
         'otp',
         'expires_at',
@@ -60,12 +61,34 @@ class OtpVerification extends Model
     }
 
     /**
+     * Find the latest unused, unexpired record for an email address.
+     */
+    public static function findLatestByEmail(string $email): ?static
+    {
+        return static::where('email', $email)
+            ->whereNull('verified_at')
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+    }
+
+    /**
      * Invalidate all previous OTPs for a mobile (mark as expired).
      */
     public static function invalidatePrevious(string $mobile, string $countryCode): void
     {
         static::where('mobile', $mobile)
             ->where('country_code', $countryCode)
+            ->whereNull('verified_at')
+            ->update(['expires_at' => now()]);
+    }
+
+    /**
+     * Invalidate all previous OTPs for an email (mark as expired).
+     */
+    public static function invalidatePreviousByEmail(string $email): void
+    {
+        static::where('email', $email)
             ->whereNull('verified_at')
             ->update(['expires_at' => now()]);
     }

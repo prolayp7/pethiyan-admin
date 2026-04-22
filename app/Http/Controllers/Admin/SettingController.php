@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\SettingTypeEnum;
+use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Services\FrontendRevalidateService;
@@ -255,6 +256,10 @@ class SettingController extends Controller
             $shouldSyncWeb = $type === SettingTypeEnum::SYSTEM()
                 && (!$section || $section === 'general');
 
+            // Contact page syncs when General (companyAddress) or Support (email/phone) section is saved.
+            $shouldSyncContact = $type === SettingTypeEnum::SYSTEM()
+                && in_array($section, ['general', 'support'], true);
+
             // Determine which frontend cache tags to bust after save
             $revalidateTags = match ($type) {
                 SettingTypeEnum::SYSTEM() => ['site-settings'],
@@ -267,6 +272,12 @@ class SettingController extends Controller
                 $setting->update($data);
                 if ($shouldSyncWeb) {
                     $this->syncMergedWebGeneralSettings($request);
+                }
+                if ($shouldSyncContact) {
+                    PageController::syncSystemSettingsToContact(
+                        is_array($setting->fresh()?->value) ? $setting->fresh()->value : []
+                    );
+                    FrontendRevalidateService::revalidate(tags: ['contact-page'], paths: ['/contact']);
                 }
                 if ($revalidateTags) {
                     FrontendRevalidateService::revalidate(tags: $revalidateTags, paths: ['/']);
@@ -281,6 +292,12 @@ class SettingController extends Controller
             $res = Setting::create($data);
             if ($shouldSyncWeb) {
                 $this->syncMergedWebGeneralSettings($request);
+            }
+            if ($shouldSyncContact) {
+                PageController::syncSystemSettingsToContact(
+                    is_array($res->fresh()?->value) ? $res->fresh()->value : []
+                );
+                FrontendRevalidateService::revalidate(tags: ['contact-page'], paths: ['/contact']);
             }
             if ($revalidateTags) {
                 FrontendRevalidateService::revalidate(tags: $revalidateTags, paths: ['/']);

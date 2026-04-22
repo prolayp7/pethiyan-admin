@@ -112,7 +112,7 @@ class OrderResource extends JsonResource
             // Relationships
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'seller_feedbacks' => OrderSellerFeedbackResource::collection($this->whenLoaded('sellerOrders')),
-            'promo_line' => new PromoLineResource($this->whenLoaded('promoLine')),
+            'promo_line' => $this->whenLoaded('promoLine', fn() => new PromoLineResource($this->promoLine)),
             'user' => $this->when($this->relationLoaded('user'), function () {
                 return [
                     'id' => $this->user->id,

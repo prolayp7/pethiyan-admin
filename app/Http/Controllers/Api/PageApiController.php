@@ -11,12 +11,16 @@ class PageApiController extends Controller
 {
     public function show(string $slug): JsonResponse
     {
-        $page = Page::where('slug', $slug)->firstOrFail();
+        $page = Page::where('slug', $slug)
+            ->where('status', 'active')
+            ->firstOrFail();
 
         $base = [
             'slug'             => $page->slug,
             'title'            => $page->title,
             'content'          => $page->content,
+            'status'           => $page->status,
+            'system_page'      => $page->system_page,
             'meta_title'       => $page->meta_title,
             'meta_description' => $page->meta_description,
         ];

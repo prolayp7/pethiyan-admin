@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Services\FrontendRevalidateService;
 use App\Traits\ChecksPermissions;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class PageController extends Controller
 {
@@ -45,6 +46,50 @@ class PageController extends Controller
         return view('admin.pages.edit', compact('page', 'systemSettings'));
     }
 
+    public function create()
+    {
+        $page = new Page([
+            'status' => 'active',
+            'system_page' => false,
+        ]);
+        $systemSettings = [];
+
+        return view('admin.pages.edit', compact('page', 'systemSettings'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'title'            => 'required|string|max:255',
+            'slug'             => ['required', 'string', 'max:255', 'unique:pages,slug', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'status'           => 'required|in:active,inactive',
+            'custom_page_blocks' => 'nullable|string',
+            'block_image_files.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:5120',
+            'block_video_files.*' => 'nullable|file|mimes:mp4,webm,mov,qt|max:20480',
+            'meta_title'       => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string',
+        ]);
+
+        $page = Page::create([
+            'title'            => $validated['title'],
+            'slug'             => Str::slug($validated['slug']),
+            'status'           => $validated['status'],
+            'system_page'      => false,
+            'content'          => null,
+            'content_blocks'   => [],
+            'meta_title'       => $validated['meta_title'] ?? null,
+            'meta_description' => $validated['meta_description'] ?? null,
+        ]);
+
+        $page->update([
+            'content_blocks' => $this->buildCustomPageBlocks($request, $page),
+        ]);
+
+        FrontendRevalidateService::revalidate(tags: ['pages'], paths: ["/pages/{$page->slug}"]);
+
+        return redirect()->route('admin.pages.index')->with('success', 'Page created successfully.');
+    }
+
     public function update(Request $request, Page $page)
     {
         if ($page->slug === self::CONTACT_PAGE_SLUG) {
@@ -53,6 +98,10 @@ class PageController extends Controller
 
         if ($page->slug === self::ABOUT_PAGE_SLUG) {
             return $this->updateAboutPage($request, $page);
+        }
+
+        if (!$page->system_page) {
+            return $this->updateCustomPage($request, $page);
         }
 
         $validated = $request->validate([
@@ -74,12 +123,26 @@ class PageController extends Controller
         return redirect()->route('admin.pages.index')->with('success', 'Page updated successfully.');
     }
 
+    public function destroy(Page $page)
+    {
+        if ($page->system_page) {
+            abort(403, 'System pages cannot be deleted.');
+        }
+
+        $path = "/pages/{$page->slug}";
+        $page->delete();
+
+        FrontendRevalidateService::revalidate(tags: ['pages'], paths: [$path]);
+
+        return redirect()->route('admin.pages.index')->with('success', 'Page deleted successfully.');
+    }
+
     public function uploadMedia(Request $request, Page $page)
     {
         $this->authorizePagePermission($request);
 
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,gif,webp|max:5120',
+            'file' => 'required|file|mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov,qt|max:20480',
         ]);
 
         if ($request->hasFile('file')) {
@@ -145,6 +208,45 @@ class PageController extends Controller
         FrontendRevalidateService::revalidate(tags: ['contact-page'], paths: ['/contact']);
 
         return redirect()->route('admin.pages.index')->with('success', 'Contact page updated successfully.');
+    }
+
+    private function updateCustomPage(Request $request, Page $page)
+    {
+        $oldSlug = $page->slug;
+
+        $validated = $request->validate([
+            'title'              => 'required|string|max:255',
+            'slug'               => ['required', 'string', 'max:255', 'unique:pages,slug,' . $page->id, 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'status'             => 'required|in:active,inactive',
+            'custom_page_blocks' => 'nullable|string',
+            'block_image_files.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,webp|max:5120',
+            'block_video_files.*' => 'nullable|file|mimes:mp4,webm,mov,qt|max:20480',
+            'meta_title'         => 'nullable|string|max:255',
+            'meta_description'   => 'nullable|string',
+        ]);
+
+        $newSlug = Str::slug($validated['slug']);
+
+        $page->update([
+            'title'            => $validated['title'],
+            'slug'             => $newSlug,
+            'status'           => $validated['status'],
+            'meta_title'       => $validated['meta_title'] ?? null,
+            'meta_description' => $validated['meta_description'] ?? null,
+        ]);
+
+        $page->update([
+            'content_blocks' => $this->buildCustomPageBlocks($request, $page),
+        ]);
+
+        $paths = ["/pages/{$newSlug}"];
+        if ($oldSlug !== $newSlug) {
+            $paths[] = "/pages/{$oldSlug}";
+        }
+
+        FrontendRevalidateService::revalidate(tags: ['pages'], paths: $paths);
+
+        return redirect()->route('admin.pages.index')->with('success', 'Page updated successfully.');
     }
 
     private function updateAboutPage(Request $request, Page $page)
@@ -266,6 +368,54 @@ class PageController extends Controller
         return redirect()->route('admin.pages.index')->with('success', 'About page updated successfully.');
     }
 
+    private function buildCustomPageBlocks(Request $request, Page $page): array
+    {
+        $decodedBlocks = json_decode((string) $request->input('custom_page_blocks', '[]'), true);
+        $rawBlocks = is_array($decodedBlocks) ? $decodedBlocks : [];
+
+        return collect($rawBlocks)
+            ->map(function ($block) use ($request, $page) {
+                if (!is_array($block)) {
+                    return null;
+                }
+
+                $key = trim((string) ($block['key'] ?? Str::random(12)));
+                $type = strtolower(trim((string) ($block['block_type'] ?? 'text')));
+                $eyebrow = trim((string) ($block['eyebrow'] ?? ''));
+                $heading = trim((string) ($block['heading'] ?? ''));
+                $bodyHtml = trim((string) ($block['body_html'] ?? ''));
+                $mediaPosition = strtolower(trim((string) ($block['media_position'] ?? 'right')));
+                $imageUrl = trim((string) ($block['image_url'] ?? ''));
+                $videoUrl = trim((string) ($block['video_url'] ?? ''));
+
+                if ($request->hasFile("block_image_files.$key")) {
+                    $imageUrl = $page->addMedia($request->file("block_image_files.$key"))->toMediaCollection('page_media')->getUrl();
+                }
+
+                if ($request->hasFile("block_video_files.$key")) {
+                    $videoUrl = $page->addMedia($request->file("block_video_files.$key"))->toMediaCollection('page_media')->getUrl();
+                }
+
+                if ($heading === '' && $eyebrow === '' && strip_tags($bodyHtml) === '' && $imageUrl === '' && $videoUrl === '') {
+                    return null;
+                }
+
+                return [
+                    'key'            => $key,
+                    'block_type'     => in_array($type, ['text', 'image', 'video'], true) ? $type : 'text',
+                    'eyebrow'        => mb_substr($eyebrow, 0, 255),
+                    'heading'        => mb_substr($heading, 0, 255),
+                    'body_html'      => $bodyHtml,
+                    'media_position' => in_array($mediaPosition, ['left', 'right', 'top'], true) ? $mediaPosition : 'right',
+                    'image_url'      => $imageUrl,
+                    'video_url'      => $videoUrl,
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
     /**
      * Push the primary phone, primary email, and office address back to system settings
      * so the two sources stay in sync.
@@ -334,7 +484,7 @@ class PageController extends Controller
     {
         $permission = match ($request->route()?->getActionMethod()) {
             'index'                => AdminPermissionEnum::PAGE_VIEW->value,
-            'edit', 'update'       => AdminPermissionEnum::PAGE_EDIT->value,
+            'create', 'store', 'edit', 'update', 'destroy' => AdminPermissionEnum::PAGE_EDIT->value,
             default                => null,
         };
 

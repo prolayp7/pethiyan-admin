@@ -23,7 +23,12 @@
                 <div class="card-header">
                     <div>
                         <h3 class="card-title">Manage Other Pages</h3>
-                        <p class="card-subtitle">Edit the content of your static website pages.</p>
+                        <p class="card-subtitle">System pages stay fixed. Create custom pages with flexible text, image, video, and SEO controls.</p>
+                    </div>
+                    <div class="card-actions">
+                        <a href="{{ route('admin.pages.create') }}" class="btn btn-primary">
+                            Create Page
+                        </a>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -49,11 +54,25 @@
                                         @else
                                             <span class="badge bg-danger me-1"></span> Inactive
                                         @endif
+                                        @if($page->system_page)
+                                            <div class="text-muted small mt-1">Fixed system page</div>
+                                        @else
+                                            <div class="text-muted small mt-1">Custom page</div>
+                                        @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.pages.edit', $page) }}" class="btn btn-sm btn-primary">
-                                            Edit
-                                        </a>
+                                        <div class="d-flex gap-2 justify-content-end">
+                                            <a href="{{ route('admin.pages.edit', $page) }}" class="btn btn-sm btn-primary">
+                                                Edit
+                                            </a>
+                                            @unless($page->system_page)
+                                                <form action="{{ route('admin.pages.destroy', $page) }}" method="POST" onsubmit="return confirm('Delete this custom page?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                                </form>
+                                            @endunless
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

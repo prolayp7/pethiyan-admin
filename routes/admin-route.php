@@ -567,9 +567,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // cms pages
         Route::prefix('pages')->name('pages.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\PageController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\PageController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\PageController::class, 'store'])->name('store');
             Route::get('/{page}/edit', [\App\Http\Controllers\Admin\PageController::class, 'edit'])->name('edit');
             Route::post('/{page}', [\App\Http\Controllers\Admin\PageController::class, 'update'])->name('update');
             Route::post('/{page}/media', [\App\Http\Controllers\Admin\PageController::class, 'uploadMedia'])->name('media.store');
+            Route::delete('/{page}', [\App\Http\Controllers\Admin\PageController::class, 'destroy'])->name('destroy');
         });
 
         // blog

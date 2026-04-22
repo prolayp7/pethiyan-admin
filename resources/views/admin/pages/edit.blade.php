@@ -1,10 +1,10 @@
 @extends('layouts.admin.app', ['page' => 'CMS Pages'])
 
-@section('title', 'Edit ' . $page->title)
+@section('title', $page->exists ? 'Edit ' . $page->title : 'Create Page')
 
 @section('header_data')
     @php
-        $page_title = 'Edit ' . $page->title;
+        $page_title = $page->exists ? 'Edit ' . $page->title : 'Create Page';
         $page_pretitle = 'CMS Pages';
     @endphp
 @endsection
@@ -13,7 +13,7 @@
     $breadcrumbs = [
         ['title' => __('labels.home'), 'url' => route('admin.dashboard')],
         ['title' => 'CMS Pages', 'url' => route('admin.pages.index')],
-        ['title' => 'Edit', 'url' => null],
+        ['title' => $page->exists ? 'Edit' : 'Create', 'url' => null],
     ];
 @endphp
 
@@ -506,6 +506,174 @@
                     </div>
                 </template>
 
+            @elseif(!$page->system_page)
+                @php
+                    $oldCustomBlocks = old('custom_page_blocks');
+                    $customBlocks = is_string($oldCustomBlocks)
+                        ? (json_decode($oldCustomBlocks, true) ?: [])
+                        : (is_array($page->content_blocks) ? $page->content_blocks : []);
+                @endphp
+
+                <form
+                    action="{{ $page->exists ? route('admin.pages.update', $page) : route('admin.pages.store') }}"
+                    method="POST"
+                    id="custom-page-form"
+                    enctype="multipart/form-data"
+                >
+                    @csrf
+
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">Page</h4></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <label class="form-label required">Page Title</label>
+                                    <input type="text" name="title"
+                                           class="form-control @error('title') is-invalid @enderror"
+                                           value="{{ old('title', $page->title) }}" required>
+                                    @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label required">Slug</label>
+                                    <input type="text" name="slug"
+                                           class="form-control @error('slug') is-invalid @enderror"
+                                           value="{{ old('slug', $page->slug) }}"
+                                           placeholder="shipping-policy" required>
+                                    <small class="form-hint">Lowercase letters, numbers, and hyphens only. Page URL will be <code>/pages/&lt;slug&gt;</code>.</small>
+                                    @error('slug')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label required">Status</label>
+                                    <select name="status" class="form-select @error('status') is-invalid @enderror">
+                                        <option value="active" {{ old('status', $page->status ?? 'active') === 'active' ? 'selected' : '' }}>Active</option>
+                                        <option value="inactive" {{ old('status', $page->status ?? 'active') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                    </select>
+                                    @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">Content Blocks</h4>
+                                <p class="text-muted mb-0">Build custom pages with repeatable text, image, and video sections. Control media placement per block.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-primary btn-sm" id="add-custom-page-block">Add Block</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info mb-4">
+                                Use a text block for text-only content, or switch to image/video blocks when media should appear beside or above the text.
+                            </div>
+
+                            <input type="hidden" name="custom_page_blocks" id="custom-page-blocks-input" value="{{ old('custom_page_blocks') }}">
+                            @error('custom_page_blocks')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
+
+                            <div id="custom-page-blocks-list" class="d-flex flex-column gap-4"></div>
+                            <div id="custom-page-blocks-empty" class="border rounded-3 p-4 text-center text-muted">
+                                No content blocks added yet. Click <strong>Add Block</strong> to create the first section.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">SEO Settings <small class="text-muted fw-normal">(optional)</small></h4></div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Meta Title</label>
+                                <input type="text" name="meta_title" class="form-control"
+                                       value="{{ old('meta_title', $page->meta_title) }}">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">Meta Description</label>
+                                <textarea name="meta_description" class="form-control" rows="3">{{ old('meta_description', $page->meta_description) }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-footer text-end mt-2">
+                        <a href="{{ route('admin.pages.index') }}" class="btn btn-link">Cancel</a>
+                        <button type="submit" class="btn btn-primary">{{ $page->exists ? 'Save Changes' : 'Create Page' }}</button>
+                    </div>
+                </form>
+
+                <template id="custom-page-block-template">
+                    <div class="card custom-page-block-item">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">Block <span class="custom-page-block-number"></span></h4>
+                                <p class="text-muted mb-0">Configure text, media type, and media placement for this block.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-outline-danger btn-sm custom-page-remove-block">Remove</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Block Type</label>
+                                    <select class="form-select custom-page-block-type">
+                                        <option value="text">Text</option>
+                                        <option value="image">Image + Text</option>
+                                        <option value="video">Video + Text</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Eyebrow</label>
+                                    <input type="text" class="form-control custom-page-block-eyebrow" placeholder="SECTION LABEL">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Heading</label>
+                                    <input type="text" class="form-control custom-page-block-heading" placeholder="Block heading">
+                                </div>
+                                <div class="col-md-2 custom-page-media-position-wrap">
+                                    <label class="form-label">Media Position</label>
+                                    <select class="form-select custom-page-block-media-position">
+                                        <option value="right">Right</option>
+                                        <option value="left">Left</option>
+                                        <option value="top">Top</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <label class="form-label">Text Content</label>
+                                <div class="custom-page-editor border rounded">
+                                    <div class="custom-page-editor-toolbar"></div>
+                                    <div class="custom-page-editor-body"></div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1 custom-page-image-wrap">
+                                <div class="col-md-6">
+                                    <label class="form-label">Image</label>
+                                    <input type="file" class="custom-page-image-input" accept="image/*">
+                                    <small class="form-hint">Upload JPG, PNG, GIF, or WEBP up to 5 MB.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Current Image URL</label>
+                                    <input type="text" class="form-control custom-page-image-url" placeholder="Kept when no new image is uploaded">
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1 custom-page-video-wrap">
+                                <div class="col-md-6">
+                                    <label class="form-label">Video</label>
+                                    <input type="file" class="custom-page-video-input" accept="video/mp4,video/webm,video/quicktime">
+                                    <small class="form-hint">Upload MP4, WEBM, or MOV up to 20 MB.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Current Video URL</label>
+                                    <input type="text" class="form-control custom-page-video-url" placeholder="Kept when no new video is uploaded">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
             @else
                 {{-- ── RICH TEXT EDITOR (Quill — all non-contact pages) ───────── --}}
                 <form action="{{ route('admin.pages.update', $page) }}" method="POST" id="page-edit-form">
@@ -908,6 +1076,206 @@
         initialFeatures.items.forEach((item) => createFeatureItem(item));
     } else {
         syncFeaturesEmptyState();
+    }
+})();
+</script>
+@endpush
+@elseif(!$page->system_page)
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<style>
+    .custom-page-editor-body .ql-editor { min-height: 220px; font-size: 14px; line-height: 1.7; }
+    .custom-page-editor .ql-toolbar.ql-snow { border-left: none; border-right: none; border-top: none; }
+    .custom-page-editor .ql-container.ql-snow { border: none; }
+    .custom-page-block-item .filepond--root { margin-bottom: 0; }
+</style>
+@endpush
+
+@push('script')
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+(function () {
+    const initialBlocks = @json($customBlocks ?? []);
+    const form = document.getElementById('custom-page-form');
+    const list = document.getElementById('custom-page-blocks-list');
+    const emptyState = document.getElementById('custom-page-blocks-empty');
+    const addButton = document.getElementById('add-custom-page-block');
+    const hiddenInput = document.getElementById('custom-page-blocks-input');
+    const template = document.getElementById('custom-page-block-template');
+    const blockInstances = [];
+
+    function toolbarConfig() {
+        return [
+            [{ header: [2, 3, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['link', 'blockquote'],
+            ['clean'],
+        ];
+    }
+
+    function normalizeLocalhostOrigin(url) {
+        if (!url || typeof url !== 'string') return url;
+
+        try {
+            const parsed = new URL(url, window.location.origin);
+            const isLoopback = ['localhost', '127.0.0.1'].includes(parsed.hostname);
+            const currentIsLoopback = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+            if (isLoopback && currentIsLoopback) {
+                return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+            }
+
+            return parsed.toString();
+        } catch (_error) {
+            return url;
+        }
+    }
+
+    function syncEmptyState() {
+        emptyState.classList.toggle('d-none', list.children.length > 0);
+        Array.from(list.children).forEach((item, index) => {
+            const number = item.querySelector('.custom-page-block-number');
+            if (number) {
+                number.textContent = index + 1;
+            }
+        });
+    }
+
+    function createStoredFilePond(input, acceptedFileTypes, maxFileSize, sourceUrl, labelIdle) {
+        return FilePond.create(input, {
+            allowImagePreview: acceptedFileTypes.some((type) => type.startsWith('image/')),
+            credits: false,
+            storeAsFile: true,
+            instantUpload: false,
+            acceptedFileTypes,
+            maxFileSize,
+            labelIdle,
+            server: {
+                load: (source, load, error) => {
+                    fetch(normalizeLocalhostOrigin(source))
+                        .then((response) => response.blob())
+                        .then((blob) => load(blob))
+                        .catch((err) => error(err));
+
+                    return { abort: () => {} };
+                },
+            },
+            files: sourceUrl ? [{
+                source: normalizeLocalhostOrigin(sourceUrl),
+                options: { type: 'local' },
+            }] : [],
+        });
+    }
+
+    function toggleMediaFields(blockEl) {
+        const blockType = blockEl.querySelector('.custom-page-block-type').value;
+        blockEl.querySelector('.custom-page-image-wrap').classList.toggle('d-none', blockType !== 'image');
+        blockEl.querySelector('.custom-page-video-wrap').classList.toggle('d-none', blockType !== 'video');
+        blockEl.querySelector('.custom-page-media-position-wrap').classList.toggle('d-none', blockType === 'text');
+    }
+
+    function createBlock(block = {}) {
+        const key = block.key || `block_${Math.random().toString(36).slice(2, 10)}`;
+        const fragment = template.content.cloneNode(true);
+        const blockEl = fragment.querySelector('.custom-page-block-item');
+        const typeInput = blockEl.querySelector('.custom-page-block-type');
+        const eyebrowInput = blockEl.querySelector('.custom-page-block-eyebrow');
+        const headingInput = blockEl.querySelector('.custom-page-block-heading');
+        const mediaPositionInput = blockEl.querySelector('.custom-page-block-media-position');
+        const imageInput = blockEl.querySelector('.custom-page-image-input');
+        const imageUrlInput = blockEl.querySelector('.custom-page-image-url');
+        const videoInput = blockEl.querySelector('.custom-page-video-input');
+        const videoUrlInput = blockEl.querySelector('.custom-page-video-url');
+        const removeButton = blockEl.querySelector('.custom-page-remove-block');
+        const toolbar = blockEl.querySelector('.custom-page-editor-toolbar');
+        const editorBody = blockEl.querySelector('.custom-page-editor-body');
+
+        imageInput.name = `block_image_files[${key}]`;
+        videoInput.name = `block_video_files[${key}]`;
+
+        typeInput.value = block.block_type || 'text';
+        eyebrowInput.value = block.eyebrow || '';
+        headingInput.value = block.heading || '';
+        mediaPositionInput.value = block.media_position || 'right';
+        imageUrlInput.value = block.image_url || '';
+        videoUrlInput.value = block.video_url || '';
+
+        const quill = new Quill(editorBody, {
+            theme: 'snow',
+            placeholder: 'Add text details for this block…',
+            modules: { toolbar: toolbarConfig() },
+        });
+
+        if (block.body_html) {
+            quill.clipboard.dangerouslyPasteHTML(0, block.body_html);
+        }
+
+        const imagePond = createStoredFilePond(
+            imageInput,
+            ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'],
+            '5MB',
+            imageUrlInput.value,
+            'Drag & drop image or <span class="filepond--label-action">Browse</span>'
+        );
+        const videoPond = createStoredFilePond(
+            videoInput,
+            ['video/mp4', 'video/webm', 'video/quicktime'],
+            '20MB',
+            videoUrlInput.value,
+            'Drag & drop video or <span class="filepond--label-action">Browse</span>'
+        );
+
+        typeInput.addEventListener('change', function () {
+            toggleMediaFields(blockEl);
+        });
+
+        removeButton.addEventListener('click', function () {
+            const index = blockInstances.findIndex((instance) => instance.blockEl === blockEl);
+            if (index >= 0) {
+                blockInstances[index].imagePond?.destroy();
+                blockInstances[index].videoPond?.destroy();
+                blockInstances.splice(index, 1);
+            }
+            blockEl.remove();
+            syncEmptyState();
+        });
+
+        list.appendChild(blockEl);
+        blockInstances.push({ key, blockEl, quill, imagePond, videoPond });
+        toggleMediaFields(blockEl);
+        syncEmptyState();
+    }
+
+    addButton.addEventListener('click', function () {
+        createBlock();
+    });
+
+    form.addEventListener('submit', function () {
+        const payload = blockInstances.map(({ key, blockEl, quill, imagePond, videoPond }) => ({
+            key,
+            block_type: blockEl.querySelector('.custom-page-block-type').value,
+            eyebrow: blockEl.querySelector('.custom-page-block-eyebrow').value.trim(),
+            heading: blockEl.querySelector('.custom-page-block-heading').value.trim(),
+            body_html: quill.getSemanticHTML ? quill.getSemanticHTML() : quill.root.innerHTML,
+            media_position: blockEl.querySelector('.custom-page-block-media-position').value,
+            image_url: imagePond.getFiles().some((file) => file.origin === FilePond.FileOrigin.LOCAL)
+                ? blockEl.querySelector('.custom-page-image-url').value.trim()
+                : '',
+            video_url: videoPond.getFiles().some((file) => file.origin === FilePond.FileOrigin.LOCAL)
+                ? blockEl.querySelector('.custom-page-video-url').value.trim()
+                : '',
+        })).filter((block) => (
+            block.eyebrow || block.heading || block.body_html.replace(/<(.|\n)*?>/g, '').trim() || block.image_url || block.video_url
+        ));
+
+        hiddenInput.value = JSON.stringify(payload);
+    });
+
+    if (Array.isArray(initialBlocks) && initialBlocks.length > 0) {
+        initialBlocks.forEach((block) => createBlock(block));
+    } else {
+        syncEmptyState();
     }
 })();
 </script>

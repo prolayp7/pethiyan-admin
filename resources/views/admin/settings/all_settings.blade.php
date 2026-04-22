@@ -302,6 +302,36 @@
                 </div>
             </div>
             @endcan
+            @if(auth('admin')->user()?->hasRole(\App\Enums\DefaultSystemRolesEnum::SUPER_ADMIN()))
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-danger">
+                    <a href="{{ route('admin.data-management.index') }}" class="card-link">
+                        <div class="card-stamp">
+                            <div class="card-stamp-icon bg-danger">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                     stroke-linejoin="round"
+                                     class="icon icon-tabler icons-tabler-outline icon-tabler-database-x">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M4 6c0 1.657 3.582 3 8 3s8 -1.343 8 -3s-3.582 -3 -8 -3s-8 1.343 -8 3"/>
+                                    <path d="M4 6v6c0 1.657 3.582 3 8 3c1.14 0 2.218 -.1 3.2 -.278"/>
+                                    <path d="M20 12v-6"/>
+                                    <path d="M4 12v6c0 1.657 3.582 3 8 3c.357 0 .711 -.01 1.057 -.03"/>
+                                    <path d="M22 22l-5 -5"/>
+                                    <path d="M17 22l5 -5"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="card-body py-5">
+                            <h3 class="card-title text-danger">Data Management</h3>
+                            <p class="text-secondary">
+                                Truncate orders, carts, transactions, and payment records from the database.
+                            </p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 @endsection

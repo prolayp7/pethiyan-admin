@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\DeliveryBoyWithdrawalController;
 use App\Http\Controllers\Admin\PromoController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\SellerWithdrawalController;
+use App\Http\Controllers\Admin\DataManagementController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\BannerController;
 use App\Http\Controllers\BrandController;
@@ -82,6 +83,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/enable', [AdminTotpController::class, 'enable'])->name('enable');
             Route::post('/disable', [AdminTotpController::class, 'disable'])->name('disable');
             Route::post('/recovery-codes', [AdminTotpController::class, 'regenerateRecoveryCodes'])->name('recovery-codes');
+        });
+
+        // data management (truncate orders / carts / transactions / payments)
+        Route::prefix('data-management')->name('data-management.')->group(function () {
+            Route::get('/', [DataManagementController::class, 'index'])->name('index');
+            Route::post('/truncate', [DataManagementController::class, 'truncate'])->name('truncate');
         });
 
         // settings

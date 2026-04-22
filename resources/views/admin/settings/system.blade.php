@@ -144,10 +144,20 @@
                                             <textarea class="form-control" name="companyAddress" rows="3" placeholder="Enter company address shown on invoice">{{ $settings['companyAddress'] ?? '' }}</textarea>
                                         </div>
                                         <div class="mb-3">
+                                            <label class="form-label">Company GSTIN</label>
+                                            <input type="text" class="form-control" name="companyGstin"
+                                                   placeholder="e.g. 29ABCDE1234F1Z5"
+                                                   maxlength="15"
+                                                   style="text-transform:uppercase"
+                                                   value="{{ $settings['companyGstin'] ?? '' }}"/>
+                                            <small class="form-hint">15-character GST Identification Number printed on invoices. Leave blank if not applicable.</small>
+                                        </div>
+                                        <div class="mb-3">
                                             <label class="form-label">Admin Signature (Authorized Signatory)</label>
                                             <input type="file" name="adminSignature" data-image-url="{{ $settings['adminSignature'] ?? '' }}"/>
                                             <small class="form-hint">Upload a signature image to display on invoices.</small>
                                         </div>
+
                                         @can('viewSetting', [\App\Models\Setting::class, 'web'])
                                             <hr class="my-4">
                                             <h5 class="mb-3">Website Branding & Basics</h5>

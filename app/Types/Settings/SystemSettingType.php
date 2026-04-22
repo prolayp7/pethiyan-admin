@@ -20,6 +20,7 @@ class SystemSettingType implements SettingInterface
     public string $favicon = "";
     // Custom additions
     public string $companyAddress = "";
+    public string $companyGstin   = "";
     public string $adminSignature = "";
     public bool $enableThirdPartyStoreSync = false;
     public bool $Shopify = false;
@@ -83,6 +84,7 @@ class SystemSettingType implements SettingInterface
             'favicon' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp'],
             // New settings
             'companyAddress' => ['nullable', 'string', 'max:500'],
+            'companyGstin'   => ['nullable', 'string', 'max:15', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i'],
             'adminSignature' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp'],
             'checkoutType' => ['required', 'in:multi_store,single_store'],
             'minimumCartAmount' => ['required', 'numeric', 'min:0'],

@@ -47,7 +47,7 @@ class SettingController extends Controller
 
     /** Fields belonging to each system-settings section for partial saves */
     private const SYSTEM_SECTION_FIELDS = [
-        'general'  => ['appName', 'systemTimezone', 'copyrightDetails', 'currency', 'currencySymbol', 'logo', 'favicon', 'companyAddress', 'adminSignature'],
+        'general'  => ['appName', 'systemTimezone', 'copyrightDetails', 'currency', 'currencySymbol', 'logo', 'favicon', 'companyAddress', 'companyGstin', 'adminSignature'],
         'support'  => ['sellerSupportEmail', 'sellerSupportNumber'],
         'cart'     => ['checkoutType', 'minimumCartAmount', 'maximumItemsAllowedInCart', 'lowStockLimit'],
         'order'    => ['customerInvoiceDownloadEnabled', 'customerInvoiceDownloadMinStatus'],

@@ -345,15 +345,9 @@
     {{-- ── GST + Payment Summary ────────────────────────────────────────── --}}
     <table class="totals-table">
         <tr>
-            <td class="label">Items Subtotal:</td>
-            <td class="text-right">{{ $currency }}{{ number_format($order['subtotal'], 2) }}</td>
+            <td class="label">Items Subtotal (ex-GST):</td>
+            <td class="text-right">{{ $currency }}{{ number_format($order['total_taxable_amount'] ?? $order['subtotal'], 2) }}</td>
         </tr>
-        @if(($order['total_taxable_amount'] ?? 0) > 0)
-        <tr>
-            <td class="label">Taxable Amount:</td>
-            <td class="text-right">{{ $currency }}{{ number_format($order['total_taxable_amount'], 2) }}</td>
-        </tr>
-        @endif
         @if($isIntra && ($order['total_cgst'] ?? 0) > 0)
         <tr>
             <td class="label">CGST:</td>

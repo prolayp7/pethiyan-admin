@@ -39,7 +39,7 @@
 
     {{-- Totals --}}
     <div class="totals">
-        <div class="row"><span>Subtotal</span><span>₹{{ number_format($order->sub_total ?? 0, 2) }}</span></div>
+        <div class="row"><span>Subtotal</span><span>₹{{ number_format($order->total_taxable_amount ?? $order->sub_total ?? 0, 2) }}</span></div>
         @if(($order->delivery_charge ?? 0) > 0)
         <div class="row"><span>Delivery</span><span>₹{{ number_format($order->delivery_charge, 2) }}</span></div>
         @endif
@@ -49,7 +49,7 @@
         @if(($order->total_gst ?? 0) > 0)
         <div class="row"><span>GST</span><span>₹{{ number_format($order->total_gst, 2) }}</span></div>
         @endif
-        <div class="row grand"><span>Total Payable</span><span>₹{{ number_format($order->grand_total ?? $order->total ?? 0, 2) }}</span></div>
+        <div class="row grand"><span>Total Payable</span><span>₹{{ number_format($order->final_total ?? $order->grand_total ?? $order->total_payable ?? 0, 2) }}</span></div>
     </div>
 
     {{-- Delivery address --}}

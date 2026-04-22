@@ -23,17 +23,24 @@ class OrderResource extends JsonResource
             $deliveryFeedback = DeliveryBoyService::getDeliveryBoyFeedbackByOrderId(orderId: $this->id, deliveryBoyId: $this->delivery_boy_id);
         }
 
-        // For display only: include cancelled/rejected items amount back into subtotal and final_total
-        // The stored order totals exclude these items, but the API should show amounts including them.
-        $cancelledRejectedAmount = (float) ($this->items()
+        // Display subtotal as ex-GST amount so it matches the cart/checkout breakdown.
+        // total_taxable_amount is set by GstService at order creation (sum of qty × ex-GST unit price).
+        // Fall back to (stored subtotal - total_gst) when the field is not yet populated.
+        $storedGst  = (float) ($this->total_gst ?? 0);
+        $exGstBase  = (float) ($this->total_taxable_amount > 0
+            ? $this->total_taxable_amount
+            : max(0, (float) $this->subtotal - $storedGst));
+
+        // Re-add cancelled/rejected items using their ex-GST taxable_amount.
+        $cancelledRejectedTaxable = (float) ($this->items()
             ->whereIn('status', [
                 OrderItemStatusEnum::REJECTED(),
                 OrderItemStatusEnum::CANCELLED(),
             ])
-            ->sum('subtotal'));
+            ->sum('taxable_amount'));
 
-        $displaySubtotal = (float) $this->subtotal + $cancelledRejectedAmount;
-        $displayFinalTotal = (float) $this->final_total + $cancelledRejectedAmount;
+        $displaySubtotal   = $exGstBase + $cancelledRejectedTaxable;
+        $displayFinalTotal = (float) $this->final_total;
         return [
             'id' => $this->id,
             'uuid' => $this->uuid,
@@ -65,8 +72,9 @@ class OrderResource extends JsonResource
             'delivery_charge' => $this->delivery_charge,
             'handling_charges' => $this->handling_charges,
             'per_store_drop_off_fee' => $this->per_store_drop_off_fee,
-            // Display values include cancelled/rejected items for API visibility only
+            // subtotal = ex-GST items total (matches cart/checkout display)
             'subtotal' => (string)$displaySubtotal,
+            'gst_amount' => $storedGst,
             'total_payable' => $this->total_payable,
             'final_total' => (string)$displayFinalTotal,
 

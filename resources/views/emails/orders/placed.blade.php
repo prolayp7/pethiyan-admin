@@ -48,7 +48,7 @@
     $shippingZip = $order->shipping_zip ?? '';
     $shippingPhone = $order->shipping_phone ?? $order->billing_phone ?? '';
 
-    $subtotal = $order->subtotal ?? $order->sub_total ?? 0;
+    $subtotal = $order->total_taxable_amount ?? $order->subtotal ?? $order->sub_total ?? 0;
     $delivery = $order->delivery_charge ?? 0;
     $promoDiscount = $order->promo_discount ?? 0;
     $gst = $order->total_gst ?? 0;

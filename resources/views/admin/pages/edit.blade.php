@@ -344,12 +344,8 @@
                             <div class="row g-3 mt-1">
                                 <div class="col-md-6">
                                     <label class="form-label">Image</label>
-                                    <div class="about-image-preview-wrap border rounded p-3 bg-light">
-                                        <img class="about-image-preview d-none" alt="" style="max-width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px;">
-                                        <div class="about-image-placeholder text-muted small">No image uploaded yet.</div>
-                                    </div>
-                                    <div class="d-flex gap-2 mt-2">
-                                        <input type="file" class="form-control about-image-input" accept="image/*">
+                                    <input type="file" class="about-image-input" accept="image/*">
+                                    <div class="d-flex justify-content-end mt-2">
                                         <button type="button" class="btn btn-outline-secondary about-remove-image">Clear</button>
                                     </div>
                                     <small class="form-hint">Upload JPG, PNG, GIF, or WEBP up to 5 MB.</small>
@@ -442,6 +438,7 @@
     .about-editor .ql-toolbar.ql-snow { border-left: none; border-right: none; border-top: none; }
     .about-editor .ql-container.ql-snow { border: none; }
     .about-section-item.is-uploading { opacity: .7; pointer-events: none; }
+    .about-section-item .filepond--root { margin-bottom: 0; }
 </style>
 @endpush
 
@@ -459,6 +456,24 @@
     const hiddenInput = document.getElementById('about-sections-input');
     const template = document.getElementById('about-section-template');
     const quillInstances = [];
+
+    function normalizeLocalhostOrigin(url) {
+        if (!url || typeof url !== 'string') return url;
+
+        try {
+            const parsed = new URL(url, window.location.origin);
+            const isLoopback = ['localhost', '127.0.0.1'].includes(parsed.hostname);
+            const currentIsLoopback = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+            if (isLoopback && currentIsLoopback) {
+                return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+            }
+
+            return parsed.toString();
+        } catch (_error) {
+            return url;
+        }
+    }
 
     function toolbarConfig() {
         return [
@@ -480,21 +495,77 @@
         });
     }
 
-    function updatePreview(sectionEl, imageUrl, imageAlt) {
-        const img = sectionEl.querySelector('.about-image-preview');
-        const placeholder = sectionEl.querySelector('.about-image-placeholder');
+    function createImagePond(input, imageUrlInput, sectionEl) {
+        return FilePond.create(input, {
+            allowImagePreview: true,
+            credits: false,
+            storeAsFile: false,
+            instantUpload: true,
+            maxFileSize: '5MB',
+            acceptedFileTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'],
+            labelIdle: 'Drag & drop image or <span class="filepond--label-action">Browse</span>',
+            server: {
+                process: (fieldName, file, _metadata, load, error, progress, abort) => {
+                    const formData = new FormData();
+                    formData.append('file', file, file.name);
 
-        if (imageUrl) {
-            img.src = imageUrl;
-            img.alt = imageAlt || '';
-            img.classList.remove('d-none');
-            placeholder.classList.add('d-none');
-        } else {
-            img.src = '';
-            img.alt = '';
-            img.classList.add('d-none');
-            placeholder.classList.remove('d-none');
-        }
+                    const request = new XMLHttpRequest();
+                    request.open('POST', uploadUrl);
+                    request.setRequestHeader('X-CSRF-TOKEN', csrfToken);
+                    request.setRequestHeader('Accept', 'application/json');
+
+                    request.upload.onprogress = (event) => {
+                        progress(event.lengthComputable, event.loaded, event.total);
+                    };
+
+                    request.onload = () => {
+                        try {
+                            const payload = JSON.parse(request.responseText || '{}');
+                            if (request.status >= 200 && request.status < 300 && payload.url) {
+                                imageUrlInput.value = payload.url;
+                                load(payload.url);
+                                return;
+                            }
+
+                            error(payload.message || 'Image upload failed.');
+                        } catch (_parseError) {
+                            error('Image upload failed.');
+                        }
+                    };
+
+                    request.onerror = () => error('Image upload failed.');
+                    request.send(formData);
+
+                    return {
+                        abort: () => {
+                            request.abort();
+                            abort();
+                        }
+                    };
+                },
+                load: (source, load, error) => {
+                    fetch(normalizeLocalhostOrigin(source))
+                        .then((response) => {
+                            const contentType = (response.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
+                            return response.blob().then((blob) => new Blob([blob], { type: contentType }));
+                        })
+                        .then((blob) => load(blob))
+                        .catch((err) => error(err));
+
+                    return {
+                        abort: () => {}
+                    };
+                },
+                revert: (_uniqueFileId, load) => {
+                    imageUrlInput.value = '';
+                    load();
+                },
+            },
+            files: imageUrlInput.value ? [{
+                source: normalizeLocalhostOrigin(imageUrlInput.value),
+                options: { type: 'local' },
+            }] : [],
+        });
     }
 
     function createSection(section = {}) {
@@ -527,12 +598,13 @@
             quill.clipboard.dangerouslyPasteHTML(0, section.body_html);
         }
 
-        quillInstances.push({ sectionEl, quill });
-        updatePreview(sectionEl, imageUrlInput.value, imageAltInput.value);
+        const pond = createImagePond(imageInput, imageUrlInput, sectionEl);
+        quillInstances.push({ sectionEl, quill, pond });
 
         removeButton.addEventListener('click', function () {
             const index = quillInstances.findIndex((instance) => instance.sectionEl === sectionEl);
             if (index >= 0) {
+                quillInstances[index].pond?.destroy();
                 quillInstances.splice(index, 1);
             }
             sectionEl.remove();
@@ -541,50 +613,7 @@
 
         clearImageButton.addEventListener('click', function () {
             imageUrlInput.value = '';
-            imageInput.value = '';
-            updatePreview(sectionEl, '', imageAltInput.value);
-        });
-
-        imageAltInput.addEventListener('input', function () {
-            updatePreview(sectionEl, imageUrlInput.value, imageAltInput.value);
-        });
-
-        imageUrlInput.addEventListener('input', function () {
-            updatePreview(sectionEl, imageUrlInput.value, imageAltInput.value);
-        });
-
-        imageInput.addEventListener('change', async function () {
-            const file = imageInput.files && imageInput.files[0];
-            if (!file) return;
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            sectionEl.classList.add('is-uploading');
-
-            try {
-                const response = await fetch(uploadUrl, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                    },
-                    body: formData,
-                });
-
-                const payload = await response.json();
-                if (!response.ok || !payload.url) {
-                    throw new Error(payload.message || 'Image upload failed.');
-                }
-
-                imageUrlInput.value = payload.url;
-                updatePreview(sectionEl, payload.url, imageAltInput.value);
-            } catch (error) {
-                alert(error.message || 'Image upload failed.');
-                imageInput.value = '';
-            } finally {
-                sectionEl.classList.remove('is-uploading');
-            }
+            pond.removeFiles();
         });
 
         list.appendChild(sectionEl);

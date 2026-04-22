@@ -153,6 +153,7 @@ class PageController extends Controller
             'title'            => 'required|string|max:255',
             'about_sections'   => 'nullable|string',
             'about_values'     => 'nullable|string',
+            'about_features'   => 'nullable|string',
             'meta_title'       => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
         ]);
@@ -214,12 +215,43 @@ class PageController extends Controller
             ->values()
             ->all();
 
+        $decodedFeatures = json_decode($validated['about_features'] ?? '{}', true);
+        $featuresInput = is_array($decodedFeatures) ? $decodedFeatures : [];
+        $featureItems = collect(is_array($featuresInput['items'] ?? null) ? $featuresInput['items'] : [])
+            ->map(function ($item) {
+                if (!is_array($item)) {
+                    return null;
+                }
+
+                $icon = strtolower(trim((string) ($item['icon'] ?? 'package')));
+                $title = trim((string) ($item['title'] ?? ''));
+                $description = trim((string) ($item['description'] ?? ''));
+
+                if ($title === '' && $description === '') {
+                    return null;
+                }
+
+                return [
+                    'icon'        => in_array($icon, ['package', 'shieldcheck', 'truck', 'headphonesicon', 'refreshcw', 'leaf'], true) ? $icon : 'package',
+                    'title'       => mb_substr($title, 0, 255),
+                    'description' => mb_substr($description, 0, 1000),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
         $blocks = is_array($page->content_blocks) ? $page->content_blocks : [];
         $blocks['story_sections'] = $sections;
         $blocks['core_values'] = [
             'eyebrow' => mb_substr(trim((string) ($valuesInput['eyebrow'] ?? '')), 0, 255),
             'heading' => mb_substr(trim((string) ($valuesInput['heading'] ?? '')), 0, 255),
             'items'   => $valueItems,
+        ];
+        $blocks['why_pethiyan'] = [
+            'eyebrow' => mb_substr(trim((string) ($featuresInput['eyebrow'] ?? '')), 0, 255),
+            'heading' => mb_substr(trim((string) ($featuresInput['heading'] ?? '')), 0, 255),
+            'items'   => $featureItems,
         ];
 
         $page->update([

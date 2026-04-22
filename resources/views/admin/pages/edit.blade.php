@@ -236,6 +236,10 @@
                     $aboutValues = is_string($oldValues)
                         ? (json_decode($oldValues, true) ?: [])
                         : ($aboutBlocks['core_values'] ?? []);
+                    $oldFeatures = old('about_features');
+                    $aboutFeatures = is_string($oldFeatures)
+                        ? (json_decode($oldFeatures, true) ?: [])
+                        : ($aboutBlocks['why_pethiyan'] ?? []);
                 @endphp
 
                 <form action="{{ route('admin.pages.update', $page) }}" method="POST" id="about-page-form">
@@ -313,6 +317,38 @@
                             <div id="about-values-list" class="d-flex flex-column gap-4"></div>
                             <div id="about-values-empty" class="border rounded-3 p-4 text-center text-muted">
                                 No value cards added yet. Click <strong>Add Value</strong> to create one.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">Why Pethiyan Section</h4>
+                                <p class="text-muted mb-0">Manage the “Everything Your Business Needs” feature grid shown on the About page frontend.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-primary btn-sm" id="add-about-feature-item">Add Feature</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label">Section Eyebrow</label>
+                                    <input type="text" class="form-control" id="about-features-eyebrow" value="{{ $aboutFeatures['eyebrow'] ?? '' }}" placeholder="WHY PETHIYAN">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">Section Heading</label>
+                                    <input type="text" class="form-control" id="about-features-heading" value="{{ $aboutFeatures['heading'] ?? '' }}" placeholder="Everything Your Business Needs">
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="about_features" id="about-features-input" value="{{ old('about_features') }}">
+                            @error('about_features')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
+
+                            <div id="about-features-list" class="d-flex flex-column gap-4"></div>
+                            <div id="about-features-empty" class="border rounded-3 p-4 text-center text-muted">
+                                No feature cards added yet. Click <strong>Add Feature</strong> to create one.
                             </div>
                         </div>
                     </div>
@@ -433,6 +469,43 @@
                     </div>
                 </template>
 
+                <template id="about-feature-template">
+                    <div class="card about-feature-item">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">Feature Card <span class="about-feature-number"></span></h4>
+                                <p class="text-muted mb-0">Choose an icon, title, and description for this feature card.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-outline-danger btn-sm about-remove-feature">Remove</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Icon</label>
+                                    <select class="form-select about-feature-icon">
+                                        <option value="package">Package / Range</option>
+                                        <option value="shieldcheck">Shield / Certified</option>
+                                        <option value="truck">Truck / Delivery</option>
+                                        <option value="headphonesicon">Headphones / Support</option>
+                                        <option value="refreshcw">Refresh / Returns</option>
+                                        <option value="leaf">Leaf / Eco</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" class="form-control about-feature-title" placeholder="Wide Range">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control about-feature-description" rows="3" placeholder="Explain this feature..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
             @else
                 {{-- ── RICH TEXT EDITOR (Quill — all non-contact pages) ───────── --}}
                 <form action="{{ route('admin.pages.update', $page) }}" method="POST" id="page-edit-form">
@@ -530,6 +603,13 @@
     const valuesInput = document.getElementById('about-values-input');
     const valuesEyebrowInput = document.getElementById('about-values-eyebrow');
     const valuesHeadingInput = document.getElementById('about-values-heading');
+    const featuresList = document.getElementById('about-features-list');
+    const featuresEmptyState = document.getElementById('about-features-empty');
+    const addFeatureButton = document.getElementById('add-about-feature-item');
+    const featuresTemplate = document.getElementById('about-feature-template');
+    const featuresInput = document.getElementById('about-features-input');
+    const featuresEyebrowInput = document.getElementById('about-features-eyebrow');
+    const featuresHeadingInput = document.getElementById('about-features-heading');
     const form = document.getElementById('about-page-form');
     const hiddenInput = document.getElementById('about-sections-input');
     const template = document.getElementById('about-section-template');
@@ -577,6 +657,16 @@
         valuesEmptyState.classList.toggle('d-none', valuesList.children.length > 0);
         Array.from(valuesList.children).forEach((item, index) => {
             const number = item.querySelector('.about-value-number');
+            if (number) {
+                number.textContent = index + 1;
+            }
+        });
+    }
+
+    function syncFeaturesEmptyState() {
+        featuresEmptyState.classList.toggle('d-none', featuresList.children.length > 0);
+        Array.from(featuresList.children).forEach((item, index) => {
+            const number = item.querySelector('.about-feature-number');
             if (number) {
                 number.textContent = index + 1;
             }
@@ -737,6 +827,31 @@
         createValueItem();
     });
 
+    function createFeatureItem(item = {}) {
+        const fragment = featuresTemplate.content.cloneNode(true);
+        const itemEl = fragment.querySelector('.about-feature-item');
+        const iconInput = itemEl.querySelector('.about-feature-icon');
+        const titleInput = itemEl.querySelector('.about-feature-title');
+        const descriptionInput = itemEl.querySelector('.about-feature-description');
+        const removeButton = itemEl.querySelector('.about-remove-feature');
+
+        iconInput.value = item.icon || 'package';
+        titleInput.value = item.title || '';
+        descriptionInput.value = item.description || '';
+
+        removeButton.addEventListener('click', function () {
+            itemEl.remove();
+            syncFeaturesEmptyState();
+        });
+
+        featuresList.appendChild(itemEl);
+        syncFeaturesEmptyState();
+    }
+
+    addFeatureButton.addEventListener('click', function () {
+        createFeatureItem();
+    });
+
     form.addEventListener('submit', function () {
         const payload = quillInstances.map(({ sectionEl, quill }) => ({
             subheading: sectionEl.querySelector('.about-field-subheading').value.trim(),
@@ -762,6 +877,18 @@
             heading: valuesHeadingInput.value.trim(),
             items: valuePayload,
         });
+
+        const featurePayload = Array.from(featuresList.children).map((itemEl) => ({
+            icon: itemEl.querySelector('.about-feature-icon').value,
+            title: itemEl.querySelector('.about-feature-title').value.trim(),
+            description: itemEl.querySelector('.about-feature-description').value.trim(),
+        })).filter((item) => item.title || item.description);
+
+        featuresInput.value = JSON.stringify({
+            eyebrow: featuresEyebrowInput.value.trim(),
+            heading: featuresHeadingInput.value.trim(),
+            items: featurePayload,
+        });
     });
 
     if (Array.isArray(initialSections) && initialSections.length > 0) {
@@ -774,6 +901,13 @@
         initialValues.items.forEach((item) => createValueItem(item));
     } else {
         syncValuesEmptyState();
+    }
+
+    const initialFeatures = @json($aboutFeatures ?? []);
+    if (Array.isArray(initialFeatures.items) && initialFeatures.items.length > 0) {
+        initialFeatures.items.forEach((item) => createFeatureItem(item));
+    } else {
+        syncFeaturesEmptyState();
     }
 })();
 </script>

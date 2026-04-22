@@ -5,23 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Confirmed</title>
     <style>
-        body { margin: 0; padding: 0; background: #f3f7ff; }
+        body { margin: 0; padding: 0; background: #f0f4f8; }
         table { border-collapse: collapse; }
-        .outer { width: 100%; background: #f3f7ff; }
-        .container { width: 680px; max-width: 680px; background: #ffffff; border: 1px solid #d9e8fb; }
-        .header { background: #0b63c8; }
+        .outer { width: 100%; background: #f0f4f8; }
+        .container { width: 680px; max-width: 680px; background: #ffffff; border: 1px solid #cdddf0; }
+        .header { background: linear-gradient(135deg, #0f2f5f 0%, #1f4f8a 45%, #27a567 100%); }
         .title { font-family: Arial, sans-serif; font-size: 24px; font-weight: 700; color: #ffffff; }
-        .sub { font-family: Arial, sans-serif; font-size: 14px; color: #dbeaff; }
-        .h2 { font-family: Arial, sans-serif; font-size: 22px; color: #0a3a83; font-weight: 700; }
+        .sub { font-family: Arial, sans-serif; font-size: 14px; color: rgba(255,255,255,0.80); }
+        .h2 { font-family: Arial, sans-serif; font-size: 22px; color: #0f2f5f; font-weight: 700; }
         .p { font-family: Arial, sans-serif; font-size: 14px; color: #3e5677; line-height: 22px; }
-        .meta { background: #f4f8ff; border: 1px solid #d9e8fb; }
-        .badge { font-family: Arial, sans-serif; font-size: 12px; color: #2d6e16; background: #e8f6e0; padding: 4px 10px; border-radius: 12px; font-weight: 700; }
-        .th { background: #f0f6ff; color: #516b8f; font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+        .meta { background: #f4f8ff; border: 1px solid #cdddf0; }
+        .badge { font-family: Arial, sans-serif; font-size: 12px; color: #1a6b3a; background: #dff5eb; padding: 4px 10px; border-radius: 12px; font-weight: 700; }
+        .th { background: #eef4fb; color: #445e80; font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
         .td { font-family: Arial, sans-serif; font-size: 13px; color: #1f3d60; }
-        .totals { background: #f8fbff; border: 1px solid #d9e8fb; }
-        .total { font-family: Arial, sans-serif; font-size: 18px; color: #0a3a83; font-weight: 700; }
-        .address { background: #f5fbf2; border: 1px solid #d1ebc5; }
-        .footer { background: #f9fbff; border-top: 1px solid #d9e8fb; font-family: Arial, sans-serif; font-size: 12px; color: #7a8fa8; }
+        .totals { background: #f6fbf8; border: 1px solid #c3e6d0; }
+        .total { font-family: Arial, sans-serif; font-size: 18px; color: #0f2f5f; font-weight: 700; }
+        .address { background: #f4fbf7; border: 1px solid #c3e6d0; }
+        .footer { background: #f4f8ff; border-top: 1px solid #cdddf0; font-family: Arial, sans-serif; font-size: 12px; color: #7a8fa8; }
         @media only screen and (max-width: 700px) {
             .container { width: 100% !important; }
             .mobile-pad { padding-left: 16px !important; padding-right: 16px !important; }
@@ -104,17 +104,17 @@
                         </table>
 
                         @if($order->items && $order->items->count())
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px; border:1px solid #d9e8fb;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px; border:1px solid #cdddf0;">
                                 <tr>
-                                    <td class="th" style="padding:10px 12px; border-bottom:1px solid #d9e8fb;">Item</td>
-                                    <td class="th" style="padding:10px 12px; border-bottom:1px solid #d9e8fb;">Qty</td>
-                                    <td class="th" align="right" style="padding:10px 12px; border-bottom:1px solid #d9e8fb;">Price</td>
+                                    <td class="th" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">Item</td>
+                                    <td class="th" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">Qty</td>
+                                    <td class="th" align="right" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">Price</td>
                                 </tr>
                                 @foreach($order->items as $item)
                                     <tr>
-                                        <td class="td" style="padding:10px 12px; border-bottom:1px solid #d9e8fb;">{{ $item->title ?? $item->product?->title ?? 'Item' }}</td>
-                                        <td class="td" style="padding:10px 12px; border-bottom:1px solid #d9e8fb;">{{ $item->quantity }}</td>
-                                        <td class="td" align="right" style="padding:10px 12px; border-bottom:1px solid #d9e8fb;">{{ $formatMoney(($item->price ?? 0) * ($item->quantity ?? 0)) }}</td>
+                                        <td class="td" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">{{ $item->title ?? $item->product?->title ?? 'Item' }}</td>
+                                        <td class="td" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">{{ $item->quantity }}</td>
+                                        <td class="td" align="right" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">{{ $formatMoney(($item->price ?? 0) * ($item->quantity ?? 0)) }}</td>
                                     </tr>
                                 @endforeach
                             </table>
@@ -141,7 +141,7 @@
                                     <td class="p" align="right" style="padding:4px 14px;">{{ $formatMoney($gst) }}</td>
                                 </tr>
                             @endif
-                            <tr><td colspan="2" style="border-top:1px solid #bfd7f7;"></td></tr>
+                            <tr><td colspan="2" style="border-top:1px solid #c3e6d0;"></td></tr>
                             <tr>
                                 <td class="total" style="padding:10px 14px 12px;">Total Payable</td>
                                 <td class="total" align="right" style="padding:10px 14px 12px;">{{ $formatMoney($grandTotal) }}</td>

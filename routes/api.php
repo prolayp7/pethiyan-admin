@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\User\AddressApiController;
 use App\Http\Controllers\Api\User\AuthApiController;
 use App\Http\Controllers\Api\User\CartApiController;
 use App\Http\Controllers\Api\User\OtpAuthController;
+use App\Http\Controllers\Api\User\ForgotPasswordOtpController;
 use App\Http\Controllers\Api\User\OrderApiController;
 use App\Http\Controllers\Api\User\ProductReviewApiController;
 use App\Http\Controllers\Api\User\PromoApiController;
@@ -86,6 +87,13 @@ Route::prefix('auth/otp')->name('auth.otp.')->middleware('throttle:5,1')->group(
     Route::post('send',   [OtpAuthController::class, 'sendOtp'])->name('send');
     Route::post('verify', [OtpAuthController::class, 'verifyOtp'])->name('verify');
     Route::post('resend', [OtpAuthController::class, 'resendOtp'])->middleware('throttle:3,10')->name('resend');
+});
+
+// Forgot Password (OTP-based, works inside the modal without page redirects)
+Route::prefix('auth/forgot-password')->name('auth.forgot-password.')->middleware('throttle:5,1')->group(function () {
+    Route::post('send-otp', [ForgotPasswordOtpController::class, 'sendOtp'])->name('send-otp');
+    Route::post('reset',    [ForgotPasswordOtpController::class, 'resetPassword'])->name('reset');
+    Route::post('resend',   [ForgotPasswordOtpController::class, 'resendOtp'])->middleware('throttle:3,10')->name('resend');
 });
 
 Route::post('auth/google/callback', [AuthApiController::class, 'googleCallback'])->name('google-callback');

@@ -230,6 +230,8 @@ class SettingApiController extends Controller
                     'logo' => $systemValue['logo'] ?? '',
                     'footerLogo' => $webValue['siteFooterLogo'] ?: ($systemValue['logo'] ?? ''),
                     'copyrightText' => trim((string) ($webValue['siteCopyright'] ?: ($systemValue['copyrightDetails'] ?? ''))),
+                    'shortDescription' => trim((string) ($webValue['shortDescription'] ?? '')),
+                    'companyGstin' => trim((string) ($systemValue['companyGstin'] ?? '')),
                     'address' => $webValue['address'] ?: ($systemValue['companyAddress'] ?? ''),
                     'supportEmail' => $webValue['supportEmail'] ?: ($systemValue['sellerSupportEmail'] ?? ''),
                     'supportNumber' => $webValue['supportNumber'] ?: ($systemValue['sellerSupportNumber'] ?? ''),

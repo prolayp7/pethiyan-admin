@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\AnnouncementBarApiController;
 use App\Http\Controllers\Api\HeroSectionApiController;
 use App\Http\Controllers\Api\NewsletterSectionApiController;
 use App\Http\Controllers\Api\VideoStorySectionApiController;
+use App\Http\Controllers\Api\ContactApiController;
 use App\Http\Controllers\Api\PageApiController;
 use App\Http\Controllers\Api\SearchApiController;
 use Illuminate\Support\Facades\Route;
@@ -227,6 +228,9 @@ Route::get('banners', [BannerApiController::class, 'index']);
 
 // Pages (public)
 Route::get('pages/{slug}', [PageApiController::class, 'show'])->name('pages.show');
+
+// Contact form submission (public, rate-limited)
+Route::post('contact', [ContactApiController::class, 'store'])->middleware('throttle:5,1')->name('contact.store');
 
 // get categories
 Route::get('categories', [CategoryApiController::class, 'index']);

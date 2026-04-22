@@ -16,6 +16,7 @@ class PageController extends Controller
     use ChecksPermissions;
 
     private const CONTACT_PAGE_SLUG = 'contact-us';
+    private const ABOUT_PAGE_SLUG = 'about-us';
 
     public function __construct()
     {
@@ -48,6 +49,10 @@ class PageController extends Controller
     {
         if ($page->slug === self::CONTACT_PAGE_SLUG) {
             return $this->updateContactPage($request, $page);
+        }
+
+        if ($page->slug === self::ABOUT_PAGE_SLUG) {
+            return $this->updateAboutPage($request, $page);
         }
 
         $validated = $request->validate([
@@ -140,6 +145,61 @@ class PageController extends Controller
         FrontendRevalidateService::revalidate(tags: ['contact-page'], paths: ['/contact']);
 
         return redirect()->route('admin.pages.index')->with('success', 'Contact page updated successfully.');
+    }
+
+    private function updateAboutPage(Request $request, Page $page)
+    {
+        $validated = $request->validate([
+            'title'            => 'required|string|max:255',
+            'about_sections'   => 'nullable|string',
+            'meta_title'       => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string',
+        ]);
+
+        $decodedSections = json_decode($validated['about_sections'] ?? '[]', true);
+        $sections = collect(is_array($decodedSections) ? $decodedSections : [])
+            ->map(function ($section) {
+                if (!is_array($section)) {
+                    return null;
+                }
+
+                $heading = trim((string) ($section['heading'] ?? ''));
+                $subheading = trim((string) ($section['subheading'] ?? ''));
+                $bodyHtml = trim((string) ($section['body_html'] ?? ''));
+                $imageUrl = trim((string) ($section['image_url'] ?? ''));
+                $imageAlt = trim((string) ($section['image_alt'] ?? ''));
+                $imagePosition = strtolower(trim((string) ($section['image_position'] ?? 'right')));
+
+                if ($heading === '' && $subheading === '' && $bodyHtml === '' && $imageUrl === '') {
+                    return null;
+                }
+
+                return [
+                    'subheading'     => mb_substr($subheading, 0, 255),
+                    'heading'        => mb_substr($heading, 0, 255),
+                    'body_html'      => $bodyHtml,
+                    'image_url'      => $imageUrl,
+                    'image_alt'      => mb_substr($imageAlt, 0, 255),
+                    'image_position' => in_array($imagePosition, ['left', 'right'], true) ? $imagePosition : 'right',
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        $blocks = is_array($page->content_blocks) ? $page->content_blocks : [];
+        $blocks['story_sections'] = $sections;
+
+        $page->update([
+            'title'            => $validated['title'],
+            'content_blocks'   => $blocks,
+            'meta_title'       => $validated['meta_title'] ?? null,
+            'meta_description' => $validated['meta_description'] ?? null,
+        ]);
+
+        FrontendRevalidateService::revalidate(tags: ['about-page'], paths: ['/about']);
+
+        return redirect()->route('admin.pages.index')->with('success', 'About page updated successfully.');
     }
 
     /**

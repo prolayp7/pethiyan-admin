@@ -225,6 +225,148 @@
                     </div>
                 </form>
 
+            @elseif($page->slug === 'about-us')
+                @php
+                    $aboutBlocks = is_array($page->content_blocks) ? $page->content_blocks : [];
+                    $oldSections = old('about_sections');
+                    $aboutSections = is_string($oldSections)
+                        ? (json_decode($oldSections, true) ?: [])
+                        : ($aboutBlocks['story_sections'] ?? []);
+                @endphp
+
+                <form action="{{ route('admin.pages.update', $page) }}" method="POST" id="about-page-form">
+                    @csrf
+
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">Page</h4></div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label required">Page Title</label>
+                                <input type="text" name="title"
+                                       class="form-control @error('title') is-invalid @enderror"
+                                       value="{{ old('title', $page->title) }}" required>
+                                @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">Slug</label>
+                                <input type="text" class="form-control" value="{{ $page->slug }}" disabled>
+                                <small class="form-hint">Slug cannot be changed for core system pages.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">About Story Sections</h4>
+                                <p class="text-muted mb-0">Add multiple image + text blocks for the About page. Each block can place the image on the left or right.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-primary btn-sm" id="add-about-section">Add Section</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info mb-4">
+                                Use the text editor to format content and add links to other pages directly inside the text. Upload an image for each section, then choose whether it should appear on the left or right.
+                            </div>
+
+                            <input type="hidden" name="about_sections" id="about-sections-input" value="{{ old('about_sections') }}">
+                            @error('about_sections')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
+
+                            <div id="about-sections-list" class="d-flex flex-column gap-4"></div>
+
+                            <div id="about-sections-empty" class="border rounded-3 p-4 text-center text-muted">
+                                No sections added yet. Click <strong>Add Section</strong> to create the first content block.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">SEO Settings <small class="text-muted fw-normal">(optional)</small></h4></div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Meta Title</label>
+                                <input type="text" name="meta_title" class="form-control"
+                                       value="{{ old('meta_title', $page->meta_title) }}">
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">Meta Description</label>
+                                <textarea name="meta_description" class="form-control" rows="3">{{ old('meta_description', $page->meta_description) }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-footer text-end mt-2">
+                        <a href="{{ route('admin.pages.index') }}" class="btn btn-link">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save About Page</button>
+                    </div>
+                </form>
+
+                <template id="about-section-template">
+                    <div class="card about-section-item">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">Section <span class="about-section-number"></span></h4>
+                                <p class="text-muted mb-0">Manage the heading, text, image, and image alignment for this block.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-outline-danger btn-sm about-remove-section">Remove</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Subheading</label>
+                                    <input type="text" class="form-control about-field-subheading" placeholder="OUR STORY">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">Heading</label>
+                                    <input type="text" class="form-control about-field-heading" placeholder="Built for India's Growing Businesses">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Image Position</label>
+                                    <select class="form-select about-field-position">
+                                        <option value="right">Image Right</option>
+                                        <option value="left">Image Left</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <label class="form-label">Text Content</label>
+                                <div class="about-editor border rounded">
+                                    <div class="about-editor-toolbar"></div>
+                                    <div class="about-editor-body"></div>
+                                </div>
+                                <small class="form-hint">Use links, formatting, and lists as needed.</small>
+                            </div>
+
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-6">
+                                    <label class="form-label">Image</label>
+                                    <div class="about-image-preview-wrap border rounded p-3 bg-light">
+                                        <img class="about-image-preview d-none" alt="" style="max-width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px;">
+                                        <div class="about-image-placeholder text-muted small">No image uploaded yet.</div>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <input type="file" class="form-control about-image-input" accept="image/*">
+                                        <button type="button" class="btn btn-outline-secondary about-remove-image">Clear</button>
+                                    </div>
+                                    <small class="form-hint">Upload JPG, PNG, GIF, or WEBP up to 5 MB.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Image Alt Text</label>
+                                    <input type="text" class="form-control about-field-image-alt" placeholder="About section image">
+                                    <div class="mt-3">
+                                        <label class="form-label">Uploaded Image URL</label>
+                                        <input type="text" class="form-control about-field-image-url" placeholder="Auto-filled after upload">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
             @else
                 {{-- ── RICH TEXT EDITOR (Quill — all non-contact pages) ───────── --}}
                 <form action="{{ route('admin.pages.update', $page) }}" method="POST" id="page-edit-form">
@@ -292,7 +434,191 @@
     </div>
 @endsection
 
-@unless($page->slug === 'contact-us')
+@if($page->slug === 'about-us')
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<style>
+    .about-editor-body .ql-editor { min-height: 220px; font-size: 14px; line-height: 1.7; }
+    .about-editor .ql-toolbar.ql-snow { border-left: none; border-right: none; border-top: none; }
+    .about-editor .ql-container.ql-snow { border: none; }
+    .about-section-item.is-uploading { opacity: .7; pointer-events: none; }
+</style>
+@endpush
+
+@push('script')
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+(function () {
+    const initialSections = @json($aboutSections ?? []);
+    const uploadUrl = @json(route('admin.pages.media.store', $page));
+    const csrfToken = @json(csrf_token());
+    const list = document.getElementById('about-sections-list');
+    const emptyState = document.getElementById('about-sections-empty');
+    const addButton = document.getElementById('add-about-section');
+    const form = document.getElementById('about-page-form');
+    const hiddenInput = document.getElementById('about-sections-input');
+    const template = document.getElementById('about-section-template');
+    const quillInstances = [];
+
+    function toolbarConfig() {
+        return [
+            [{ header: [2, 3, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['link', 'blockquote'],
+            ['clean'],
+        ];
+    }
+
+    function syncEmptyState() {
+        emptyState.classList.toggle('d-none', list.children.length > 0);
+        Array.from(list.children).forEach((item, index) => {
+            const number = item.querySelector('.about-section-number');
+            if (number) {
+                number.textContent = index + 1;
+            }
+        });
+    }
+
+    function updatePreview(sectionEl, imageUrl, imageAlt) {
+        const img = sectionEl.querySelector('.about-image-preview');
+        const placeholder = sectionEl.querySelector('.about-image-placeholder');
+
+        if (imageUrl) {
+            img.src = imageUrl;
+            img.alt = imageAlt || '';
+            img.classList.remove('d-none');
+            placeholder.classList.add('d-none');
+        } else {
+            img.src = '';
+            img.alt = '';
+            img.classList.add('d-none');
+            placeholder.classList.remove('d-none');
+        }
+    }
+
+    function createSection(section = {}) {
+        const fragment = template.content.cloneNode(true);
+        const sectionEl = fragment.querySelector('.about-section-item');
+        const subheadingInput = sectionEl.querySelector('.about-field-subheading');
+        const headingInput = sectionEl.querySelector('.about-field-heading');
+        const positionInput = sectionEl.querySelector('.about-field-position');
+        const imageAltInput = sectionEl.querySelector('.about-field-image-alt');
+        const imageUrlInput = sectionEl.querySelector('.about-field-image-url');
+        const imageInput = sectionEl.querySelector('.about-image-input');
+        const removeButton = sectionEl.querySelector('.about-remove-section');
+        const clearImageButton = sectionEl.querySelector('.about-remove-image');
+        const toolbar = sectionEl.querySelector('.about-editor-toolbar');
+        const editorBody = sectionEl.querySelector('.about-editor-body');
+
+        subheadingInput.value = section.subheading || '';
+        headingInput.value = section.heading || '';
+        positionInput.value = section.image_position === 'left' ? 'left' : 'right';
+        imageAltInput.value = section.image_alt || '';
+        imageUrlInput.value = section.image_url || '';
+
+        const quill = new Quill(editorBody, {
+            theme: 'snow',
+            placeholder: 'Add text details for this section…',
+            modules: { toolbar: toolbarConfig() },
+        });
+
+        if (section.body_html) {
+            quill.clipboard.dangerouslyPasteHTML(0, section.body_html);
+        }
+
+        quillInstances.push({ sectionEl, quill });
+        updatePreview(sectionEl, imageUrlInput.value, imageAltInput.value);
+
+        removeButton.addEventListener('click', function () {
+            const index = quillInstances.findIndex((instance) => instance.sectionEl === sectionEl);
+            if (index >= 0) {
+                quillInstances.splice(index, 1);
+            }
+            sectionEl.remove();
+            syncEmptyState();
+        });
+
+        clearImageButton.addEventListener('click', function () {
+            imageUrlInput.value = '';
+            imageInput.value = '';
+            updatePreview(sectionEl, '', imageAltInput.value);
+        });
+
+        imageAltInput.addEventListener('input', function () {
+            updatePreview(sectionEl, imageUrlInput.value, imageAltInput.value);
+        });
+
+        imageUrlInput.addEventListener('input', function () {
+            updatePreview(sectionEl, imageUrlInput.value, imageAltInput.value);
+        });
+
+        imageInput.addEventListener('change', async function () {
+            const file = imageInput.files && imageInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            sectionEl.classList.add('is-uploading');
+
+            try {
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload.url) {
+                    throw new Error(payload.message || 'Image upload failed.');
+                }
+
+                imageUrlInput.value = payload.url;
+                updatePreview(sectionEl, payload.url, imageAltInput.value);
+            } catch (error) {
+                alert(error.message || 'Image upload failed.');
+                imageInput.value = '';
+            } finally {
+                sectionEl.classList.remove('is-uploading');
+            }
+        });
+
+        list.appendChild(sectionEl);
+        syncEmptyState();
+    }
+
+    addButton.addEventListener('click', function () {
+        createSection();
+    });
+
+    form.addEventListener('submit', function () {
+        const payload = quillInstances.map(({ sectionEl, quill }) => ({
+            subheading: sectionEl.querySelector('.about-field-subheading').value.trim(),
+            heading: sectionEl.querySelector('.about-field-heading').value.trim(),
+            body_html: quill.getSemanticHTML ? quill.getSemanticHTML() : quill.root.innerHTML,
+            image_url: sectionEl.querySelector('.about-field-image-url').value.trim(),
+            image_alt: sectionEl.querySelector('.about-field-image-alt').value.trim(),
+            image_position: sectionEl.querySelector('.about-field-position').value === 'left' ? 'left' : 'right',
+        })).filter((section) => (
+            section.subheading || section.heading || section.body_html.replace(/<(.|\n)*?>/g, '').trim() || section.image_url
+        ));
+
+        hiddenInput.value = JSON.stringify(payload);
+    });
+
+    if (Array.isArray(initialSections) && initialSections.length > 0) {
+        initialSections.forEach((section) => createSection(section));
+    } else {
+        syncEmptyState();
+    }
+})();
+</script>
+@endpush
+@elseif($page->slug !== 'contact-us')
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
 <style>
@@ -348,4 +674,4 @@
 })();
 </script>
 @endpush
-@endunless
+@endif

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 
 class PageApiController extends Controller
@@ -30,6 +31,9 @@ class PageApiController extends Controller
                 array_map('trim', explode("\n", $blocks['emails'] ?? ''))
             ));
 
+            $webSetting = Setting::where('variable', 'web')->first();
+            $webValue   = $webSetting ? ($webSetting->value ?? []) : [];
+
             $base['contact'] = [
                 'introTitle'         => $blocks['introTitle'] ?? '',
                 'introText'          => $blocks['introText'] ?? '',
@@ -44,6 +48,9 @@ class PageApiController extends Controller
                 'businessHoursLine1' => $blocks['businessHoursLine1'] ?? '',
                 'businessHoursLine2' => $blocks['businessHoursLine2'] ?? '',
                 'businessHoursNote'  => $blocks['businessHoursNote'] ?? '',
+                'mapLatitude'        => (string) ($webValue['defaultLatitude'] ?? ''),
+                'mapLongitude'       => (string) ($webValue['defaultLongitude'] ?? ''),
+                'mapIframe'          => (string) ($webValue['mapIframe'] ?? ''),
             ];
 
             return response()->json($base, 200, ['Cache-Control' => 'no-store']);

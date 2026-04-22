@@ -273,9 +273,11 @@ Route::prefix('delivery-zone')->name('delivery_zone.')->group(function () {
 
 // get faqs
 Route::prefix('faqs')->name('faqs.')->group(function () {
-    Route::get('/', [FaqApiController::class, 'index']);
-    Route::get('/{id}', [FaqApiController::class, 'show']);
+    Route::get('/grouped', [FaqApiController::class, 'grouped'])->name('grouped'); // ← specific before wildcard
+    Route::get('/', [FaqApiController::class, 'index'])->name('index');
+    Route::get('/{id}', [FaqApiController::class, 'show'])->name('show');
 });
+
 
 // get product faqs
 Route::prefix('product-faqs')->name('product_faqs.')->group(function () {

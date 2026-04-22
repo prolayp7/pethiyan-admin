@@ -9,50 +9,42 @@ use Illuminate\Validation\Rules\Enum;
 
 class StoreUpdateFaqRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true; // Authorization is handled in the controller
+        return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, ValidationRule|array|string>
      */
     public function rules(): array
     {
         return [
-            'question' => 'required|string|max:1000',
-            'answer' => 'required|string|max:5000',
-            'status' => ['nullable', new Enum(ActiveInactiveStatusEnum::class)],
+            'faq_category_id' => 'nullable|exists:faq_categories,id',
+            'question'        => 'required|string|max:1000',
+            'answer'          => 'required|string|max:5000',
+            'sort_order'      => 'nullable|integer|min:0',
+            'status'          => ['nullable', new Enum(ActiveInactiveStatusEnum::class)],
         ];
     }
 
-    /**
-     * Prepare the data for validation.
-     */
     protected function prepareForValidation(): void
     {
-        // Set default values
         $this->merge([
-            'status' => $this->status ?? 'active',
+            'status'     => $this->status     ?? 'active',
+            'sort_order' => $this->sort_order ?? 0,
         ]);
     }
 
-    /**
-     * Get custom messages for validator errors.
-     */
     public function messages(): array
     {
         return [
-            'question.required' => 'The question field is required.',
-            'question.max' => 'The question may not be greater than 1000 characters.',
-            'answer.required' => 'The answer field is required.',
-            'answer.max' => 'The answer may not be greater than 5000 characters.',
-            'status.in' => 'The status must be either active or inactive.',
+            'question.required'        => 'The question field is required.',
+            'question.max'             => 'The question may not be greater than 1000 characters.',
+            'answer.required'          => 'The answer field is required.',
+            'answer.max'               => 'The answer may not be greater than 5000 characters.',
+            'status.in'                => 'The status must be either active or inactive.',
+            'faq_category_id.exists'   => 'The selected FAQ category is invalid.',
         ];
     }
 }

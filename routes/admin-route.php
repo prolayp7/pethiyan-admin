@@ -20,6 +20,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DeliveryBoyController;
 use App\Http\Controllers\DeliveryZoneController;
 use App\Http\Controllers\FaqController;
+use App\Http\Controllers\FaqCategoryController;
 use App\Http\Controllers\FeaturedSectionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
@@ -294,6 +295,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/{id}', [FaqController::class, 'update'])->name('update');
             Route::delete('/{id}', [FaqController::class, 'destroy'])->name('delete');
             Route::get('/datatable', [FaqController::class, 'getFaqs'])->name('datatable');
+        });
+
+        // FAQ Categories
+        Route::prefix('faq-categories')->name('faq-categories.')->group(function () {
+            Route::get('/', [FaqCategoryController::class, 'index'])->name('index');
+            Route::post('/', [FaqCategoryController::class, 'store'])->name('store');
+            Route::get('/{id}/edit', [FaqCategoryController::class, 'edit'])->name('edit');
+            Route::post('/{id}', [FaqCategoryController::class, 'update'])->name('update');
+            Route::delete('/{id}', [FaqCategoryController::class, 'destroy'])->name('delete');
+            Route::get('/datatable', [FaqCategoryController::class, 'getCategories'])->name('datatable');
         });
 
         // banners

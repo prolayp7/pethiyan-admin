@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AdminPermissionEnum;
 use App\Http\Requests\Faq\StoreUpdateFaqRequest;
 use App\Models\Faq;
+use App\Models\FaqCategory;
 use App\Traits\ChecksPermissions;
 use App\Traits\PanelAware;
 use App\Types\Api\ApiResponseType;
@@ -29,17 +30,20 @@ class FaqController extends Controller
     public function index(): View
     {
         $columns = [
-            ['data' => 'id', 'name' => 'id', 'title' => __('labels.id')],
-            ['data' => 'question', 'name' => 'question', 'title' => __('labels.question'), 'orderable' => false, 'searchable' => false],
-            ['data' => 'answer', 'name' => 'answer', 'title' => __('labels.answer'), 'orderable' => false, 'searchable' => false],
-            ['data' => 'status', 'name' => 'status', 'title' => __('labels.status')],
-            ['data' => 'created_at', 'name' => 'created_at', 'title' => __('labels.created_at')],
-            ['data' => 'action', 'name' => 'action', 'title' => __('labels.action'), 'orderable' => false, 'searchable' => false],
+            ['data' => 'id',          'name' => 'id',          'title' => __('labels.id')],
+            ['data' => 'category',    'name' => 'category',    'title' => 'Category', 'orderable' => false, 'searchable' => false],
+            ['data' => 'question',    'name' => 'question',    'title' => __('labels.question'), 'orderable' => false, 'searchable' => false],
+            ['data' => 'answer',      'name' => 'answer',      'title' => __('labels.answer'), 'orderable' => false, 'searchable' => false],
+            ['data' => 'sort_order',  'name' => 'sort_order',  'title' => 'Sort'],
+            ['data' => 'status',      'name' => 'status',      'title' => __('labels.status')],
+            ['data' => 'created_at',  'name' => 'created_at',  'title' => __('labels.created_at')],
+            ['data' => 'action',      'name' => 'action',      'title' => __('labels.action'), 'orderable' => false, 'searchable' => false],
         ];
         $createPermission = $this->hasPermission(AdminPermissionEnum::FAQ_CREATE());
         $editPermission   = $this->hasPermission(AdminPermissionEnum::FAQ_EDIT());
+        $categories       = FaqCategory::where('status', 'active')->orderBy('sort_order')->get(['id', 'name', 'icon']);
 
-        return view($this->panelView('faqs.index'), compact('columns', 'createPermission', 'editPermission'));
+        return view($this->panelView('faqs.index'), compact('columns', 'createPermission', 'editPermission', 'categories'));
     }
 
     /**
@@ -222,23 +226,28 @@ class FaqController extends Controller
 
 
             $data = $query
+                ->with('category:id,name,icon')
                 ->orderBy($orderColumn, $orderDirection)
                 ->skip($start)
                 ->take($length)
                 ->get()
                 ->map(function ($faq) {
                     return [
-                        'id' => $faq->id,
-                        'question' => Str::limit($faq->question, 30),
-                        'answer' => Str::limit($faq->answer, 50),
-                        'status' => view('partials.status', ['status' => $faq->status ?? ""])->render(),
+                        'id'         => $faq->id,
+                        'category'   => $faq->category
+                            ? '<span class="badge bg-blue-lt">' . e($faq->category->icon . ' ' . $faq->category->name) . '</span>'
+                            : '<span class="text-muted">—</span>',
+                        'question'   => Str::limit($faq->question, 30),
+                        'answer'     => Str::limit($faq->answer, 50),
+                        'sort_order' => $faq->sort_order,
+                        'status'     => view('partials.status', ['status' => $faq->status ?? ""])->render(),
                         'created_at' => $faq->created_at->format('Y-m-d'),
-                        'action' => view('partials.actions', [
-                            'modelName' => 'faq',
-                            'id' => $faq->id,
-                            'title' => $faq->question,
-                            'mode' => 'model_view',
-                            'editPermission' => $this->hasPermission(AdminPermissionEnum::FAQ_EDIT()),
+                        'action'     => view('partials.actions', [
+                            'modelName'        => 'faq',
+                            'id'               => $faq->id,
+                            'title'            => $faq->question,
+                            'mode'             => 'model_view',
+                            'editPermission'   => $this->hasPermission(AdminPermissionEnum::FAQ_EDIT()),
                             'deletePermission' => $this->hasPermission(AdminPermissionEnum::FAQ_DELETE()),
                         ])->render(),
                     ];

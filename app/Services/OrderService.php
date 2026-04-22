@@ -653,7 +653,7 @@ class OrderService
 
         $storeTotalPrice += $subtotal;
 
-        $orderItem = $this->createOrderItem($order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, $gstData, $stockShortage);
+        $orderItem = $this->createOrderItem($order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, $gstData, $stockShortage, $availableStock);
 
         // Attach required attachments to order item using Spatie Media Library
         $this->attachRequiredOrderItemAttachments($orderItem, $cartItem);
@@ -750,7 +750,7 @@ class OrderService
     }
 
     private
-    function createOrderItem(Order $order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, array $gstData = [], int $stockShortage = 0): OrderItem
+    function createOrderItem(Order $order, $cartItem, $storeVariant, $subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, array $gstData = [], int $stockShortage = 0, int $availableStock = 0): OrderItem
     {
         return OrderItem::create([
             'order_id' => $order->id,

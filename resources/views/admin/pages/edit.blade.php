@@ -232,6 +232,10 @@
                     $aboutSections = is_string($oldSections)
                         ? (json_decode($oldSections, true) ?: [])
                         : ($aboutBlocks['story_sections'] ?? []);
+                    $oldValues = old('about_values');
+                    $aboutValues = is_string($oldValues)
+                        ? (json_decode($oldValues, true) ?: [])
+                        : ($aboutBlocks['core_values'] ?? []);
                 @endphp
 
                 <form action="{{ route('admin.pages.update', $page) }}" method="POST" id="about-page-form">
@@ -277,6 +281,38 @@
 
                             <div id="about-sections-empty" class="border rounded-3 p-4 text-center text-muted">
                                 No sections added yet. Click <strong>Add Section</strong> to create the first content block.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">Core Values Section</h4>
+                                <p class="text-muted mb-0">Manage the “What Drives Us / Our Core Values” section shown on the About page frontend.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-primary btn-sm" id="add-about-value-item">Add Value</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label">Section Eyebrow</label>
+                                    <input type="text" class="form-control" id="about-values-eyebrow" value="{{ $aboutValues['eyebrow'] ?? '' }}" placeholder="WHAT DRIVES US">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label">Section Heading</label>
+                                    <input type="text" class="form-control" id="about-values-heading" value="{{ $aboutValues['heading'] ?? '' }}" placeholder="Our Core Values">
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="about_values" id="about-values-input" value="{{ old('about_values') }}">
+                            @error('about_values')<div class="text-danger small mb-3">{{ $message }}</div>@enderror
+
+                            <div id="about-values-list" class="d-flex flex-column gap-4"></div>
+                            <div id="about-values-empty" class="border rounded-3 p-4 text-center text-muted">
+                                No value cards added yet. Click <strong>Add Value</strong> to create one.
                             </div>
                         </div>
                     </div>
@@ -357,6 +393,40 @@
                                         <label class="form-label">Uploaded Image URL</label>
                                         <input type="text" class="form-control about-field-image-url" placeholder="Auto-filled after upload">
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                <template id="about-value-template">
+                    <div class="card about-value-item">
+                        <div class="card-header">
+                            <div>
+                                <h4 class="card-title mb-1">Value Card <span class="about-value-number"></span></h4>
+                                <p class="text-muted mb-0">Choose an icon, title, and description for this core value.</p>
+                            </div>
+                            <div class="card-options">
+                                <button type="button" class="btn btn-outline-danger btn-sm about-remove-value">Remove</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Icon</label>
+                                    <select class="form-select about-value-icon">
+                                        <option value="leaf">Leaf / Eco</option>
+                                        <option value="award">Award / Quality</option>
+                                        <option value="users">Users / Customer</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" class="form-control about-value-title" placeholder="Eco-First">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control about-value-description" rows="3" placeholder="Explain this core value..."></textarea>
                                 </div>
                             </div>
                         </div>
@@ -447,11 +517,19 @@
 <script>
 (function () {
     const initialSections = @json($aboutSections ?? []);
+    const initialValues = @json($aboutValues ?? []);
     const uploadUrl = @json(route('admin.pages.media.store', $page));
     const csrfToken = @json(csrf_token());
     const list = document.getElementById('about-sections-list');
     const emptyState = document.getElementById('about-sections-empty');
     const addButton = document.getElementById('add-about-section');
+    const valuesList = document.getElementById('about-values-list');
+    const valuesEmptyState = document.getElementById('about-values-empty');
+    const addValueButton = document.getElementById('add-about-value-item');
+    const valuesTemplate = document.getElementById('about-value-template');
+    const valuesInput = document.getElementById('about-values-input');
+    const valuesEyebrowInput = document.getElementById('about-values-eyebrow');
+    const valuesHeadingInput = document.getElementById('about-values-heading');
     const form = document.getElementById('about-page-form');
     const hiddenInput = document.getElementById('about-sections-input');
     const template = document.getElementById('about-section-template');
@@ -489,6 +567,16 @@
         emptyState.classList.toggle('d-none', list.children.length > 0);
         Array.from(list.children).forEach((item, index) => {
             const number = item.querySelector('.about-section-number');
+            if (number) {
+                number.textContent = index + 1;
+            }
+        });
+    }
+
+    function syncValuesEmptyState() {
+        valuesEmptyState.classList.toggle('d-none', valuesList.children.length > 0);
+        Array.from(valuesList.children).forEach((item, index) => {
+            const number = item.querySelector('.about-value-number');
             if (number) {
                 number.textContent = index + 1;
             }
@@ -624,6 +712,31 @@
         createSection();
     });
 
+    function createValueItem(item = {}) {
+        const fragment = valuesTemplate.content.cloneNode(true);
+        const itemEl = fragment.querySelector('.about-value-item');
+        const iconInput = itemEl.querySelector('.about-value-icon');
+        const titleInput = itemEl.querySelector('.about-value-title');
+        const descriptionInput = itemEl.querySelector('.about-value-description');
+        const removeButton = itemEl.querySelector('.about-remove-value');
+
+        iconInput.value = item.icon || 'leaf';
+        titleInput.value = item.title || '';
+        descriptionInput.value = item.description || '';
+
+        removeButton.addEventListener('click', function () {
+            itemEl.remove();
+            syncValuesEmptyState();
+        });
+
+        valuesList.appendChild(itemEl);
+        syncValuesEmptyState();
+    }
+
+    addValueButton.addEventListener('click', function () {
+        createValueItem();
+    });
+
     form.addEventListener('submit', function () {
         const payload = quillInstances.map(({ sectionEl, quill }) => ({
             subheading: sectionEl.querySelector('.about-field-subheading').value.trim(),
@@ -637,12 +750,30 @@
         ));
 
         hiddenInput.value = JSON.stringify(payload);
+
+        const valuePayload = Array.from(valuesList.children).map((itemEl) => ({
+            icon: itemEl.querySelector('.about-value-icon').value,
+            title: itemEl.querySelector('.about-value-title').value.trim(),
+            description: itemEl.querySelector('.about-value-description').value.trim(),
+        })).filter((item) => item.title || item.description);
+
+        valuesInput.value = JSON.stringify({
+            eyebrow: valuesEyebrowInput.value.trim(),
+            heading: valuesHeadingInput.value.trim(),
+            items: valuePayload,
+        });
     });
 
     if (Array.isArray(initialSections) && initialSections.length > 0) {
         initialSections.forEach((section) => createSection(section));
     } else {
         syncEmptyState();
+    }
+
+    if (Array.isArray(initialValues.items) && initialValues.items.length > 0) {
+        initialValues.items.forEach((item) => createValueItem(item));
+    } else {
+        syncValuesEmptyState();
     }
 })();
 </script>

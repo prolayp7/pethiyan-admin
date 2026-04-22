@@ -152,6 +152,7 @@ class PageController extends Controller
         $validated = $request->validate([
             'title'            => 'required|string|max:255',
             'about_sections'   => 'nullable|string',
+            'about_values'     => 'nullable|string',
             'meta_title'       => 'nullable|string|max:255',
             'meta_description' => 'nullable|string',
         ]);
@@ -187,8 +188,39 @@ class PageController extends Controller
             ->values()
             ->all();
 
+        $decodedValues = json_decode($validated['about_values'] ?? '{}', true);
+        $valuesInput = is_array($decodedValues) ? $decodedValues : [];
+        $valueItems = collect(is_array($valuesInput['items'] ?? null) ? $valuesInput['items'] : [])
+            ->map(function ($item) {
+                if (!is_array($item)) {
+                    return null;
+                }
+
+                $icon = strtolower(trim((string) ($item['icon'] ?? 'leaf')));
+                $title = trim((string) ($item['title'] ?? ''));
+                $description = trim((string) ($item['description'] ?? ''));
+
+                if ($title === '' && $description === '') {
+                    return null;
+                }
+
+                return [
+                    'icon'        => in_array($icon, ['leaf', 'award', 'users'], true) ? $icon : 'leaf',
+                    'title'       => mb_substr($title, 0, 255),
+                    'description' => mb_substr($description, 0, 1000),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
         $blocks = is_array($page->content_blocks) ? $page->content_blocks : [];
         $blocks['story_sections'] = $sections;
+        $blocks['core_values'] = [
+            'eyebrow' => mb_substr(trim((string) ($valuesInput['eyebrow'] ?? '')), 0, 255),
+            'heading' => mb_substr(trim((string) ($valuesInput['heading'] ?? '')), 0, 255),
+            'items'   => $valueItems,
+        ];
 
         $page->update([
             'title'            => $validated['title'],

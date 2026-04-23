@@ -81,6 +81,21 @@
             text-align: right;
         }
 
+        .from-row {
+            margin-bottom: 8px;
+        }
+
+        .from-text {
+            float: left;
+            width: 64%;
+        }
+
+        .from-logo {
+            float: right;
+            width: 32%;
+            text-align: right;
+        }
+
         .logo {
             max-width: 120px;
             max-height: 52px;
@@ -191,15 +206,17 @@
     </div>
 
     <div class="section">
-        <div class="row">
-            <div class="two-col-left">
-                <div class="label">From</div>
+        <div class="label">From</div>
+        <div class="row from-row">
+            <div class="from-text">
                 <div class="from-name">{{ $fromName }}</div>
                 @if($fromAddress !== '')
                     <div class="from-address">Address: {{ $fromAddress }}</div>
                 @endif
             </div>
-            <div class="two-col-right">
+        </div>
+        <div class="row">
+            <div class="from-logo">
                 @if($logoSrc)
                     <img class="logo" src="{{ $logoSrc }}" alt="{{ $fromName }}">
                 @endif

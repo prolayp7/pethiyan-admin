@@ -6,14 +6,10 @@ use App\Events\Order\OrderPlaced;
 use App\Mail\NewSellerOrderMail;
 use App\Mail\OrderPlacedMail;
 use App\Services\EmailService;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-class SendOrderPlacedEmail implements ShouldQueue
+class SendOrderPlacedEmail
 {
-    public string $queue = 'emails';
-    public bool $afterCommit = true;
-
     public function __construct(protected EmailService $emailService) {}
 
     public function handle(OrderPlaced $event): void

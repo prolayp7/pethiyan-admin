@@ -304,8 +304,17 @@ class OrderController extends Controller
                 $product = $orderItem->product;
                 $variantTitle = $orderItem->variant?->title ?? '';
                 $storeName = $orderItem->store?->name ?? 'N/A';
+                $productImage = !empty($orderItem->variant?->image)
+                    ? $orderItem->variant->image
+                    : ($product?->main_image ?? null);
+                $imageHtml = view('partials.image', [
+                    'image' => $productImage,
+                    'title' => $product?->title ?? 'Product Image',
+                ])->render();
 
-                return "<div class='mb-2'>
+                return "<div class='d-flex justify-content-start align-items-start gap-2 mb-2'>
+                        <div class='pe-2'>" . $imageHtml . "</div>
+                        <div>
                         " . ($product
                             ? "<a href='" . route('admin.products.show', ['id' => $product->id]) . "' class='m-0 fw-medium text-primary'>" . __('labels.product_name') . ": {$product->title}</a>"
                             : "<p class='m-0 fw-medium text-primary'>" . __('labels.product_name') . ": N/A</p>") . "
@@ -314,6 +323,7 @@ class OrderController extends Controller
                         <p class='m-0'>" . __('labels.sku') . ": " . e($orderItem->sku ?? 'N/A') . "</p>
                         <p class='m-0 fw-medium'>" . __('labels.quantity') . ": " . e((string) ($orderItem->quantity ?? 0)) . "</p>
                         <p class='m-0 fw-medium'>" . __('labels.item_sub_total') . ": " . $this->currencyService->format($orderItem->subtotal ?? 0) . "</p>
+                        </div>
                         </div>";
             })
             ->implode("<hr class='my-2'>");

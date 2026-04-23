@@ -126,7 +126,7 @@
                                 <td class="p" align="right" style="padding:10px 14px 4px;">{{ $formatMoney($subtotal) }}</td>
                             </tr>
                             <tr>
-                                <td class="p" style="padding:4px 14px;">Delivery</td>
+                                <td class="p" style="padding:4px 14px;">Shipping</td>
                                 <td class="p" align="right" style="padding:4px 14px;">{{ $delivery > 0 ? $formatMoney($delivery) : 'Free' }}</td>
                             </tr>
                             @if($promoDiscount > 0)

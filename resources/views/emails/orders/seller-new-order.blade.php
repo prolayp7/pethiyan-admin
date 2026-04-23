@@ -60,17 +60,24 @@
     $sellerItems = $sellerOrder->items ?? collect();
     $sellerSubtotal = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->subtotal ?? 0));
     $sellerGst = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->total_tax_amount ?? 0));
+    $sellerOrderCount = (int) (($order->sellerOrders ?? collect())->count());
 
     $orderSubtotalBase = (float) ($order->total_taxable_amount ?? $order->subtotal ?? $order->sub_total ?? 0);
     $allocationBase = $orderSubtotalBase > 0 ? $orderSubtotalBase : $sellerSubtotal;
     $sellerShare = $allocationBase > 0 ? ($sellerSubtotal / $allocationBase) : 1.0;
 
-    $delivery = round((float) ($order->delivery_charge ?? 0) * $sellerShare, 2);
-    $discount = round((float) ($order->promo_discount ?? 0) * $sellerShare, 2);
-
     $subtotal = round($sellerSubtotal, 2);
     $gst = round($sellerGst, 2);
-    $grandTotal = round($subtotal + $delivery + $gst - $discount, 2);
+
+    if ($sellerOrderCount <= 1) {
+        $delivery = round((float) ($order->delivery_charge ?? 0), 2);
+        $discount = round((float) ($order->promo_discount ?? 0), 2);
+        $grandTotal = round((float) ($order->final_total ?? $order->grand_total ?? $order->total_payable ?? 0), 2);
+    } else {
+        $delivery = round((float) ($order->delivery_charge ?? 0) * $sellerShare, 2);
+        $discount = round((float) ($order->promo_discount ?? 0) * $sellerShare, 2);
+        $grandTotal = round($subtotal + $delivery + $gst - $discount, 2);
+    }
 
     $appName = $systemSettings['appName'] ?? config('app.name', 'Pethiyan');
     $logoUrl = !empty($systemSettings['logo']) ? $systemSettings['logo'] : asset('logos/hyper-local-logo.png');

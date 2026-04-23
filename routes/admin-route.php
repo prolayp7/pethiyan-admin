@@ -3,6 +3,7 @@
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\SystemUpdateController;
+use App\Http\Controllers\Admin\SystemLogController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\AdminTotpController;
@@ -101,6 +102,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('authentication/lock', [SettingController::class, 'lockAuthenticationSettings'])->name('authentication.lock');
             Route::get('{setting}', [SettingController::class, 'show'])->name('show');
             Route::post('store', [SettingController::class, 'store'])->name('store');
+        });
+
+        Route::prefix('system-logs')->name('system-logs.')->group(function () {
+            Route::get('/', [SystemLogController::class, 'index'])->name('index');
+            Route::post('/clear', [SystemLogController::class, 'clear'])->name('clear');
         });
 
         Route::prefix('video-stories-section')->name('video-stories-section.')->group(function () {

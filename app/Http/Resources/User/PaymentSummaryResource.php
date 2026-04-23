@@ -16,6 +16,7 @@ class PaymentSummaryResource extends JsonResource
     {
         return [
             'items_total' => $this['items_total'] ?? 0,
+            'total_gst' => $this['total_gst'] ?? 0,
             'per_store_drop_off_fee' => $this['per_store_drop_off_fee'] ?? 0,
             'is_rush_delivery' => $this['is_rush_delivery'] ?? false,
             'is_rush_delivery_available' => $this['is_rush_delivery_available'] ?? false,

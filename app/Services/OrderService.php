@@ -717,33 +717,31 @@ class OrderService
     function calculatePricing(Order $order, $cartItem, $storeVariant): array
     {
         $commission = $storeVariant->category_commission->commission ?? 0;
-        $specialPrice = $storeVariant->special_price_exclude_tax;
-        $specialPriceWithTax = $storeVariant->special_price;
+        $product = $cartItem->product;
+        $specialPrice = (float) ($storeVariant->special_price_exclude_tax ?? $storeVariant->getRawOriginal('special_price') ?? 0);
+        $basePrice = (float) ($storeVariant->price_exclude_tax ?? $storeVariant->getRawOriginal('price') ?? 0);
+        $unitPrice = $specialPrice > 0 ? $specialPrice : $basePrice;
 
-        $subtotal = $cartItem->quantity * $specialPriceWithTax;
+        $gstRatePct = $product ? $this->gstService->resolveProductGstRate($product) : 0;
+        $supplyType = $order->supply_type ?? 'intra';
+        $gstData = $this->gstService->calculateLineItem(
+            unitPrice: $unitPrice,
+            quantity: (int) $cartItem->quantity,
+            gstRatePct: $gstRatePct,
+            supplyType: $supplyType,
+            priceInclusive: (bool) ($product->is_inclusive_tax ?? false)
+        );
+        $gstData['hsn_code'] = $product->hsn_code ?? null;
+
+        $subtotal = (float) $gstData['taxable_amount'];
         $adminCommissionAmount = $subtotal * $commission / 100;
 
-        $taxPercent = StoreProductVariant::scopeTaxPercentage($specialPrice, $specialPriceWithTax);
+        $grossLineAmount = (float) $gstData['total_amount'];
+        $taxPercent = StoreProductVariant::scopeTaxPercentage($subtotal, $grossLineAmount);
 
         $promoDiscount = 0;
         if (!empty($order['promo_code'])) {
             $promoDiscount = ((float)$subtotal / $order->subtotal) * $order->promo_discount;
-        }
-
-        // ── GST calculation ──────────────────────────────────────────────
-        $gstData = [];
-        $product = $cartItem->product;
-        if ($product) {
-            $gstRatePct  = $this->gstService->resolveProductGstRate($product);
-            $supplyType  = $order->supply_type ?? 'intra';
-            $gstData     = $this->gstService->calculateLineItem(
-                unitPrice:      (float) $specialPrice,
-                quantity:       (int)   $cartItem->quantity,
-                gstRatePct:     $gstRatePct,
-                supplyType:     $supplyType,
-                priceInclusive: false
-            );
-            $gstData['hsn_code'] = $product->hsn_code ?? null;
         }
 
         return [$subtotal, $adminCommissionAmount, $promoDiscount, $taxPercent, $gstData];
@@ -768,13 +766,13 @@ class OrderService
             'discounted_price' => 0,
             'promo_discount' => $promoDiscount,
             'discount' => 0,
-            'tax_amount' => (float)$storeVariant->special_price - $storeVariant->special_price_exclude_tax,
+            'tax_amount' => (float) ($gstData['total_tax_amount'] ?? 0),
             'tax_percent' => (float)$taxPercent,
             'sku' => $storeVariant->sku ?? "N/A",
             'quantity' => (float)$cartItem->quantity,
             'stock_shortage' => $stockShortage > 0 ? $stockShortage : null,
             'stock_at_purchase' => $availableStock,
-            'price' => (float)$storeVariant->special_price_exclude_tax,
+            'price' => (float) ($subtotal / max((float) $cartItem->quantity, 1)),
             'subtotal' => (float)$subtotal,
             'status' => $this->determineOrderItemStatus($order),
             'otp' => $cartItem->product->requires_otp ? mt_rand(100000, 999999) : null,
@@ -793,13 +791,17 @@ class OrderService
     private
     function createSellerOrderItem(SellerOrder $sellerOrder, $cartItem, OrderItem $orderItem, $storeVariant): void
     {
+        $specialPrice = (float) ($storeVariant->special_price_exclude_tax ?? $storeVariant->getRawOriginal('special_price') ?? 0);
+        $basePrice = (float) ($storeVariant->price_exclude_tax ?? $storeVariant->getRawOriginal('price') ?? 0);
+        $unitPrice = $specialPrice > 0 ? $specialPrice : $basePrice;
+
         SellerOrderItem::create([
             'seller_order_id' => $sellerOrder->id,
             'product_id' => $cartItem->product_id,
             'product_variant_id' => $cartItem->product_variant_id,
             'order_item_id' => $orderItem->id,
             'quantity' => (float)$cartItem->quantity,
-            'price' => (float)$storeVariant->special_price_exclude_tax,
+            'price' => $unitPrice,
         ]);
     }
 

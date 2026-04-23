@@ -123,27 +123,31 @@ class GstService
         bool   $priceInclusive = false
     ): array {
         $slab = self::GST_SLABS[$gstRatePct] ?? self::GST_SLABS[0];
+        $unitGrossAmount = round($unitPrice, 2);
 
-        $grossAmount = round($unitPrice * $quantity, 2);
-
-        // Derive taxable (ex-GST) amount
+        // Use per-unit rounding, then multiply by quantity so order totals
+        // stay consistent with the storefront/cart calculations.
         if ($priceInclusive && $gstRatePct > 0) {
-            $taxableAmount = round($grossAmount / (1 + $gstRatePct / 100), 2);
+            $unitTaxableAmount = round($unitGrossAmount / (1 + $gstRatePct / 100), 2);
         } else {
-            $taxableAmount = $grossAmount;
+            $unitTaxableAmount = $unitGrossAmount;
         }
 
         if ($supplyType === 'intra') {
-            $cgstAmount = round($taxableAmount * $slab['cgst'] / 100, 2);
-            $sgstAmount = round($taxableAmount * $slab['sgst'] / 100, 2);
-            $igstAmount = 0;
+            $unitCgstAmount = round($unitTaxableAmount * $slab['cgst'] / 100, 2);
+            $unitSgstAmount = round($unitTaxableAmount * $slab['sgst'] / 100, 2);
+            $unitIgstAmount = 0.0;
         } else {
-            $cgstAmount = 0;
-            $sgstAmount = 0;
-            $igstAmount = round($taxableAmount * $slab['igst'] / 100, 2);
+            $unitCgstAmount = 0.0;
+            $unitSgstAmount = 0.0;
+            $unitIgstAmount = round($unitTaxableAmount * $slab['igst'] / 100, 2);
         }
 
-        $totalTax    = round($cgstAmount + $sgstAmount + $igstAmount, 2);
+        $taxableAmount = round($unitTaxableAmount * $quantity, 2);
+        $cgstAmount = round($unitCgstAmount * $quantity, 2);
+        $sgstAmount = round($unitSgstAmount * $quantity, 2);
+        $igstAmount = round($unitIgstAmount * $quantity, 2);
+        $totalTax = round($cgstAmount + $sgstAmount + $igstAmount, 2);
         $totalAmount = round($taxableAmount + $totalTax, 2);
 
         return [

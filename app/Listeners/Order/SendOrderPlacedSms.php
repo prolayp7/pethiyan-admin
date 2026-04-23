@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 class SendOrderPlacedSms implements ShouldQueue
 {
     public string $queue = 'sms';
+    public bool $afterCommit = true;
 
     public function __construct(protected SmsService $smsService) {}
 

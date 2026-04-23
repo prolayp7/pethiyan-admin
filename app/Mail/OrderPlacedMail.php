@@ -15,8 +15,13 @@ use Illuminate\Http\Request;
 
 class OrderPlacedMail extends Mailable
 {
+    public array $systemSettings = [];
 
-    public function __construct(public Order $order) {}
+    public function __construct(public Order $order)
+    {
+        $settingResource = app(SettingService::class)->getSettingByVariable('system');
+        $this->systemSettings = $settingResource?->toArray(new Request())['value'] ?? [];
+    }
 
     public function envelope(): Envelope
     {
@@ -35,6 +40,7 @@ class OrderPlacedMail extends Mailable
     {
         return new Content(
             view: 'emails.orders.placed',
+            with: ['systemSettings' => $this->systemSettings],
         );
     }
 
@@ -65,8 +71,7 @@ class OrderPlacedMail extends Mailable
         }
 
         $order = $sellerOrders->first()->order;
-        $systemSettingResource = app(SettingService::class)->getSettingByVariable('system');
-        $systemSettings = $systemSettingResource?->toArray(new Request())['value'] ?? [];
+        $systemSettings = $this->systemSettings;
 
         $pdf = Pdf::loadView('layouts.order-invoice', [
             'order'          => $order,

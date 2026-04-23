@@ -44,14 +44,10 @@ class EmailService
                 $mailable->from($fromAddress, $fromName);
             }
 
-            $mailer = Mail::mailer('smtp');
+            $mailable->to($to, $name);
+            Mail::mailer('smtp')->send($mailable);
 
-            if ($name) {
-                $mailer->to($to, $name)->send($mailable);
-            } else {
-                $mailer->to($to)->send($mailable);
-            }
-
+            Log::info('[EmailService] Sent ' . get_class($mailable) . ' to ' . (is_array($to) ? implode(',', $to) : $to));
             return true;
 
         } catch (\Throwable $e) {

@@ -23,11 +23,12 @@
     <p>Hi <strong>{{ $order->user?->name ?? 'Valued Customer' }}</strong>,</p>
     <p>Your order has been updated by our team. Please find the latest order management details below.</p>
 
+    <div class="meta">
+        <strong>Order Number</strong>: #{{ $orderIdentifier }}<br>
+        <strong>Tracking Code</strong>: {{ $order->tracking_code ?: 'Not provided' }}
+    </div>
+
     <div class="totals">
-        <div class="row">
-            <span>Order Number</span>
-            <strong>#{{ $orderIdentifier }}</strong>
-        </div>
         <div class="row">
             <span>Previous Delivery Status</span>
             <strong>{{ \Illuminate\Support\Str::headline((string) $previousStatus) }}</strong>
@@ -43,10 +44,6 @@
         <div class="row">
             <span>Payment Status</span>
             <strong>{{ \Illuminate\Support\Str::headline((string) $order->payment_status) }}</strong>
-        </div>
-        <div class="row">
-            <span>Tracking Code</span>
-            <strong>{{ $order->tracking_code ?: 'Not provided' }}</strong>
         </div>
     </div>
 
@@ -69,5 +66,5 @@
         {{ $order->admin_note ?: 'No additional comment was added.' }}
     </div>
 
-    <p style="color:#6b7280; font-size:13px;">If you need help, please contact support and mention your order number <strong>#{{ $orderIdentifier }}</strong>.</p>
+    <p class="muted">If you need help, please contact support and mention your order number <strong>#{{ $orderIdentifier }}</strong>.</p>
 @endsection

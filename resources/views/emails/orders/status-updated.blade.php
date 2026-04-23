@@ -28,11 +28,11 @@
     <p>Hi <strong>{{ $orderItem->order?->user?->name ?? 'Valued Customer' }}</strong>,</p>
     <p>{{ $statusMessage }}</p>
 
-    <p>
-        <strong>Order ID:</strong> #{{ $orderItem->order_id }}<br>
+    <div class="meta">
+        <strong>Order ID:</strong> #{{ $orderItem->order?->order_number ?? $orderItem->order_id }}<br>
         <strong>Item:</strong> {{ $orderItem->title ?? $orderItem->product?->name ?? '—' }}<br>
         <strong>New Status:</strong> <span class="status-badge {{ $badgeClass }}">{{ ucfirst($newStatus) }}</span>
-    </p>
+    </div>
 
     @if($orderItem->product)
     <div class="table-wrap">
@@ -56,5 +56,5 @@
     @endif
 
     <hr class="divider">
-    <p style="color:#6b7280; font-size:13px;">If you have any questions about your order, please contact our support team quoting your order ID <strong>#{{ $orderItem->order_id }}</strong>.</p>
+    <p class="muted">If you have any questions about your order, please contact our support team quoting your order ID <strong>#{{ $orderItem->order?->order_number ?? $orderItem->order_id }}</strong>.</p>
 @endsection

@@ -1,4 +1,4 @@
-@php use App\Enums\DateRangeFilterEnum;use App\Enums\Order\OrderItemStatusEnum;use App\Enums\Payment\PaymentTypeEnum;use Illuminate\Support\Str; @endphp
+@php use App\Enums\DateRangeFilterEnum;use App\Enums\Order\OrderStatusEnum;use App\Enums\Payment\PaymentTypeEnum;use Illuminate\Support\Str; @endphp
 @extends('layouts.admin.app', ['page' => $menuAdmin['orders']['active'] ?? ""])
 
 @section('title', __('labels.orders'))
@@ -24,7 +24,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">{{ __('labels.order_items') }} <span class="order-count"></span></h3>
+                            <h3 class="card-title">{{ __('labels.orders') }} <span class="order-count"></span></h3>
                             <div class="card-actions">
                                 <div class="row g-2">
                                     <div class="col-auto">
@@ -39,7 +39,7 @@
                                     <div class="col-auto">
                                         <select class="form-select text-capitalize" id="statusFilter">
                                             <option value="">{{ __('labels.status') }}</option>
-                                            @foreach(OrderItemStatusEnum::values() as $value)
+                                            @foreach(OrderStatusEnum::values() as $value)
                                                 <option
                                                     value="{{$value}}">{{Str::replace("_", " ", $value)}}</option>
                                             @endforeach

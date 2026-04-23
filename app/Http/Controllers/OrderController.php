@@ -106,6 +106,73 @@ class OrderController extends Controller
         $orderColumnIndex = $request->get('order')[0]['column'] ?? 0;
         $orderDirection = $request->get('order')[0]['dir'] ?? 'desc';
 
+        if ($this->getPanel() === 'admin') {
+            $columns = ['id', 'created_at', 'slug', 'status', 'payment_status'];
+            $orderColumn = $columns[$orderColumnIndex] ?? 'id';
+
+            $query = Order::with([
+                'items.product',
+                'items.variant',
+                'items.store',
+                'user',
+            ]);
+
+            $totalRecords = $query->count();
+
+            if ($status !== null && $status !== '') {
+                $query->where('status', $status);
+            }
+
+            if ($paymentType !== null && $paymentType !== '') {
+                $query->where('payment_method', $paymentType);
+            }
+
+            if ($dateRange !== null && $dateRange !== '') {
+                $fromDate = $this->getDateRange($dateRange);
+                if ($fromDate) {
+                    $query->where('created_at', '>=', $fromDate);
+                }
+            }
+
+            if (!empty($promoCode)) {
+                $query->where('promo_code', 'like', "%$promoCode%");
+            }
+
+            if (!empty($searchValue)) {
+                $query->where(function ($q) use ($searchValue) {
+                    $q->where('id', 'like', "%$searchValue%")
+                        ->orWhere('slug', 'like', "%$searchValue%")
+                        ->orWhere('payment_method', 'like', "%$searchValue%")
+                        ->orWhere('status', 'like', "%$searchValue%")
+                        ->orWhere('shipping_name', 'like', "%$searchValue%")
+                        ->orWhereHas('items.product', function ($productQuery) use ($searchValue) {
+                            $productQuery->where('title', 'like', "%$searchValue%");
+                        })
+                        ->orWhereHas('items.variant', function ($variantQuery) use ($searchValue) {
+                            $variantQuery->where('title', 'like', "%$searchValue%");
+                        });
+                });
+            }
+
+            $filteredRecords = $query->count();
+
+            $data = $query
+                ->orderBy($orderColumn, $orderDirection)
+                ->skip($start)
+                ->take($length)
+                ->get()
+                ->map(function (Order $order) {
+                    return $this->getAdminOrderReturnData($order);
+                });
+
+            return response()->json([
+                'draw' => intval($draw),
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $filteredRecords,
+                'data' => $data
+            ]);
+        }
+
         $columns = ['id', 'order_id', 'price', 'status', 'created_at'];
         $orderColumn = $columns[$orderColumnIndex] ?? 'id';
 
@@ -204,6 +271,92 @@ class OrderController extends Controller
             'recordsFiltered' => $filteredRecords,
             'data' => $data
         ]);
+    }
+
+    private function getAdminOrderReturnData(Order $order): array
+    {
+        $orderNo = $order->slug ?: $order->id;
+        $orderNoDisplay = $orderNo ? '#' . ltrim((string) $orderNo, '#') : 'N/A';
+
+        $orderSubtotal = (float) ($order->subtotal ?? $order->sub_total ?? 0);
+        $orderShipping = (float) ($order->delivery_charge ?? 0);
+        $orderHandling = (float) ($order->handling_charges ?? 0);
+        $orderDropOff = (float) ($order->per_store_drop_off_fee ?? 0);
+        $orderGst = (float) ($order->total_gst ?? 0);
+        $orderPromo = (float) ($order->promo_discount ?? 0);
+        $orderGift = (float) ($order->gift_card_discount ?? 0);
+        $orderTotalPayable = (float) ($order->total_payable ?? $order->final_total ?? 0);
+
+        $amountBreakdownHtml = "<div class='mt-1'>
+                        <p class='m-0'>" . __('labels.subtotal') . ": " . $this->currencyService->format($orderSubtotal) . "</p>
+                        <p class='m-0'>Shipping Cost: " . $this->currencyService->format($orderShipping) . "</p>" .
+                        ($orderHandling > 0 ? "<p class='m-0'>" . __('labels.handling_charges') . ": " . $this->currencyService->format($orderHandling) . "</p>" : "") .
+                        ($orderDropOff > 0 ? "<p class='m-0'>" . __('labels.per_store_drop_off_fee') . ": " . $this->currencyService->format($orderDropOff) . "</p>" : "") .
+                        ($orderGst > 0 ? "<p class='m-0'>GST: " . $this->currencyService->format($orderGst) . "</p>" : "") .
+                        ($orderPromo > 0 ? "<p class='m-0'>" . __('labels.promo_discount') . ": - " . $this->currencyService->format($orderPromo) . "</p>" : "") .
+                        ($orderGift > 0 ? "<p class='m-0'>Gift Card Discount: - " . $this->currencyService->format($orderGift) . "</p>" : "") . "
+                        <p class='m-0 fw-bold'>" . __('labels.total_payable') . ": " . $this->currencyService->format($orderTotalPayable) . "</p>
+                        </div>";
+
+        $productDetailsHtml = $order->items
+            ->take(2)
+            ->map(function ($orderItem) {
+                $product = $orderItem->product;
+                $variantTitle = $orderItem->variant?->title ?? '';
+                $storeName = $orderItem->store?->name ?? 'N/A';
+
+                return "<div class='mb-2'>
+                        " . ($product
+                            ? "<a href='" . route('admin.products.show', ['id' => $product->id]) . "' class='m-0 fw-medium text-primary'>" . __('labels.product_name') . ": {$product->title}</a>"
+                            : "<p class='m-0 fw-medium text-primary'>" . __('labels.product_name') . ": N/A</p>") . "
+                        <p class='m-0 fw-medium text-primary'>" . __('labels.variant_name') . ": " . e($variantTitle) . "</p>
+                        <p class='m-0 fw-medium text-capitalize'>" . __('labels.store_name') . ": " . e($storeName) . "</p>
+                        <p class='m-0'>" . __('labels.sku') . ": " . e($orderItem->sku ?? 'N/A') . "</p>
+                        <p class='m-0 fw-medium'>" . __('labels.quantity') . ": " . e((string) ($orderItem->quantity ?? 0)) . "</p>
+                        <p class='m-0 fw-medium'>" . __('labels.item_sub_total') . ": " . $this->currencyService->format($orderItem->subtotal ?? 0) . "</p>
+                        </div>";
+            })
+            ->implode("<hr class='my-2'>");
+
+        if ($order->items->count() > 2) {
+            $remaining = $order->items->count() - 2;
+            $productDetailsHtml .= "<p class='m-0 text-muted small'>+" . e((string) $remaining) . " more item(s)</p>";
+        }
+
+        return [
+            'id' => $order->id,
+            'order_date' =>
+                "<div><p class='m-0 fw-medium'>" . $order->created_at->diffForHumans() . "</p>
+                        {$order->created_at->format('Y-m-d H:i:s')}
+                        </div>",
+            'order_details' => "<div>
+                        <p class='m-0 fw-medium text-primary'>" . __('labels.order_number') . ": " . e($orderNoDisplay) . "</p>
+                        <p class='m-0 fw-medium text-primary'>" . __('labels.order_id') . ": " . e((string) $order->id) . "</p>
+                        <p class='m-0'>" . __('labels.buyer_name') . ": " . e($order->shipping_name ?? 'N/A') . "</p>
+                        <p class='m-0'>" . __('labels.payment_method') . ": " . e($order->payment_method ?? 'N/A') . "</p>
+                        <p class='m-0'>" . __('labels.is_rush_order') . ": " . (($order->is_rush_order ?? false) ? 'Yes' : 'No') . "</p>
+                        <p class='m-0'>" . __('labels.order_status') . ": " . Str::ucfirst(Str::replace("_", " ", $order->status ?? 'pending')) . "</p>" .
+                        $amountBreakdownHtml .
+                        "</div>",
+            'product_details' => $productDetailsHtml,
+            'promo' => $orderPromo > 0
+                ? "<div class='text-center'>
+                     <span class='badge bg-green-lt text-uppercase fw-bold'>" . e($order->promo_code ?? '') . "</span>
+                     <div class='text-danger small mt-1'>−" . $this->currencyService->format($orderPromo) . "</div>
+                   </div>"
+                : "<span class='text-muted'>—</span>",
+            'payment_status' => $this->renderPaymentStatusBadge((string) ($order->payment_status ?? PaymentStatusEnum::PENDING())),
+            'actions' => view('partials.order-actions', [
+                'panel' => 'admin',
+                'uuid' => $order->uuid ?? '',
+                'id' => $order->id,
+                'hierarchy' => OrderItem::getStatusHierarchy(),
+                'route' => route('admin.orders.show', $order->id),
+                'title' => __('labels.edit_order') . $order->id,
+                'status' => $order->status ?? OrderItemStatusEnum::PENDING(),
+                'editPermission' => false,
+            ])->render(),
+        ];
     }
 
     private function getOrderReturnData($sellerOrderItem): array

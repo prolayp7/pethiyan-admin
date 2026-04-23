@@ -9,6 +9,7 @@ use App\Http\Requests\User\Order\CreateOrderRequest;
 use App\Http\Resources\User\OrderPaymentResource;
 use App\Http\Resources\User\OrderResource;
 use App\Models\SellerOrder;
+use App\Models\User;
 use App\Services\OrderService;
 use App\Types\Api\ApiResponseType;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -194,6 +195,7 @@ class OrderApiController extends Controller
     #[QueryParameter('search', description: 'Search by transaction reference or other fields', type: 'string', example: 'TX123')]
     public function getTransactions(Request $request): JsonResponse
     {
+        /** @var User $user */
         $user = Auth::user();
         $perPage = $request->input('per_page', 15);
         $paymentStatus = $request->input('payment_status');
@@ -252,6 +254,7 @@ class OrderApiController extends Controller
      */
     public function getTransaction($id): JsonResponse
     {
+        /** @var User $user */
         $user = Auth::user();
 
         if (!$user) {

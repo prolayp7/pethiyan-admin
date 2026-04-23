@@ -22,6 +22,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @method static create(array $array)
  * @method static where(string $string, mixed $email)
  * @method static find(mixed $user_id)
+ * @method \Illuminate\Database\Eloquent\Relations\HasMany OrderPaymentTransactions()
  */
 class User extends Authenticatable implements HasMedia
 {

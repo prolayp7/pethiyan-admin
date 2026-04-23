@@ -47,6 +47,15 @@
     $shippingState = $order->shipping_state ?? '';
     $shippingZip = $order->shipping_zip ?? '';
     $shippingPhone = $order->shipping_phone ?? $order->billing_phone ?? '';
+    $shippingLandmark = $order->shipping_landmark ?? $order->billing_landmark ?? '';
+    $customerCompanyName = data_get($order, 'shipping_company_name')
+        ?: data_get($order, 'billing_company_name')
+        ?: data_get($order, 'company_name')
+        ?: data_get($order, 'user.company_name');
+    $customerGstin = data_get($order, 'customer_gstin')
+        ?: data_get($order, 'gstin')
+        ?: data_get($order, 'user.gstin');
+    $paymentStatus = ucfirst((string) ($order->payment_status ?? 'Pending'));
 
     $sellerItems = $sellerOrder->items ?? collect();
     $sellerSubtotal = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->subtotal ?? 0));
@@ -106,7 +115,8 @@
                                 <td class="p" style="padding:12px 14px;">
                                     <strong>Order ID:</strong> #{{ $order->order_number ?? $order->slug ?? $order->id }}<br>
                                     <strong>Order Date:</strong> {{ $order->created_at?->format('d M Y, h:i A') }}<br>
-                                    <strong>Customer:</strong> {{ $customerName }}
+                                    <strong>Customer:</strong> {{ $customerName }}<br>
+                                    <strong>Payment Status:</strong> {{ $paymentStatus }}
                                 </td>
                             </tr>
                         </table>
@@ -167,8 +177,15 @@
                             <tr>
                                 <td class="p" style="padding:12px 14px;">
                                     <strong>Shipping Address</strong><br>
+                                    @if($customerCompanyName)
+                                        <strong>Company:</strong> {{ $customerCompanyName }}<br>
+                                    @endif
+                                    @if($customerGstin)
+                                        <strong>GSTIN:</strong> {{ $customerGstin }}<br>
+                                    @endif
                                     {{ $shippingName }}@if($shippingAddress1), {{ $shippingAddress1 }}@endif<br>
                                     @if($shippingAddress2){{ $shippingAddress2 }}<br>@endif
+                                    @if($shippingLandmark)<strong>Landmark:</strong> {{ $shippingLandmark }}<br>@endif
                                     {{ $shippingCity }}@if($shippingState), {{ $shippingState }}@endif @if($shippingZip)- {{ $shippingZip }}@endif<br>
                                     @if($shippingPhone){{ $shippingPhone }}@endif
                                 </td>

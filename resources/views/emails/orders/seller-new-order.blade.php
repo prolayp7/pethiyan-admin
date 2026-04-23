@@ -48,10 +48,20 @@
     $shippingZip = $order->shipping_zip ?? '';
     $shippingPhone = $order->shipping_phone ?? $order->billing_phone ?? '';
 
-    $subtotal = (float) ($sellerOrder->sub_total ?? $sellerOrder->subtotal ?? $sellerOrder->price ?? 0);
-    $delivery = (float) ($sellerOrder->delivery_charge ?? 0);
-    $gst = (float) ($sellerOrder->gst_amount ?? 0);
-    $grandTotal = (float) ($sellerOrder->final_total ?? $sellerOrder->grand_total ?? $sellerOrder->total_payable ?? $sellerOrder->price ?? 0);
+    $sellerItems = $sellerOrder->items ?? collect();
+    $sellerSubtotal = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->subtotal ?? 0));
+    $sellerGst = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->total_tax_amount ?? 0));
+
+    $orderSubtotalBase = (float) ($order->total_taxable_amount ?? $order->subtotal ?? $order->sub_total ?? 0);
+    $allocationBase = $orderSubtotalBase > 0 ? $orderSubtotalBase : $sellerSubtotal;
+    $sellerShare = $allocationBase > 0 ? ($sellerSubtotal / $allocationBase) : 1.0;
+
+    $delivery = round((float) ($order->delivery_charge ?? 0) * $sellerShare, 2);
+    $discount = round((float) ($order->promo_discount ?? 0) * $sellerShare, 2);
+
+    $subtotal = round($sellerSubtotal, 2);
+    $gst = round($sellerGst, 2);
+    $grandTotal = round($subtotal + $delivery + $gst - $discount, 2);
 
     $appName = $systemSettings['appName'] ?? config('app.name', 'Pethiyan');
     $logoUrl = !empty($systemSettings['logo']) ? $systemSettings['logo'] : asset('logos/hyper-local-logo.png');
@@ -132,6 +142,12 @@
                                 <tr>
                                     <td class="p" style="padding:4px 14px;">Shipping</td>
                                     <td class="p" align="right" style="padding:4px 14px;">{{ $formatMoney($delivery) }}</td>
+                                </tr>
+                            @endif
+                            @if($discount > 0)
+                                <tr>
+                                    <td class="p" style="padding:4px 14px;">Discount</td>
+                                    <td class="p" align="right" style="padding:4px 14px;">- {{ $formatMoney($discount) }}</td>
                                 </tr>
                             @endif
                             @if($gst > 0)

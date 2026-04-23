@@ -7,7 +7,7 @@ use ArchTech\Enums\Names;
 use ArchTech\Enums\Values;
 
 /**
- * @method static PROFILE_IMAGE()
+ * @method static string PROFILE_IMAGE()
  */
 enum SpatieMediaCollectionName: string
 {

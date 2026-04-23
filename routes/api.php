@@ -136,6 +136,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // profile
         Route::get('/profile', [UserApiController::class, 'getProfile']);
         Route::post('/profile', [UserApiController::class, 'updateProfile']);
+        Route::post('/password-update', [UserApiController::class, 'changePassword']);
 
         // Wallet routes
         Route::prefix('wallet')->name('wallet.')->group(function () {

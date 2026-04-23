@@ -3,23 +3,36 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\User\ChangePasswordRequest;
 use App\Http\Requests\User\UpdateProfileRequest;
 use App\Http\Resources\User\UserResource;
 use App\Services\ProfileService;
+use App\Services\SettingService;
+use App\Enums\SettingTypeEnum;
 use App\Types\Api\ApiResponseType;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 #[Group('Users')]
 class UserApiController extends Controller
 {
     protected ProfileService $profileService;
+    protected SettingService $settingService;
 
-    public function __construct(ProfileService $profileService)
+    public function __construct(ProfileService $profileService, SettingService $settingService)
     {
         $this->profileService = $profileService;
+        $this->settingService = $settingService;
+    }
+
+    private function isDemoModeEnabled(): bool
+    {
+        $resource = $this->settingService->getSettingByVariable(SettingTypeEnum::SYSTEM());
+        $settings = $resource ? ($resource->toArray(request())['value'] ?? []) : [];
+        return (bool)($settings['demoMode'] ?? false);
     }
     /**
      * Update user profile
@@ -89,6 +102,43 @@ class UserApiController extends Controller
         }
     }
 
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        try {
+            if ($this->isDemoModeEnabled()) {
+                return ApiResponseType::sendJsonResponse(
+                    false,
+                    __('labels.demo_mode_message_placeholder'),
+                    [],
+                    403
+                );
+            }
+
+            $user = Auth::user();
+            if (!$user) {
+                return ApiResponseType::sendJsonResponse(
+                    false,
+                    'labels.user_not_authenticated',
+                    []
+                );
+            }
+
+            $user->password = Hash::make($request->input('password'));
+            $user->save();
+
+            return ApiResponseType::sendJsonResponse(
+                true,
+                __('labels.password_updated_successfully'),
+                []
+            );
+        } catch (\Exception $e) {
+            return ApiResponseType::sendJsonResponse(
+                false,
+                __('labels.password_update_failed', ['error' => $e->getMessage()]),
+                []
+            );
+        }
+    }
 
     public function deleteAccount(Request $request): JsonResponse
     {

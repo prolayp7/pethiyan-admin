@@ -61,7 +61,7 @@ class SystemSettingResource extends JsonResource
                 'currency' => $this->value['currency'] ?? 'INR',
                 'currencySymbol' => $this->value['currencySymbol'] ?? '₹',
                 'customerInvoiceDownloadEnabled' => $this->value['customerInvoiceDownloadEnabled'] ?? true,
-                'customerInvoiceDownloadMinStatus' => $this->value['customerInvoiceDownloadMinStatus'] ?? 'out_for_delivery',
+                'customerInvoiceDownloadMinStatus' => $this->value['customerInvoiceDownloadMinStatus'] ?? 'awaiting_store_response',
                 // Product grid display toggles
                 'showVariantColorsInGrid'  => $this->value['showVariantColorsInGrid']  ?? true,
                 'showGstInGrid'            => $this->value['showGstInGrid']            ?? false,

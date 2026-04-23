@@ -57,7 +57,7 @@ class SystemSettingType implements SettingInterface
     public string $currencySymbol = "₹";
     // Order settings
     public bool $customerInvoiceDownloadEnabled = true;
-    public string $customerInvoiceDownloadMinStatus = 'out_for_delivery'; // Dispatched
+    public string $customerInvoiceDownloadMinStatus = 'awaiting_store_response';
     // Social media links: keyed by platform slug, each with 'url' and 'active'
     public array $socialLinks = [];
     // Product grid display toggles
@@ -116,7 +116,7 @@ class SystemSettingType implements SettingInterface
             'currency' => ['required', 'string', 'max:3', 'exists:countries,currency'],
             'currencySymbol' => ['required', 'string', 'max:3', 'exists:countries,currency_symbol'],
             'customerInvoiceDownloadEnabled' => ['nullable', 'boolean'],
-            'customerInvoiceDownloadMinStatus' => ['required', 'in:pending,accepted_by_seller,preparing,collected,out_for_delivery,delivered'],
+            'customerInvoiceDownloadMinStatus' => ['required', 'in:awaiting_store_response,accepted_by_seller,preparing,ready_for_pickup,assigned,collected,cancelled,failed,delivered'],
             'socialLinks'              => ['nullable', 'array'],
             'socialLinks.*'            => ['nullable', 'array'],
             'socialLinks.*.url'        => ['nullable', 'url', 'max:500'],

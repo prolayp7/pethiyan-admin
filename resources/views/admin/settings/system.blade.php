@@ -315,14 +315,17 @@
                                         <div class="mb-3">
                                             <label class="form-label required">Invoice Download Allowed From Status</label>
                                             <select class="form-select" name="customerInvoiceDownloadMinStatus">
-                                                <option value="pending" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? 'out_for_delivery') === 'pending' ? 'selected' : '' }}>Placed</option>
-                                                <option value="accepted_by_seller" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'accepted_by_seller' ? 'selected' : '' }}>Confirmed</option>
-                                                <option value="preparing" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'preparing' ? 'selected' : '' }}>Preparing</option>
-                                                <option value="collected" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'collected' ? 'selected' : '' }}>Collected</option>
-                                                <option value="out_for_delivery" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? 'out_for_delivery') === 'out_for_delivery' ? 'selected' : '' }}>Dispatched</option>
-                                                <option value="delivered" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'delivered' ? 'selected' : '' }}>Delivered</option>
+                                                <option value="awaiting_store_response" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? 'awaiting_store_response') === 'awaiting_store_response' ? 'selected' : '' }}>Awaiting Store Response</option>
+                                                <option value="accepted_by_seller" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'accepted_by_seller' ? 'selected' : '' }}>Order Accepted</option>
+                                                <option value="preparing" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'preparing' ? 'selected' : '' }}>Order Start Packing</option>
+                                                <option value="ready_for_pickup" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'ready_for_pickup' ? 'selected' : '' }}>Order Packing Done</option>
+                                                <option value="assigned" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'assigned' ? 'selected' : '' }}>Order Ready for Pickup</option>
+                                                <option value="collected" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'collected' ? 'selected' : '' }}>Order Collected</option>
+                                                <option value="cancelled" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'cancelled' ? 'selected' : '' }}>Order Cancelled</option>
+                                                <option value="failed" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'failed' ? 'selected' : '' }}>Order Failed</option>
+                                                <option value="delivered" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'delivered' ? 'selected' : '' }}>Order Completed</option>
                                             </select>
-                                            <small class="form-hint">Default is <strong>Dispatched</strong> as requested.</small>
+                                            <small class="form-hint">Choose the minimum order status after which customers can download invoices.</small>
                                         </div>
                                     </div>
                                     <div class="card-footer text-end">

@@ -12,6 +12,7 @@ use App\Enums\Payment\PaymentTypeEnum;
 use App\Enums\PaymentStatusEnum;
 use App\Enums\Product\ProductTypeEnum;
 use App\Enums\SellerPermissionEnum;
+use App\Enums\SettingTypeEnum;
 use App\Http\Resources\OrderResource;
 use App\Enums\SpatieMediaCollectionName;
 use App\Models\Order;
@@ -21,6 +22,7 @@ use App\Models\SellerOrder;
 use App\Models\SellerOrderItem;
 use App\Services\CurrencyService;
 use App\Services\OrderService;
+use App\Services\SettingService;
 use App\Traits\ChecksPermissions;
 use App\Traits\PanelAware;
 use App\Types\Api\ApiResponseType;
@@ -54,11 +56,13 @@ class OrderController extends Controller
     public bool $editPermission = false;
     protected OrderService $orderService;
     protected CurrencyService $currencyService;
+    protected SettingService $settingService;
 
-    public function __construct(OrderService $orderService, CurrencyService $currencyService)
+    public function __construct(OrderService $orderService, CurrencyService $currencyService, SettingService $settingService)
     {
         $this->orderService = $orderService;
         $this->currencyService = $currencyService;
+        $this->settingService = $settingService;
         $user = auth()->user();
         if ($user) {
             $this->editPermission = $this->hasPermission(SellerPermissionEnum::ORDER_EDIT()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
@@ -579,9 +583,13 @@ class OrderController extends Controller
 
         $order = Order::with('user')->findOrFail($id);
         $this->authorize('view', $order);
+        $systemSettings = $this->settingService
+            ->getSettingByVariable(SettingTypeEnum::SYSTEM())
+            ?->toArray(request())['value'] ?? [];
 
         $pdf = Pdf::loadView('admin.orders.shipping-address-pdf', [
             'order' => $order,
+            'systemSettings' => $systemSettings,
         ])->setPaper('a5', 'portrait');
 
         return $pdf->download('shipping-address-' . $order->order_number . '.pdf');

@@ -449,6 +449,14 @@ class OrderService
         }
 
         $cart->items()->delete();
+        Log::info('[OrderService] Dispatching OrderPlaced event', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'user_id' => $order->user_id,
+            'payment_method' => $order->payment_method,
+            'payment_status' => $order->payment_status,
+            'status' => $order->status,
+        ]);
         event(new OrderPlaced($order));
 
         return [

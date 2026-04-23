@@ -43,8 +43,10 @@ class SettingService
     /**
      * Get a specific setting by variable with resource transformation
      */
-    public function getSettingByVariable(string $variable): ?JsonResource
+    public function getSettingByVariable(SettingTypeEnum|string $variable): ?JsonResource
     {
+        $variable = $variable instanceof SettingTypeEnum ? $variable->value : $variable;
+
         if (!in_array($variable, SettingTypeEnum::values())) {
             return null;
         }

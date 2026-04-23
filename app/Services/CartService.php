@@ -246,68 +246,15 @@ class CartService
                 ['uuid' => Str::uuid()->toString()]
             );
 
-            $desiredKeys = collect($data['items'])
-                ->map(fn ($item) => $item['store_id'] . ':' . $item['product_variant_id'])
-                ->all();
-
-            CartItem::where('cart_id', $cart->id)
-                ->where('save_for_later', '0')
-                ->get()
-                ->each(function (CartItem $cartItem) use ($desiredKeys) {
-                    $itemKey = $cartItem->store_id . ':' . $cartItem->product_variant_id;
-                    if (!in_array($itemKey, $desiredKeys, true)) {
-                        $cartItem->delete();
-                    }
-                });
+            $desiredKeys = $this->buildDesiredSyncKeys($data['items']);
+            $this->removeMissingSyncedItems($cart->id, $desiredKeys);
 
             foreach ($data['items'] as $item) {
-                $matchingItems = CartItem::where('cart_id', $cart->id)
-                    ->where('store_id', $item['store_id'])
-                    ->where('product_variant_id', $item['product_variant_id'])
-                    ->where('save_for_later', '0')
-                    ->orderBy('id')
-                    ->get();
-
-                $primaryItem = $matchingItems->first();
-
-                if ($matchingItems->count() > 1 && $primaryItem) {
-                    CartItem::whereIn('id', $matchingItems->slice(1)->pluck('id'))->delete();
-                }
-
-                if ($primaryItem) {
-                    $result = $this->updateCartItemQuantity($user, $primaryItem->id, $item['quantity']);
-                } else {
-                    $result = $this->addToCart($user, [
-                        'store_id' => $item['store_id'],
-                        'product_variant_id' => $item['product_variant_id'],
-                        'quantity' => $item['quantity'],
-                    ]);
-                }
-
-                // Load product resource for the provided store and variant
-                $storeProductVariant = StoreProductVariant::with([
-                    'productVariant.product.variants.storeProductVariants.store',
-                    'productVariant.product.category',
-                    'productVariant.product.brand',
-                    'productVariant.product.seller.user',
-                    'store',
-                    'productVariant',
-                ])
-                    ->where('store_id', $item['store_id'])
-                    ->where('product_variant_id', $item['product_variant_id'])
-                    ->first();
-
-                // Build ProductListResource from the linked product if available
-                $productResource = null;
-                if ($storeProductVariant && $storeProductVariant->productVariant && $storeProductVariant->productVariant->product) {
-                    $product = $storeProductVariant->productVariant->product;
-                    $productResource = new ProductListResource($product->loadMissing([
-                        'variants.storeProductVariants.store',
-                        'category',
-                        'brand',
-                        'seller.user',
-                    ]));
-                }
+                $result = $this->syncCartItemQuantity($cart->id, $user, $item);
+                $productResource = $this->buildSyncedProductResource(
+                    (int) $item['store_id'],
+                    (int) $item['product_variant_id']
+                );
 
                 if ($result['success']) {
                     $synced[] = [
@@ -351,6 +298,92 @@ class CartService
                 'data' => [],
             ];
         }
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $items
+     * @return array<int, string>
+     */
+    private function buildDesiredSyncKeys(array $items): array
+    {
+        return array_map(
+            fn (array $item): string => $item['store_id'] . ':' . $item['product_variant_id'],
+            $items
+        );
+    }
+
+    /**
+     * @param array<int, string> $desiredKeys
+     */
+    private function removeMissingSyncedItems(int $cartId, array $desiredKeys): void
+    {
+        CartItem::where('cart_id', $cartId)
+            ->where('save_for_later', '0')
+            ->get()
+            ->each(function (CartItem $cartItem) use ($desiredKeys): void {
+                $itemKey = $cartItem->store_id . ':' . $cartItem->product_variant_id;
+
+                if (!in_array($itemKey, $desiredKeys, true)) {
+                    $cartItem->delete();
+                }
+            });
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     */
+    private function syncCartItemQuantity(int $cartId, User $user, array $item): array
+    {
+        $matchingItems = CartItem::where('cart_id', $cartId)
+            ->where('store_id', $item['store_id'])
+            ->where('product_variant_id', $item['product_variant_id'])
+            ->where('save_for_later', '0')
+            ->orderBy('id')
+            ->get();
+
+        $primaryItem = $matchingItems->first();
+
+        if ($matchingItems->count() > 1 && $primaryItem) {
+            CartItem::whereIn('id', $matchingItems->slice(1)->pluck('id')->all())->delete();
+        }
+
+        if ($primaryItem) {
+            return $this->updateCartItemQuantity($user, $primaryItem->id, (int) $item['quantity']);
+        }
+
+        return $this->addToCart($user, [
+            'store_id' => $item['store_id'],
+            'product_variant_id' => $item['product_variant_id'],
+            'quantity' => $item['quantity'],
+        ]);
+    }
+
+    private function buildSyncedProductResource(int $storeId, int $productVariantId): ?ProductListResource
+    {
+        $storeProductVariant = StoreProductVariant::with([
+            'productVariant.product.variants.storeProductVariants.store',
+            'productVariant.product.category',
+            'productVariant.product.brand',
+            'productVariant.product.seller.user',
+            'store',
+            'productVariant',
+        ])
+            ->where('store_id', $storeId)
+            ->where('product_variant_id', $productVariantId)
+            ->first();
+
+        if (!$storeProductVariant?->productVariant?->product) {
+            return null;
+        }
+
+        $product = $storeProductVariant->productVariant->product->loadMissing([
+            'variants.storeProductVariants.store',
+            'category',
+            'brand',
+            'seller.user',
+        ]);
+
+        return new ProductListResource($product);
     }
 
 

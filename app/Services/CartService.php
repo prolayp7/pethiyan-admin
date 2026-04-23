@@ -241,13 +241,48 @@ class CartService
         DB::beginTransaction();
 
         try {
-            foreach ($data['items'] as $item) {
+            $cart = Cart::firstOrCreate(
+                ['user_id' => $user->id],
+                ['uuid' => Str::uuid()->toString()]
+            );
 
-                $result = $this->addToCart($user, [
-                    'store_id' => $item['store_id'],
-                    'product_variant_id' => $item['product_variant_id'],
-                    'quantity' => $item['quantity'],
-                ]);
+            $desiredKeys = collect($data['items'])
+                ->map(fn ($item) => $item['store_id'] . ':' . $item['product_variant_id'])
+                ->all();
+
+            CartItem::where('cart_id', $cart->id)
+                ->where('save_for_later', '0')
+                ->get()
+                ->each(function (CartItem $cartItem) use ($desiredKeys) {
+                    $itemKey = $cartItem->store_id . ':' . $cartItem->product_variant_id;
+                    if (!in_array($itemKey, $desiredKeys, true)) {
+                        $cartItem->delete();
+                    }
+                });
+
+            foreach ($data['items'] as $item) {
+                $matchingItems = CartItem::where('cart_id', $cart->id)
+                    ->where('store_id', $item['store_id'])
+                    ->where('product_variant_id', $item['product_variant_id'])
+                    ->where('save_for_later', '0')
+                    ->orderBy('id')
+                    ->get();
+
+                $primaryItem = $matchingItems->first();
+
+                if ($matchingItems->count() > 1 && $primaryItem) {
+                    CartItem::whereIn('id', $matchingItems->slice(1)->pluck('id'))->delete();
+                }
+
+                if ($primaryItem) {
+                    $result = $this->updateCartItemQuantity($user, $primaryItem->id, $item['quantity']);
+                } else {
+                    $result = $this->addToCart($user, [
+                        'store_id' => $item['store_id'],
+                        'product_variant_id' => $item['product_variant_id'],
+                        'quantity' => $item['quantity'],
+                    ]);
+                }
 
                 // Load product resource for the provided store and variant
                 $storeProductVariant = StoreProductVariant::with([

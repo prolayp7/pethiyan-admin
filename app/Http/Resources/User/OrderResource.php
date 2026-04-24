@@ -108,6 +108,8 @@ class OrderResource extends JsonResource
             'shipping_country' => $this->shipping_country,
             'shipping_country_code' => $this->shipping_country_code,
             'order_note' => $this->order_note ?? '',
+            'admin_note' => $this->admin_note ?? '',
+            'tracking_code' => $this->tracking_code ?? '',
 
             // Relationships
             'items' => OrderItemResource::collection($this->whenLoaded('items')),

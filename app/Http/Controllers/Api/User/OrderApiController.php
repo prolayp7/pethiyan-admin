@@ -441,9 +441,22 @@ class OrderApiController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'Please provide an order number or tracking code.', []);
         }
 
+        // order_number is a computed attribute (PET + Ymd + zero-padded ID),
+        // so we derive the ID from the string when the format matches.
+        $orderId = null;
+        if (preg_match('/^PET(\d{8})(\d{5})$/', strtoupper($query), $m)) {
+            $orderId = (int) $m[2];
+        }
+
         $order = Order::query()
-            ->where('order_number', $query)
-            ->orWhere('tracking_code', $query)
+            ->where(function ($q) use ($query, $orderId) {
+                $q->where('tracking_code', $query)
+                  ->orWhere('uuid', $query)
+                  ->orWhere('slug', $query);
+                if ($orderId) {
+                    $q->orWhere('id', $orderId);
+                }
+            })
             ->with(['items.product', 'items.variant'])
             ->first();
 

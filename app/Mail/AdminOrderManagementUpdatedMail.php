@@ -3,8 +3,10 @@
 namespace App\Mail;
 
 use App\Models\Order;
+use App\Services\SettingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -15,11 +17,18 @@ class AdminOrderManagementUpdatedMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
+    public array $systemSettings = [];
+
     public function __construct(
         public Order $order,
         public string $previousStatus,
         public string $previousPaymentStatus,
-    ) {}
+    ) {
+        $settingResource = app(SettingService::class)->getSettingByVariable('system');
+        $this->systemSettings = $settingResource?->toArray(new Request())['value'] ?? [];
+
+        $this->order->loadMissing(['user', 'items']);
+    }
 
     public function envelope(): Envelope
     {
@@ -28,10 +37,10 @@ class AdminOrderManagementUpdatedMail extends Mailable implements ShouldQueue
         $paymentChanged = $this->previousPaymentStatus !== (string) $this->order->payment_status;
 
         $subjectSuffix = $statusChanged
-            ? 'delivery status is now ' . Str::headline((string) $this->order->status)
+            ? 'status is now ' . Str::headline((string) $this->order->status)
             : ($paymentChanged
-                ? 'payment status is now ' . Str::headline((string) $this->order->payment_status)
-                : 'details were updated');
+                ? 'payment is now ' . Str::headline((string) $this->order->payment_status)
+                : 'has been updated');
 
         return new Envelope(
             subject: 'Order Update — #' . $orderIdentifier . ' ' . $subjectSuffix,
@@ -42,6 +51,7 @@ class AdminOrderManagementUpdatedMail extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.orders.admin-management-updated',
+            with: ['systemSettings' => $this->systemSettings],
         );
     }
 

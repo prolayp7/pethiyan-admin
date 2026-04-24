@@ -1291,7 +1291,10 @@ class OrderService
                 }
             }
 
-            if ($statusChanged || $paymentStatusChanged) {
+            $adminNoteChanged = $incomingAdminNote !== $currentAdminNote;
+            $trackingCodeChanged = $incomingTrackingCode !== $currentTrackingCode;
+
+            if ($statusChanged || $paymentStatusChanged || $adminNoteChanged || $trackingCodeChanged) {
                 $order->loadMissing('user');
 
                 DB::afterCommit(function () use ($order, $currentStatus, $currentPaymentStatus) {

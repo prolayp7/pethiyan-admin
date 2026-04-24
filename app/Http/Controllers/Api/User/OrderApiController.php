@@ -8,6 +8,7 @@ use App\Http\Requests\User\Order\CreateItemReturnRequest;
 use App\Http\Requests\User\Order\CreateOrderRequest;
 use App\Http\Resources\User\OrderPaymentResource;
 use App\Http\Resources\User\OrderResource;
+use App\Models\Order;
 use App\Models\SellerOrder;
 use App\Models\User;
 use App\Services\OrderService;
@@ -428,5 +429,28 @@ class OrderApiController extends Controller
             $result['message'],
             $result['data'] ?? []
         );
+    }
+
+    // ─── POST /api/orders/track (public — no auth required) ──────────────────────
+
+    public function trackPublicOrder(Request $request): JsonResponse
+    {
+        $query = trim((string) $request->input('query', ''));
+
+        if (empty($query)) {
+            return ApiResponseType::sendJsonResponse(false, 'Please provide an order number or tracking code.', []);
+        }
+
+        $order = Order::query()
+            ->where('order_number', $query)
+            ->orWhere('tracking_code', $query)
+            ->with(['items.product', 'items.variant'])
+            ->first();
+
+        if (!$order) {
+            return ApiResponseType::sendJsonResponse(false, 'Order not found.', []);
+        }
+
+        return ApiResponseType::sendJsonResponse(true, 'Order found.', new OrderResource($order));
     }
 }

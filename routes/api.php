@@ -75,6 +75,9 @@ Route::get('newsletter-section', [NewsletterSectionApiController::class, 'index'
 // Shipping Rates (public)
 Route::post('shipping/rates', [ShippingRateApiController::class, 'index'])->name('shipping.rates');
 
+// Order tracking (public — no auth required)
+Route::post('orders/track', [OrderApiController::class, 'trackPublicOrder'])->name('orders.track.public');
+
 // User Auth Routes
 Route::post('register', [AuthApiController::class, 'register'])->name('register');
 Route::post('login', [AuthApiController::class, 'login'])->name('login');

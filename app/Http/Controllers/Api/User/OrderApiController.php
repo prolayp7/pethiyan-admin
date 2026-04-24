@@ -334,7 +334,7 @@ class OrderApiController extends Controller
             'items.variant',
             'items.orderItem'
         )
-            ->whereHas('order', fn($q) => $q->where('uuid', $orderSlug)->where('user_id', $user->id))
+            ->whereHas('order', fn($q) => $q->where(fn($s) => $s->where('slug', $orderSlug)->orWhere('uuid', $orderSlug))->where('user_id', $user->id))
             ->get();
 
         if ($sellerOrders->isEmpty()) {

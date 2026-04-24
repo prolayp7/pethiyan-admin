@@ -6,6 +6,8 @@ use App\Http\Resources\OrderSellerFeedbackResource;
 use App\Http\Resources\User\PromoLineResource;
 use App\Enums\Order\OrderItemStatusEnum;
 use App\Services\DeliveryBoyService;
+use App\Services\OrderService;
+use App\Services\SettingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -18,6 +20,10 @@ class OrderResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $settingResource = app(SettingService::class)->getSettingByVariable('system');
+        $systemSettings  = $settingResource?->toArray($request)['value'] ?? [];
+        $invoiceDownloadable = OrderService::canCustomerDownloadInvoice($this->status, $systemSettings);
+
         $isDeliveryFeedbackGiven = DeliveryBoyService::checkDeliveryBoyFeedbackByOrderId(orderId: $this->id, deliveryBoyId: $this->delivery_boy_id);
         if ($isDeliveryFeedbackGiven) {
             $deliveryFeedback = DeliveryBoyService::getDeliveryBoyFeedbackByOrderId(orderId: $this->id, deliveryBoyId: $this->delivery_boy_id);
@@ -55,6 +61,7 @@ class OrderResource extends JsonResource
             'payment_status' => $this->payment_status,
             'status' => $this->status,
             'invoice' => url('order-invoice?id=' . $this->uuid) ?? "",
+            'invoice_downloadable' => $invoiceDownloadable,
             'fulfillment_type' => $this->fulfillment_type,
             'estimated_delivery_time' => $this->estimated_delivery_time,
             'delivery_time_slot_id' => $this->delivery_time_slot_id,

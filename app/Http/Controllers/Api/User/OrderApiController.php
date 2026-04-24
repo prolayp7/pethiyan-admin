@@ -372,36 +372,7 @@ class OrderApiController extends Controller
 
     private function canCustomerDownloadInvoice(?string $currentStatus, array $systemSettings): bool
     {
-        $enabled = (bool)($systemSettings['customerInvoiceDownloadEnabled'] ?? true);
-        if (!$enabled) {
-            return false;
-        }
-
-        $requiredStatus = $systemSettings['customerInvoiceDownloadMinStatus'] ?? 'out_for_delivery';
-        $statusOrder = [
-            'pending',
-            'awaiting_store_response',
-            'partially_accepted',
-            'accepted_by_seller',
-            'ready_for_pickup',
-            'assigned',
-            'preparing',
-            'collected',
-            'out_for_delivery',
-            'delivered',
-        ];
-
-        $requiredIndex = array_search($requiredStatus, $statusOrder, true);
-        if ($requiredIndex === false) {
-            $requiredIndex = array_search('out_for_delivery', $statusOrder, true);
-        }
-
-        $currentIndex = array_search((string)$currentStatus, $statusOrder, true);
-        if ($currentIndex === false) {
-            return false;
-        }
-
-        return $currentIndex >= $requiredIndex;
+        return $this->orderService::canCustomerDownloadInvoice($currentStatus, $systemSettings);
     }
 
     /**

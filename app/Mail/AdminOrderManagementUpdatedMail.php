@@ -4,19 +4,14 @@ namespace App\Mail;
 
 use App\Models\Order;
 use App\Services\SettingService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 
-class AdminOrderManagementUpdatedMail extends Mailable implements ShouldQueue
+class AdminOrderManagementUpdatedMail extends Mailable
 {
-    use Queueable, SerializesModels;
-
     public array $systemSettings = [];
 
     public function __construct(

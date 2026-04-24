@@ -112,7 +112,12 @@
                                 </tr>
                                 @foreach($order->items as $item)
                                     <tr>
-                                        <td class="td" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">{{ $item->title ?? $item->product?->title ?? 'Item' }}</td>
+                                        <td class="td" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">
+                                            {{ $item->title ?? $item->product?->title ?? 'Item' }}
+                                            @if(!empty($item->variant_title))
+                                                <br><span style="font-size:11px; color:#6b8aad;">{{ $item->variant_title }}</span>
+                                            @endif
+                                        </td>
                                         <td class="td" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">{{ $item->quantity }}</td>
                                         <td class="td" align="right" style="padding:10px 12px; border-bottom:1px solid #cdddf0;">{{ $formatMoney(($item->price ?? 0) * ($item->quantity ?? 0)) }}</td>
                                     </tr>

@@ -22,6 +22,7 @@ use App\Models\BlogPost;
 use App\Models\Category;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Models\Page;
 use App\Models\Product;
 use App\Traits\ChecksPermissions;
 use App\Traits\PanelAware;
@@ -471,6 +472,19 @@ class MenuController extends Controller
                 'map' => fn ($item) => [
                     'value' => '/blog/category/' . ltrim((string) $item->slug, '/'),
                     'label' => 'Blog Category: ' . ($item->title ?? $item->slug),
+                ],
+            ],
+            [
+                'labelPrefix' => 'Page',
+                'query' => fn () => Page::query()
+                    ->select(['title', 'slug'])
+                    ->where('status', 'active')
+                    ->orderBy('title')
+                    ->limit(200)
+                    ->get(),
+                'map' => fn ($item) => [
+                    'value' => '/pages/' . ltrim((string) $item->slug, '/'),
+                    'label' => 'Page: ' . ($item->title ?? $item->slug),
                 ],
             ],
         ];

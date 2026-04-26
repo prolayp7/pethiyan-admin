@@ -85,7 +85,7 @@ class PageController extends Controller
             'content_blocks' => $this->buildCustomPageBlocks($request, $page),
         ]);
 
-        FrontendRevalidateService::revalidate(tags: ['pages'], paths: ["/pages/{$page->slug}"]);
+        FrontendRevalidateService::revalidate(tags: ['pages'], paths: ["/{$page->slug}"]);
 
         return redirect()->route('admin.pages.index')->with('success', 'Page created successfully.');
     }
@@ -129,7 +129,7 @@ class PageController extends Controller
             abort(403, 'System pages cannot be deleted.');
         }
 
-        $path = "/pages/{$page->slug}";
+        $path = "/{$page->slug}";
         $page->delete();
 
         FrontendRevalidateService::revalidate(tags: ['pages'], paths: [$path]);
@@ -239,9 +239,9 @@ class PageController extends Controller
             'content_blocks' => $this->buildCustomPageBlocks($request, $page),
         ]);
 
-        $paths = ["/pages/{$newSlug}"];
+        $paths = ["/{$newSlug}"];
         if ($oldSlug !== $newSlug) {
-            $paths[] = "/pages/{$oldSlug}";
+            $paths[] = "/{$oldSlug}";
         }
 
         FrontendRevalidateService::revalidate(tags: ['pages'], paths: $paths);

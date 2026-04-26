@@ -240,6 +240,7 @@ Route::prefix('seller-feedback')->group(function () {
 Route::get('banners', [BannerApiController::class, 'index']);
 
 // Pages (public)
+Route::get('pages', [PageApiController::class, 'index'])->name('pages.index');
 Route::get('pages/{slug}', [PageApiController::class, 'show'])->name('pages.show');
 
 // Contact form submission (public, rate-limited)

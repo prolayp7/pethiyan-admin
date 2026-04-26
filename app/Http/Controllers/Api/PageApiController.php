@@ -9,6 +9,18 @@ use Illuminate\Http\JsonResponse;
 
 class PageApiController extends Controller
 {
+    public function index(): JsonResponse
+    {
+        $pages = Page::query()
+            ->select(['slug', 'title', 'updated_at'])
+            ->where('status', 'active')
+            ->where('system_page', false)
+            ->orderBy('title')
+            ->get();
+
+        return response()->json($pages);
+    }
+
     public function show(string $slug): JsonResponse
     {
         $page = Page::where('slug', $slug)

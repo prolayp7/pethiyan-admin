@@ -483,7 +483,7 @@ class MenuController extends Controller
                     ->limit(200)
                     ->get(),
                 'map' => fn ($item) => [
-                    'value' => '/pages/' . ltrim((string) $item->slug, '/'),
+                    'value' => '/' . ltrim((string) $item->slug, '/'),
                     'label' => 'Page: ' . ($item->title ?? $item->slug),
                 ],
             ],

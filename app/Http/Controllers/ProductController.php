@@ -182,7 +182,8 @@ class ProductController extends Controller
             })
             ->values();
 
-        return view($this->panelView('products.form'), compact('categories', 'attributes', 'pethiyanSellerId', 'pethiyanBrandId', 'taxClasses', 'taxClassRateMap', 'storeList', 'gstStates'));
+        $product = null;
+        return view($this->panelView('products.form'), compact('product', 'categories', 'attributes', 'pethiyanSellerId', 'pethiyanBrandId', 'taxClasses', 'taxClassRateMap', 'storeList', 'gstStates'));
     }
 
     /**

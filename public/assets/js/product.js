@@ -1915,7 +1915,11 @@ function recalculateGstRow(row) {
         return;
     }
 
-    const computed = calculateVariantGstFromPrice(priceInput.value, gstRate, supplyType);
+    const specialPriceInput = row.querySelector('.store-special-price');
+    const rawSpecial = parseFloat(specialPriceInput?.value) || 0;
+    const effectivePrice = rawSpecial > 0 ? rawSpecial : parseFloat(priceInput.value) || 0;
+
+    const computed = calculateVariantGstFromPrice(effectivePrice, gstRate, supplyType);
     setGstCellText(row, '.gst-cgst-amount', formatAmount(computed.cgstAmount));
     setGstCellText(row, '.gst-sgst-amount', formatAmount(computed.sgstAmount));
     setGstCellText(row, '.gst-igst-amount', formatAmount(computed.igstAmount));
@@ -1956,8 +1960,12 @@ function bindVariantGstPreviewEvents() {
                 recalculateVisiblePanIndiaTables();
             } else if (target.classList.contains('store-disc-pct')) {
                 handleDiscPctChange(row);
+                recalculateVariantGstRow(row);
+                recalculateVisiblePanIndiaTables();
             } else if (target.classList.contains('store-special-price')) {
                 handleSpecialPriceChange(row);
+                recalculateVariantGstRow(row);
+                recalculateVisiblePanIndiaTables();
             }
         });
         pricingContainer.dataset.gstEventsBound = '1';
@@ -1995,8 +2003,12 @@ function bindSimpleGstPreviewEvents() {
                 recalculateVisiblePanIndiaTables();
             } else if (target.classList.contains('store-disc-pct')) {
                 handleDiscPctChange(row);
+                recalculateSimpleGstRow(row);
+                recalculateVisiblePanIndiaTables();
             } else if (target.classList.contains('store-special-price')) {
                 handleSpecialPriceChange(row);
+                recalculateSimpleGstRow(row);
+                recalculateVisiblePanIndiaTables();
             }
         });
         pricingContainer.dataset.gstEventsBound = '1';
@@ -2089,7 +2101,10 @@ function collectStorePriceEntries(card) {
         const row   = inp.closest('tr');
         const cell  = row ? row.querySelector('.variant-label-cell') : null;
         const label = cell ? (cell.innerText || cell.textContent || '').trim().substring(0, 30) : 'Price';
-        return { label: label || 'Variant', price: inp.value };
+        const specialInput = row ? row.querySelector('.store-special-price') : null;
+        const rawSpecial = parseFloat(specialInput?.value) || 0;
+        const effectivePrice = rawSpecial > 0 ? String(rawSpecial) : inp.value;
+        return { label: label || 'Variant', price: effectivePrice };
     });
 }
 

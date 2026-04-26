@@ -10,6 +10,7 @@ use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
@@ -66,6 +67,29 @@ class SystemLogController extends Controller
         return redirect()
             ->route('admin.system-logs.index', ['file' => $selectedFile->getFilename()])
             ->with('success', 'Log file cleared successfully.');
+    }
+
+    public function artisanOptimizeClear(Request $request): RedirectResponse
+    {
+        $this->authorizeClear();
+
+        $validated = $request->validate([
+            'password' => ['required', 'string'],
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+        if (!$admin || !Hash::check($validated['password'], $admin->password)) {
+            return back()->withErrors(['optimize_password' => 'Invalid password.']);
+        }
+
+        try {
+            Artisan::call('optimize:clear');
+            $output = trim(Artisan::output());
+        } catch (\Throwable $e) {
+            return back()->with('optimize_error', 'Failed to run optimize:clear: ' . $e->getMessage());
+        }
+
+        return back()->with('optimize_success', 'Cache cleared successfully.' . ($output ? ' Output: ' . $output : ''));
     }
 
     private function authorizeView(): void

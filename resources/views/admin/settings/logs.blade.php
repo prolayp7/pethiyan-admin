@@ -125,6 +125,95 @@
         </div>
     </div>
 
+    {{-- Optimize Clear Section --}}
+    <div class="page-body pt-0">
+        <div class="container-xl">
+            <div class="card mt-2">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">Cache Management</h3>
+                </div>
+                <div class="card-body">
+                    @if(session('optimize_success'))
+                        <div class="alert alert-success alert-dismissible mb-3" role="alert">
+                            {{ session('optimize_success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+                    @if(session('optimize_error'))
+                        <div class="alert alert-danger alert-dismissible mb-3" role="alert">
+                            {{ session('optimize_error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div>
+                            <div class="fw-medium">Run <code>php artisan optimize:clear</code></div>
+                            <div class="text-secondary small mt-1">
+                                Clears the application cache, config cache, route cache, view cache, and compiled files.
+                            </div>
+                        </div>
+                        @can('updateSetting', [\App\Models\Setting::class, 'system'])
+                            <button type="button"
+                                    class="btn btn-warning btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#optimizeClearModal">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                     stroke-linejoin="round" class="icon me-1">
+                                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                    <path d="M4 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/>
+                                    <path d="M11 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/>
+                                    <path d="M18 12a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/>
+                                </svg>
+                                Run optimize:clear
+                            </button>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Optimize Clear Confirmation Modal --}}
+    @can('updateSetting', [\App\Models\Setting::class, 'system'])
+        <div class="modal modal-blur fade" id="optimizeClearModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content border-warning">
+                    <form method="POST" action="{{ route('admin.system-logs.optimize-clear') }}">
+                        @csrf
+                        <div class="modal-header border-warning bg-warning-lt">
+                            <h5 class="modal-title text-warning">Run optimize:clear</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-secondary">
+                                This will clear all application caches including config, routes, views, and compiled files.
+                                Enter your password to confirm.
+                            </p>
+                            <div class="mb-0">
+                                <label for="optimize-password" class="form-label required">Admin password</label>
+                                <input type="password"
+                                       id="optimize-password"
+                                       name="password"
+                                       class="form-control @error('optimize_password') is-invalid @enderror"
+                                       autocomplete="current-password"
+                                       placeholder="Enter your password">
+                                @error('optimize_password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning">Run</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endcan
+
     @if($selectedFileName)
         <div class="modal modal-blur fade" id="clearLogModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-sm modal-dialog-centered">
@@ -217,12 +306,18 @@
         @if($errors->has('password') && $selectedFileName)
             document.addEventListener('DOMContentLoaded', function () {
                 const modalElement = document.getElementById('clearLogModal');
-                if (!modalElement) {
-                    return;
+                if (modalElement) {
+                    new bootstrap.Modal(modalElement).show();
                 }
+            });
+        @endif
 
-                const modal = new bootstrap.Modal(modalElement);
-                modal.show();
+        @if($errors->has('optimize_password'))
+            document.addEventListener('DOMContentLoaded', function () {
+                const modalElement = document.getElementById('optimizeClearModal');
+                if (modalElement) {
+                    new bootstrap.Modal(modalElement).show();
+                }
             });
         @endif
     </script>

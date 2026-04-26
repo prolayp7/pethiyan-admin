@@ -107,6 +107,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::prefix('system-logs')->name('system-logs.')->group(function () {
             Route::get('/', [SystemLogController::class, 'index'])->name('index');
             Route::post('/clear', [SystemLogController::class, 'clear'])->name('clear');
+            Route::post('/optimize-clear', [SystemLogController::class, 'artisanOptimizeClear'])->name('optimize-clear');
         });
 
         Route::prefix('video-stories-section')->name('video-stories-section.')->group(function () {

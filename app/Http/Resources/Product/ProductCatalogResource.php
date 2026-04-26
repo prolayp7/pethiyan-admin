@@ -189,6 +189,20 @@ class ProductCatalogResource extends JsonResource
                 'code' => $currency->getCode(),
             ],
             'variants' => $variants,
+            'faqs' => $this->whenLoaded('faqs', fn() => $this->faqs->map(fn($faq) => [
+                'id'       => $faq->id,
+                'question' => $faq->question,
+                'answer'   => $faq->answer,
+            ])->values()->all()),
+            'reviews' => $this->whenLoaded('reviews', fn() => $this->reviews->map(fn($review) => [
+                'id'             => $review->id,
+                'rating'         => $review->rating,
+                'title'          => $review->title,
+                'comment'        => $review->comment,
+                'images'         => $review->review_images ?? [],
+                'reviewer_name'  => $review->user->name ?? 'Anonymous',
+                'created_at'     => $review->created_at,
+            ])->values()->all()),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

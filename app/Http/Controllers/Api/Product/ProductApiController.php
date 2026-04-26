@@ -236,6 +236,8 @@ class ProductApiController extends Controller
                     'variants.attributes.attribute:id,title,slug',
                     'variants.attributes.attributeValue:id,title,swatche_value',
                     'variants.storeProductVariants.store:id,name,slug,state_code,state_name',
+                    'faqs',
+                    'reviews' => fn($q) => $q->where('status', 'approved')->with('user:id,name'),
                 ])
                 ->first();
 

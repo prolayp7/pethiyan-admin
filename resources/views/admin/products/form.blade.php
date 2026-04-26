@@ -375,7 +375,7 @@
                             <x-filepond_image name="main_image"
                                 imageUrl="{{ $product->main_image ?? '' }}"
                                 data-model-id="{{ $product->id ?? '' }}"
-                                data-media-id="{{ optional($product->getFirstMedia(\App\Enums\SpatieMediaCollectionName::PRODUCT_MAIN_IMAGE()))->id ?? '' }}"
+                                data-media-id="{{ optional($product?->getFirstMedia(\App\Enums\SpatieMediaCollectionName::PRODUCT_MAIN_IMAGE()))->id ?? '' }}"
                                 data-collection="{{ \App\Enums\SpatieMediaCollectionName::PRODUCT_MAIN_IMAGE->value }}"/>
                             <small class="form-hint">Recommended: 1200 x 1200 px. Max upload size: 2 MB.</small>
                         </div>

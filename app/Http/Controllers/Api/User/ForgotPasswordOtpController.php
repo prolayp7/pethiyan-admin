@@ -54,7 +54,7 @@ class ForgotPasswordOtpController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'labels.email_or_mobile_required', []);
         }
 
-        $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 10);
+        $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 5);
         $otp        = $this->smsDemoMode ? '123456' : $this->generateOtp();
 
         // Find user — silently ignore if not found (prevent enumeration)

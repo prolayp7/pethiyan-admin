@@ -91,7 +91,7 @@ class OtpAuthController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'labels.otp_channel_not_enabled', []);
         }
 
-        $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 10);
+        $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 5);
         $otp        = $this->smsDemoMode ? '123456' : $this->generateOtp();
 
         if (!empty($mobile)) {
@@ -325,7 +325,7 @@ class OtpAuthController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'labels.otp_channel_not_enabled', []);
         }
 
-        $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 10);
+        $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 5);
         $otp        = $this->smsDemoMode ? '123456' : $this->generateOtp();
 
         if (!empty($mobile)) {

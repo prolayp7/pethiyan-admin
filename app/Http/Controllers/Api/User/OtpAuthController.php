@@ -79,18 +79,6 @@ class OtpAuthController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'labels.mobile_or_email_required', []);
         }
 
-        if (!empty($mobile) && !$this->smsEnabled && !$this->smsDemoMode) {
-            $mobile = null;
-        }
-
-        if (!empty($email) && !$this->emailOtpEnabled) {
-            $email = null;
-        }
-
-        if (empty($mobile) && empty($email)) {
-            return ApiResponseType::sendJsonResponse(false, 'labels.otp_channel_not_enabled', []);
-        }
-
         // Reject if no account matches the provided identifier
         if (!empty($mobile) && !User::where('mobile', $mobile)->exists()) {
             return ApiResponseType::sendJsonResponse(false, 'Mobile number not found. Please check and try again.', []);
@@ -99,15 +87,26 @@ class OtpAuthController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'Email address not found. Please check and try again.', []);
         }
 
+        // OTP always goes to email — resolve email from mobile when needed
+        if (!empty($mobile) && empty($email)) {
+            $user  = User::where('mobile', $mobile)->first();
+            $email = $user?->email;
+            if (empty($email)) {
+                return ApiResponseType::sendJsonResponse(false, 'No email address is linked to this mobile number. Please contact support.', []);
+            }
+        }
+
+        if (!$this->emailOtpEnabled && !$this->emailDemoMode) {
+            return ApiResponseType::sendJsonResponse(false, 'labels.otp_channel_not_enabled', []);
+        }
+
         $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 5);
-        $otp        = $this->smsDemoMode ? '123456' : $this->generateOtp();
+        $otp        = $this->emailDemoMode ? '123456' : $this->generateOtp();
 
         if (!empty($mobile)) {
             OtpVerification::invalidatePrevious($mobile, $countryCode);
         }
-        if (!empty($email)) {
-            OtpVerification::invalidatePreviousByEmail($email);
-        }
+        OtpVerification::invalidatePreviousByEmail($email);
 
         OtpVerification::create([
             'mobile'       => $mobile ?: '',
@@ -118,51 +117,37 @@ class OtpAuthController extends Controller
             'attempts'     => 0,
         ]);
 
-        $smsOtpSent   = false;
         $emailOtpSent = false;
 
-        if (!empty($mobile)) {
-            if ($this->smsDemoMode) {
-                $smsOtpSent = true;
-            } else {
-                try {
-                    $smsOtpSent = $this->smsService->sendOtp($mobile, $countryCode, $otp);
-                } catch (\Throwable $th) {
-                    Log::error('[OtpAuth] SMS send failed: ' . $th->getMessage());
-                }
+        if ($this->emailDemoMode) {
+            Log::info('[OtpAuth] Email demo OTP generated.', ['email' => $email, 'otp' => $otp]);
+            $emailOtpSent = true;
+        } else {
+            try {
+                $user         = User::where('email', $email)->first();
+                $name         = $user?->name ?? 'User';
+                $emailOtpSent = app(EmailService::class)->send(
+                    new LoginOtpMail($name, $otp, $expiryMins),
+                    $email,
+                    $name
+                );
+            } catch (\Throwable $th) {
+                Log::error('[OtpAuth] Email OTP send failed: ' . $th->getMessage());
             }
         }
 
-        if (!empty($email)) {
-            if ($this->emailDemoMode) {
-                Log::info('[OtpAuth] Email demo OTP generated.', ['email' => $email, 'otp' => $otp]);
-                $emailOtpSent = true;
-            } else {
-                try {
-                    $user         = User::where('email', $email)->first();
-                    $name         = $user?->name ?? 'User';
-                    $emailOtpSent = app(EmailService::class)->send(
-                        new LoginOtpMail($name, $otp, $expiryMins),
-                        $email,
-                        $name
-                    );
-                } catch (\Throwable $th) {
-                    Log::error('[OtpAuth] Email OTP send failed: ' . $th->getMessage());
-                }
-            }
-        }
-
-        if (!$smsOtpSent && !$emailOtpSent && !$this->smsDemoMode && !$this->emailDemoMode) {
+        if (!$emailOtpSent && !$this->emailDemoMode) {
             return ApiResponseType::sendJsonResponse(false, 'labels.otp_send_failed', []);
         }
 
         $responseData = [
             'expires_in_minutes' => $expiryMins,
-            'sms_otp_sent'       => $smsOtpSent,
-            'email_otp_sent'     => $emailOtpSent,
+            'sms_otp_sent'       => false,
+            'email_otp_sent'     => true,
+            'email_sent_to'      => $email,
         ];
 
-        if ($this->smsDemoMode) {
+        if ($this->emailDemoMode) {
             $responseData['demo_mode'] = true;
             $responseData['demo_otp']  = $otp;
         }
@@ -322,26 +307,26 @@ class OtpAuthController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'labels.mobile_or_email_required', []);
         }
 
-        if (!empty($mobile) && !$this->smsEnabled && !$this->smsDemoMode) {
-            $mobile = null;
-        }
-        if (!empty($email) && !$this->emailOtpEnabled) {
-            $email = null;
+        // OTP always goes to email — resolve email from mobile when needed
+        if (!empty($mobile) && empty($email)) {
+            $user  = User::where('mobile', $mobile)->first();
+            $email = $user?->email;
+            if (empty($email)) {
+                return ApiResponseType::sendJsonResponse(false, 'No email address is linked to this mobile number. Please contact support.', []);
+            }
         }
 
-        if (empty($mobile) && empty($email)) {
+        if (!$this->emailOtpEnabled && !$this->emailDemoMode) {
             return ApiResponseType::sendJsonResponse(false, 'labels.otp_channel_not_enabled', []);
         }
 
         $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 5);
-        $otp        = $this->smsDemoMode ? '123456' : $this->generateOtp();
+        $otp        = $this->emailDemoMode ? '123456' : $this->generateOtp();
 
         if (!empty($mobile)) {
             OtpVerification::invalidatePrevious($mobile, $countryCode);
         }
-        if (!empty($email)) {
-            OtpVerification::invalidatePreviousByEmail($email);
-        }
+        OtpVerification::invalidatePreviousByEmail($email);
 
         OtpVerification::create([
             'mobile'       => $mobile ?: '',
@@ -352,47 +337,33 @@ class OtpAuthController extends Controller
             'attempts'     => 0,
         ]);
 
-        $smsOtpSent   = false;
         $emailOtpSent = false;
 
-        if (!empty($mobile)) {
-            if ($this->smsDemoMode) {
-                $smsOtpSent = true;
-            } else {
-                try {
-                    $smsOtpSent = $this->smsService->sendOtp($mobile, $countryCode, $otp);
-                } catch (\Throwable $th) {
-                    Log::error('[OtpAuth] SMS resend failed: ' . $th->getMessage());
-                }
-            }
-        }
-
-        if (!empty($email)) {
-            if ($this->emailDemoMode) {
-                Log::info('[OtpAuth] Email demo OTP resent.', ['email' => $email, 'otp' => $otp]);
-                $emailOtpSent = true;
-            } else {
-                try {
-                    $user         = User::where('email', $email)->first();
-                    $name         = $user?->name ?? 'User';
-                    $emailOtpSent = app(EmailService::class)->send(
-                        new LoginOtpMail($name, $otp, $expiryMins),
-                        $email,
-                        $name
-                    );
-                } catch (\Throwable $th) {
-                    Log::error('[OtpAuth] Email OTP resend failed: ' . $th->getMessage());
-                }
+        if ($this->emailDemoMode) {
+            Log::info('[OtpAuth] Email demo OTP resent.', ['email' => $email, 'otp' => $otp]);
+            $emailOtpSent = true;
+        } else {
+            try {
+                $user         = User::where('email', $email)->first();
+                $name         = $user?->name ?? 'User';
+                $emailOtpSent = app(EmailService::class)->send(
+                    new LoginOtpMail($name, $otp, $expiryMins),
+                    $email,
+                    $name
+                );
+            } catch (\Throwable $th) {
+                Log::error('[OtpAuth] Email OTP resend failed: ' . $th->getMessage());
             }
         }
 
         $responseData = [
             'expires_in_minutes' => $expiryMins,
-            'sms_otp_sent'       => $smsOtpSent,
-            'email_otp_sent'     => $emailOtpSent,
+            'sms_otp_sent'       => false,
+            'email_otp_sent'     => true,
+            'email_sent_to'      => $email,
         ];
 
-        if ($this->smsDemoMode) {
+        if ($this->emailDemoMode) {
             $responseData['demo_mode'] = true;
             $responseData['demo_otp']  = $otp;
         }

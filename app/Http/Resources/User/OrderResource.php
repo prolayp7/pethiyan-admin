@@ -119,6 +119,21 @@ class OrderResource extends JsonResource
             'tracking_code' => $this->tracking_code ?? '',
 
             // Relationships
+            'management_history' => $this->when(
+                $this->relationLoaded('managementHistories'),
+                fn() => $this->managementHistories
+                    ->filter(fn($h) => !empty($h->changed_fields))
+                    ->map(fn($h) => [
+                        'changed_fields'          => $h->changed_fields,
+                        'previous_status'         => $h->previous_status,
+                        'new_status'              => $h->new_status,
+                        'previous_payment_status' => $h->previous_payment_status,
+                        'new_payment_status'      => $h->new_payment_status,
+                        'tracking_code'           => in_array('tracking_code', $h->changed_fields) ? $h->tracking_code : null,
+                        'created_at'              => $h->created_at?->format('Y-m-d H:i:s'),
+                    ])
+                    ->values()
+            ),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'seller_feedbacks' => OrderSellerFeedbackResource::collection($this->whenLoaded('sellerOrders')),
             'promo_line' => $this->whenLoaded('promoLine', fn() => new PromoLineResource($this->promoLine)),

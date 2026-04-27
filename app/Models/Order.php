@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Order\OrderStatusEnum;
 use App\Enums\PaymentStatusEnum;
 use App\Services\WalletService;
+use App\Models\OrderManagementHistory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -148,6 +149,11 @@ class Order extends Model
     public function promoLine(): HasOne
     {
         return $this->hasOne(OrderPromoLine::class);
+    }
+
+    public function managementHistories(): HasMany
+    {
+        return $this->hasMany(OrderManagementHistory::class)->orderByDesc('id');
     }
 
     public function getOrderNumberAttribute(): string

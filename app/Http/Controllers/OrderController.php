@@ -532,6 +532,7 @@ class OrderController extends Controller
                 'items.store',
                 'promoLine',
                 'paymentTransactions' => fn($query) => $query->latest()->with(['settlements', 'order']),
+                'managementHistories.adminUser',
             ])
                 ->findOrFail($id);
         }
@@ -542,6 +543,7 @@ class OrderController extends Controller
 
         return view($this->panelView('orders.show'), [
             'order' => $orderData->toArray(request()),
+            'managementHistories' => $order->managementHistories ?? collect(),
             'canManageOrder' => $this->canManageAdminOrder(),
             'orderStatusOptions' => $adminOrderStatusOptions,
             'paymentStatusOptions' => PaymentStatusEnum::values(),

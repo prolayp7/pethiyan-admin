@@ -963,7 +963,7 @@ class OrderService
         try {
             $order = Order::where('user_id', $user->id)
                 ->where('slug', $orderSlug)
-                ->with(['items.product', 'items.variant', 'items.store', 'sellerFeedbacks', 'sellerOrders', 'items.returns', 'promoLine'])
+                ->with(['items.product', 'items.variant', 'items.store', 'sellerFeedbacks', 'sellerOrders', 'items.returns', 'promoLine', 'managementHistories'])
                 ->first();
 
             if (!$order) {
@@ -1252,6 +1252,25 @@ class OrderService
                 'payment_status' => $newPaymentStatus,
                 'admin_note' => $incomingAdminNote !== '' ? $incomingAdminNote : null,
                 'tracking_code' => $incomingTrackingCode !== '' ? $incomingTrackingCode : null,
+            ]);
+
+            // Record history for every save (captures what actually changed)
+            $changedFields = [];
+            if ($data['status'] !== $currentStatus) $changedFields[] = 'status';
+            if ($newPaymentStatus !== $currentPaymentStatus) $changedFields[] = 'payment_status';
+            if ($incomingAdminNote !== $currentAdminNote) $changedFields[] = 'admin_note';
+            if ($incomingTrackingCode !== $currentTrackingCode) $changedFields[] = 'tracking_code';
+
+            \App\Models\OrderManagementHistory::create([
+                'order_id'                => $order->id,
+                'admin_user_id'           => $adminUserId,
+                'previous_status'         => $currentStatus,
+                'new_status'              => $data['status'],
+                'previous_payment_status' => $currentPaymentStatus,
+                'new_payment_status'      => $newPaymentStatus,
+                'tracking_code'           => $incomingTrackingCode !== '' ? $incomingTrackingCode : null,
+                'admin_note'              => $incomingAdminNote !== '' ? $incomingAdminNote : null,
+                'changed_fields'          => $changedFields,
             ]);
 
             $this->syncOrderItemsStatusForAdmin($order, $data['status']);

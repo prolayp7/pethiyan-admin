@@ -181,6 +181,71 @@
                                 </div>
                             </div>
                         @endif
+
+                        @if($managementHistories->isNotEmpty())
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h3 class="card-title">Order Management History</h3>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="timeline px-3 py-2">
+                                        @foreach($managementHistories as $history)
+                                            <div class="timeline-event">
+                                                <div class="timeline-event-icon bg-primary-lt text-primary">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                                </div>
+                                                <div class="timeline-event-card card">
+                                                    <div class="card-body py-2 px-3">
+                                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                                            <small class="text-muted">
+                                                                {{ $history->created_at->format('d M Y, h:i A') }}
+                                                                @if($history->adminUser)
+                                                                    &mdash; by <strong>{{ $history->adminUser->name }}</strong>
+                                                                @endif
+                                                            </small>
+                                                        </div>
+                                                        <div class="d-flex flex-wrap gap-2 mt-1">
+                                                            @if(in_array('status', $history->changed_fields ?? []))
+                                                                <span class="badge bg-blue-lt">
+                                                                    Status: <span class="text-capitalize">{{ Str::replace('_', ' ', $history->previous_status) }}</span>
+                                                                    &rarr; <span class="text-capitalize">{{ Str::replace('_', ' ', $history->new_status) }}</span>
+                                                                </span>
+                                                            @endif
+                                                            @if(in_array('payment_status', $history->changed_fields ?? []))
+                                                                <span class="badge bg-green-lt">
+                                                                    Payment: <span class="text-capitalize">{{ Str::replace('_', ' ', $history->previous_payment_status) }}</span>
+                                                                    &rarr; <span class="text-capitalize">{{ Str::replace('_', ' ', $history->new_payment_status) }}</span>
+                                                                </span>
+                                                            @endif
+                                                            @if(in_array('tracking_code', $history->changed_fields ?? []))
+                                                                <span class="badge bg-cyan-lt">
+                                                                    Tracking updated
+                                                                    @if($history->tracking_code)
+                                                                        : {{ $history->tracking_code }}
+                                                                    @endif
+                                                                </span>
+                                                            @endif
+                                                            @if(in_array('admin_note', $history->changed_fields ?? []))
+                                                                <span class="badge bg-yellow-lt">
+                                                                    Note updated
+                                                                    @if($history->admin_note)
+                                                                        : {{ Str::limit($history->admin_note, 60) }}
+                                                                    @endif
+                                                                </span>
+                                                            @endif
+                                                            @if(empty($history->changed_fields))
+                                                                <span class="badge bg-muted-lt">No field changes</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
                         @if(!empty($order['order_note']))
                             <div class="card mt-3">
                                 <div class="card-header">

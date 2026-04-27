@@ -17,22 +17,24 @@ class ReviewController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'rating' => 'required|integer|min:1|max:5',
-            'title' => 'required|string|max:255',
-            'comment' => 'nullable|string|max:1000',
+            'product_id'    => 'required|exists:products,id',
+            'rating'        => 'required|integer|min:1|max:5',
+            'title'         => 'required|string|max:255',
+            'comment'       => 'nullable|string|max:1000',
+            'reviewer_name' => 'nullable|string|max:100',
         ]);
 
         $review = Review::create([
-            'user_id' => null,
-            'product_id' => $data['product_id'],
-            'order_id' => null,
+            'user_id'       => null,
+            'reviewer_name' => $data['reviewer_name'] ?? null,
+            'product_id'    => $data['product_id'],
+            'order_id'      => null,
             'order_item_id' => null,
-            'store_id' => null,
-            'rating' => $data['rating'],
-            'title' => $data['title'],
-            'comment' => $data['comment'] ?? null,
-            'status' => 'approved',
+            'store_id'      => null,
+            'rating'        => $data['rating'],
+            'title'         => $data['title'],
+            'comment'       => $data['comment'] ?? null,
+            'status'        => 'approved',
         ]);
 
         return redirect()->back()->with('success', __('labels.review_added_successfully'));

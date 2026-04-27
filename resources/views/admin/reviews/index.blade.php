@@ -38,6 +38,11 @@
                             @csrf
                             <div class="row g-3">
                                 <div class="col-md-4">
+                                    <label class="form-label">Customer Name</label>
+                                    <input name="reviewer_name" class="form-control"
+                                           value="{{ old('reviewer_name') }}" placeholder="e.g. John D." maxlength="100" />
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label">Product <span class="text-danger">*</span></label>
                                     <select id="product-search" name="product_id"
                                             class="form-select @error('product_id') is-invalid @enderror"
@@ -144,6 +149,8 @@
                                                     </span>
                                                     {{ $r->user->name }}
                                                 </div>
+                                            @elseif($r->reviewer_name)
+                                                <span>{{ $r->reviewer_name }}</span>
                                             @else
                                                 <span class="text-muted">Anonymous</span>
                                             @endif

@@ -16,6 +16,7 @@ class Review extends Model implements HasMedia
     protected $appends = ['review_images'];
     protected $fillable = [
         'user_id',
+        'reviewer_name',
         'product_id',
         'order_id',
         'order_item_id',

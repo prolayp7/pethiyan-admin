@@ -76,7 +76,7 @@ class SystemSettingType implements SettingInterface
         return [
             'appName' => ['required', 'max:100'],
             'sellerSupportEmail' => ['nullable', 'email', 'max:255'],
-            'sellerSupportNumber' => ['nullable', 'regex:/^\+?[1-9]\d{1,14}$/'],
+            'sellerSupportNumber' => ['nullable', 'regex:/^\+?[\d\s\-\(\)]{7,20}$/'],
             'systemTimezone' => ['required'],
             'copyrightDetails' => ['required', 'max:255'],
             // Optional on update: validate only when a new file is uploaded.

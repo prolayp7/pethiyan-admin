@@ -209,8 +209,8 @@
                 @if(!empty($systemSettings['sellerSupportNumber']))
                     Phone: {{ $systemSettings['sellerSupportNumber'] }}<br>
                 @endif
-                @if(!empty($systemSettings['gstin'] ?? null))
-                    <strong>GSTIN:</strong> {{ $systemSettings['gstin'] }}
+                @if(!empty($systemSettings['companyGstin'] ?? null))
+                    <strong>GSTIN:</strong> {{ $systemSettings['companyGstin'] }}
                 @endif
             </td>
 

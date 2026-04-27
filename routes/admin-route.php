@@ -263,6 +263,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/', [\App\Http\Controllers\ReviewController::class, 'store'])->name('store');
             Route::post('/{id}/approve', [\App\Http\Controllers\ReviewController::class, 'approve'])->name('approve');
             Route::post('/{id}/reject', [\App\Http\Controllers\ReviewController::class, 'reject'])->name('reject');
+            Route::delete('/{id}', [\App\Http\Controllers\ReviewController::class, 'destroy'])->name('destroy');
         });
 
         // stores list (used by product form pricing section)

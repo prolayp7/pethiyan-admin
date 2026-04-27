@@ -55,4 +55,12 @@ class ReviewController extends Controller
         $review->save();
         return redirect()->back()->with('success', __('labels.review_updated_successfully'));
     }
+
+    public function destroy(int $id)
+    {
+        $review = Review::find($id);
+        if (!$review) return redirect()->back()->with('error', __('labels.review_not_found'));
+        $review->delete();
+        return redirect()->back()->with('success', 'Review deleted successfully.');
+    }
 }

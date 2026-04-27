@@ -91,6 +91,14 @@ class OtpAuthController extends Controller
             return ApiResponseType::sendJsonResponse(false, 'labels.otp_channel_not_enabled', []);
         }
 
+        // Reject if no account matches the provided identifier
+        if (!empty($mobile) && !User::where('mobile', $mobile)->exists()) {
+            return ApiResponseType::sendJsonResponse(false, 'Mobile number not found. Please check and try again.', []);
+        }
+        if (!empty($email) && !User::where('email', $email)->exists()) {
+            return ApiResponseType::sendJsonResponse(false, 'Email address not found. Please check and try again.', []);
+        }
+
         $expiryMins = (int)($this->smsConfig['otp_expiry_minutes'] ?? 5);
         $otp        = $this->smsDemoMode ? '123456' : $this->generateOtp();
 

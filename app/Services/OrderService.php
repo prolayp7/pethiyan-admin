@@ -1300,15 +1300,23 @@ class OrderService
                 DB::afterCommit(function () use ($order, $currentStatus, $currentPaymentStatus) {
                     $customer = $order->user;
 
-                    if (!$customer?->email) {
-                        return;
+                    if ($customer?->email) {
+                        $this->emailService->send(
+                            new AdminOrderManagementUpdatedMail($order, $currentStatus, $currentPaymentStatus),
+                            $customer->email,
+                            $customer->name
+                        );
                     }
 
-                    $this->emailService->send(
-                        new AdminOrderManagementUpdatedMail($order, $currentStatus, $currentPaymentStatus),
-                        $customer->email,
-                        $customer->name
-                    );
+                    $systemSettings     = app(SettingService::class)->getSettingByVariable(SettingTypeEnum::SYSTEM())?->value ?? [];
+                    $sellerSupportEmail = trim($systemSettings['sellerSupportEmail'] ?? '');
+                    if ($sellerSupportEmail) {
+                        $this->emailService->send(
+                            new AdminOrderManagementUpdatedMail($order, $currentStatus, $currentPaymentStatus),
+                            $sellerSupportEmail,
+                            'Seller Support'
+                        );
+                    }
                 });
             }
 

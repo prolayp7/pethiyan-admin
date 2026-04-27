@@ -2,10 +2,12 @@
 
 namespace App\Listeners\Order;
 
+use App\Enums\SettingTypeEnum;
 use App\Events\Order\OrderPlaced;
 use App\Mail\NewSellerOrderMail;
 use App\Mail\OrderPlacedMail;
 use App\Services\EmailService;
+use App\Services\SettingService;
 use Illuminate\Support\Facades\Log;
 
 class SendOrderPlacedEmail
@@ -20,6 +22,9 @@ class SendOrderPlacedEmail
             'sellerOrders.seller.user',
             'sellerOrders.items.orderItem.product',
         ]);
+
+        $systemSettings    = app(SettingService::class)->getSettingByVariable(SettingTypeEnum::SYSTEM())?->value ?? [];
+        $sellerSupportEmail = trim($systemSettings['sellerSupportEmail'] ?? '');
 
         // Email customer
         $customer = $order->user;
@@ -44,6 +49,15 @@ class SendOrderPlacedEmail
                 } catch (\Throwable $e) {
                     Log::error('[SendOrderPlacedEmail] Seller email failed: ' . $e->getMessage());
                 }
+            }
+        }
+
+        // Email seller support address (configured in system settings)
+        if ($sellerSupportEmail) {
+            try {
+                $this->emailService->send(new OrderPlacedMail($order), $sellerSupportEmail, 'Seller Support');
+            } catch (\Throwable $e) {
+                Log::error('[SendOrderPlacedEmail] Seller support email failed: ' . $e->getMessage());
             }
         }
     }

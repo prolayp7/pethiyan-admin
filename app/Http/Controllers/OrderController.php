@@ -50,7 +50,7 @@ class OrderController extends Controller
         'collected' => 'Order Collected',
         'cancelled' => 'Order Cancelled',
         'failed' => 'Order Failed',
-        'delivered' => 'Order Completed',
+        'delivered' => 'Order Dispatched',
     ];
 
     public bool $editPermission = false;

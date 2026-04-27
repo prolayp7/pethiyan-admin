@@ -323,7 +323,7 @@
                                                 <option value="collected" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'collected' ? 'selected' : '' }}>Order Collected</option>
                                                 <option value="cancelled" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'cancelled' ? 'selected' : '' }}>Order Cancelled</option>
                                                 <option value="failed" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'failed' ? 'selected' : '' }}>Order Failed</option>
-                                                <option value="delivered" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'delivered' ? 'selected' : '' }}>Order Completed</option>
+                                                <option value="delivered" {{ ($settings['customerInvoiceDownloadMinStatus'] ?? '') === 'delivered' ? 'selected' : '' }}>Order Dispatched</option>
                                             </select>
                                             <small class="form-hint">Choose the minimum order status after which customers can download invoices.</small>
                                         </div>

@@ -44,7 +44,23 @@
     $customerName = $order->user?->name ?? $order->shipping_name ?? $order->billing_name ?? 'Valued Customer';
     $orderIdentifier = $order->order_number ?: $order->slug ?: $order->id;
 
+    $statusLabels = [
+        'awaiting_store_response' => 'Awaiting Store Response',
+        'accepted_by_seller'      => 'Order Accepted',
+        'preparing'               => 'Order Start Packing',
+        'ready_for_pickup'        => 'Order Packing Done',
+        'assigned'                => 'Order Ready for Pickup',
+        'collected'               => 'Order Collected',
+        'out_for_delivery'        => 'Out for Delivery',
+        'shipped'                 => 'Shipped',
+        'delivered'               => 'Dispatched',
+        'cancelled'               => 'Order Cancelled',
+        'failed'                  => 'Order Failed',
+        'rejected_by_seller'      => 'Rejected',
+    ];
+
     $statusValue = strtolower((string) $order->status);
+    $statusDisplayLabel = $statusLabels[$statusValue] ?? \Illuminate\Support\Str::headline((string) $order->status);
     $orderStatusBadge = match(true) {
         in_array($statusValue, ['confirmed', 'accepted', 'accepted_by_seller']) => 'badge-blue',
         in_array($statusValue, ['preparing', 'ready_for_pickup', 'assigned', 'collected', 'out_for_delivery', 'shipped']) => 'badge-orange',
@@ -129,7 +145,7 @@
                                     <strong>Order Date</strong>: {{ $order->created_at?->format('d M Y, h:i A') }}<br>
                                     <strong>Order Status</strong>:&nbsp;
                                         <span class="{{ $orderStatusBadge }}">
-                                            {{ \Illuminate\Support\Str::headline((string) $order->status) }}
+                                            {{ $statusDisplayLabel }}
                                         </span><br>
                                     <strong>Payment Status</strong>:&nbsp;
                                         <span class="{{ $paymentStatusBadge }}">

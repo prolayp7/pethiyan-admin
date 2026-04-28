@@ -130,6 +130,7 @@ class OrderResource extends JsonResource
                         'previous_payment_status' => $h->previous_payment_status,
                         'new_payment_status'      => $h->new_payment_status,
                         'tracking_code'           => in_array('tracking_code', $h->changed_fields) ? $h->tracking_code : null,
+                        'admin_note'              => in_array('admin_note', $h->changed_fields) ? $h->admin_note : null,
                         'created_at'              => $h->created_at?->format('Y-m-d H:i:s'),
                     ])
                     ->values()

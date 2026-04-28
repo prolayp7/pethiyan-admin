@@ -428,7 +428,7 @@ class OrderApiController extends Controller
                     $q->orWhere('id', $orderId);
                 }
             })
-            ->with(['items.product', 'items.variant'])
+            ->with(['items.product', 'items.variant', 'managementHistories'])
             ->first();
 
         if (!$order) {

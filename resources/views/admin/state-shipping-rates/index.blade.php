@@ -46,6 +46,12 @@ $breadcrumbs = [
         <div class="card mb-4">
             <div class="card-header">
                 <h4 class="card-title">Delivery Partners</h4>
+                <div class="card-options">
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addPartnerModal">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Partner
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -54,12 +60,12 @@ $breadcrumbs = [
                             <tr>
                                 <th>Partner</th>
                                 <th>Status</th>
-                                <th class="text-end">Toggle</th>
+                                <th class="text-end">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="partnersTableBody">
                             @forelse($partners as $partner)
-                                <tr>
+                                <tr data-partner-id="{{ $partner->id }}">
                                     <td>{{ $partner->name }}</td>
                                     <td>
                                         @if($partner->is_active)
@@ -69,14 +75,27 @@ $breadcrumbs = [
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        <label class="form-check form-switch m-0 d-inline-block">
-                                            <input
-                                                class="form-check-input js-partner-toggle"
-                                                type="checkbox"
+                                        <div class="d-flex align-items-center justify-content-end gap-2">
+                                            <button
+                                                class="btn btn-sm btn-outline-secondary btn-edit-partner"
                                                 data-id="{{ $partner->id }}"
-                                                @checked($partner->is_active)
-                                            >
-                                        </label>
+                                                data-name="{{ $partner->name }}"
+                                                data-active="{{ $partner->is_active ? '1' : '0' }}"
+                                            >Edit</button>
+                                            <button
+                                                class="btn btn-sm btn-outline-danger btn-delete-partner"
+                                                data-id="{{ $partner->id }}"
+                                                data-name="{{ $partner->name }}"
+                                            >Delete</button>
+                                            <label class="form-check form-switch m-0 d-inline-block">
+                                                <input
+                                                    class="form-check-input js-partner-toggle"
+                                                    type="checkbox"
+                                                    data-id="{{ $partner->id }}"
+                                                    @checked($partner->is_active)
+                                                >
+                                            </label>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -149,6 +168,68 @@ $breadcrumbs = [
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Tariff</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- ====================== ADD PARTNER MODAL ====================== --}}
+<div class="modal modal-blur fade" id="addPartnerModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Delivery Partner</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addPartnerForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Partner Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Bluedart" required maxlength="100">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-check form-switch">
+                            <input type="checkbox" name="is_active" class="form-check-input" value="1" checked>
+                            <span class="form-check-label">Active</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Partner</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- ====================== EDIT PARTNER MODAL ====================== --}}
+<div class="modal modal-blur fade" id="editPartnerModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Delivery Partner</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editPartnerForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label required">Partner Name</label>
+                        <input type="text" name="name" class="form-control" required maxlength="100">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-check form-switch">
+                            <input type="checkbox" name="is_active" class="form-check-input" value="1">
+                            <span class="form-check-label">Active</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Partner</button>
                 </div>
             </form>
         </div>
@@ -262,6 +343,74 @@ document.querySelectorAll('.form-submit').forEach(form => {
             });
     });
 });
+// ---- Add Partner ----
+document.getElementById('addPartnerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = this;
+    const data = new FormData(form);
+    fetch('{{ route('admin.state-shipping-rates.partners.store') }}', {
+        method: 'POST',
+        body: data,
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addPartnerModal'))?.hide();
+            form.reset();
+            location.reload();
+        } else {
+            alert(res.message || 'Failed to create partner.');
+        }
+    });
+});
+
+// ---- Open Edit Partner modal ----
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-edit-partner');
+    if (!btn) return;
+    const form = document.getElementById('editPartnerForm');
+    form.querySelector('[name="name"]').value = btn.dataset.name;
+    form.querySelector('[name="is_active"]').checked = btn.dataset.active === '1';
+    form._partnerId = btn.dataset.id;
+    new bootstrap.Modal(document.getElementById('editPartnerModal')).show();
+});
+
+// ---- Submit Edit Partner ----
+document.getElementById('editPartnerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = this;
+    const id = form._partnerId;
+    const data = new FormData(form);
+    fetch(`/admin/state-shipping-rates/partners/${id}/update`, {
+        method: 'POST',
+        body: data,
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editPartnerModal'))?.hide();
+            location.reload();
+        } else {
+            alert(res.message || 'Failed to update partner.');
+        }
+    });
+});
+
+// ---- Delete Partner ----
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-delete-partner');
+    if (!btn) return;
+    if (!confirm(`Delete delivery partner "${btn.dataset.name}"? This will also delete all its shipping tariffs.`)) return;
+    fetch(`/admin/state-shipping-rates/partners/${btn.dataset.id}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            location.reload();
+        } else {
+            alert(res.message || 'Delete failed.');
+        }
+    });
+});
+
 }); // window load
 </script>
 @endpush

@@ -355,7 +355,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/', [StateShippingRateController::class, 'index'])->name('index');
             Route::post('/', [StateShippingRateController::class, 'store'])->name('store');
             Route::get('/datatable', [StateShippingRateController::class, 'datatable'])->name('datatable');
+            Route::post('/partners', [StateShippingRateController::class, 'storePartner'])->name('partners.store');
             Route::post('/partners/{id}/toggle', [StateShippingRateController::class, 'togglePartnerStatus'])->name('partners.toggle');
+            Route::post('/partners/{id}/update', [StateShippingRateController::class, 'updatePartner'])->name('partners.update');
+            Route::delete('/partners/{id}', [StateShippingRateController::class, 'destroyPartner'])->name('partners.destroy');
             Route::get('/{id}', [StateShippingRateController::class, 'show'])->name('show');
             Route::post('/{id}', [StateShippingRateController::class, 'update'])->name('update');
             Route::delete('/{id}', [StateShippingRateController::class, 'destroy'])->name('delete');

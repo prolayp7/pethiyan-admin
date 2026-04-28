@@ -44,6 +44,48 @@ class StateShippingRateController extends Controller
         return view('admin.state-shipping-rates.index', compact('columns', 'partners', 'zones'));
     }
 
+    public function storePartner(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name'      => 'required|string|max:100|unique:delivery_partners,name',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $slug = \Illuminate\Support\Str::slug($validated['name']);
+        $partner = DeliveryPartner::create([
+            'name'      => $validated['name'],
+            'slug'      => $slug,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return ApiResponseType::sendJsonResponse(true, 'Delivery partner created.', $partner);
+    }
+
+    public function updatePartner(Request $request, int $id): JsonResponse
+    {
+        $partner = DeliveryPartner::findOrFail($id);
+
+        $validated = $request->validate([
+            'name'      => "required|string|max:100|unique:delivery_partners,name,{$id}",
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $partner->update([
+            'name'      => $validated['name'],
+            'slug'      => \Illuminate\Support\Str::slug($validated['name']),
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return ApiResponseType::sendJsonResponse(true, 'Delivery partner updated.', $partner);
+    }
+
+    public function destroyPartner(int $id): JsonResponse
+    {
+        $partner = DeliveryPartner::findOrFail($id);
+        $partner->delete();
+        return ApiResponseType::sendJsonResponse(true, 'Delivery partner deleted.');
+    }
+
     public function togglePartnerStatus(int $id): JsonResponse
     {
         $partner = DeliveryPartner::query()->findOrFail($id);

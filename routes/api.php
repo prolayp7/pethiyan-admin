@@ -260,6 +260,7 @@ Route::prefix('products')->name('products.')->middleware('throttle:60,1')->group
     Route::get('/', [ProductApiController::class, 'getAllProduct']);
     Route::get('/featured', [ProductApiController::class, 'getFeaturedProduct']);
     Route::get('/new-arrivals', [ProductApiController::class, 'getNewArrivals']);
+    Route::get('/best-sellers', [ProductApiController::class, 'getBestSellers']);
     Route::get('/by-ids', [ProductApiController::class, 'getByIds']);
     Route::get('/search-by-keywords', [ProductApiController::class, 'searchByKeywords']);
     Route::get('/store-wise', [ProductApiController::class, 'storeWise']);

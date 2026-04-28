@@ -13,6 +13,7 @@ use App\Enums\Product\ProductStatusEnum;
 use App\Enums\Product\ProductVarificationStatusEnum;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\OrderItem;
 use App\Models\Store;
 use App\Types\Api\ApiResponseType;
 use Dedoc\Scramble\Attributes\Group;
@@ -550,6 +551,105 @@ class ProductApiController extends Controller
             );
         } catch (\Exception $e) {
             Log::error('New arrivals API failed.', ['message' => $e->getMessage()]);
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.error_fetching_products',
+                data: [],
+            );
+        }
+    }
+
+    /**
+     * Get best-selling products ordered by total units sold.
+     */
+    #[QueryParameter('limit', description: 'Maximum number of products to return', type: 'int', default: 40, example: 40)]
+    #[QueryParameter('customer_state_code', description: 'Customer state code for GST calculation', type: 'string', example: 'TN')]
+    public function getBestSellers(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'limit'               => ['nullable', 'integer', 'min:1', 'max:100'],
+                'customer_state_code' => 'nullable|string|max:10',
+            ]);
+
+            $limit = (int) ($validated['limit'] ?? 40);
+
+            // Get product IDs ordered by total quantity sold across all completed orders
+            $topProductIds = OrderItem::query()
+                ->selectRaw('product_id, SUM(quantity) as total_sold')
+                ->whereNotNull('product_id')
+                ->groupBy('product_id')
+                ->orderByDesc('total_sold')
+                ->limit($limit)
+                ->pluck('product_id')
+                ->toArray();
+
+            // Fetch and sort those products, falling back to featured products if no order data
+            if (!empty($topProductIds)) {
+                $products = Product::query()
+                    ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
+                    ->where('status', ProductStatusEnum::ACTIVE->value)
+                    ->whereIn('id', $topProductIds)
+                    ->with([
+                        'category:id,title,slug',
+                        'brand:id,title,slug',
+                        'taxClasses:id,title',
+                        'taxClasses.taxRates:id,title,rate',
+                        'variants' => function ($variantQuery) {
+                            $variantQuery->with([
+                                'attributes.attribute:id,title,slug',
+                                'attributes.attributeValue:id,title,swatche_value',
+                                'storeProductVariants' => function ($spvQuery) {
+                                    $spvQuery->with('store:id,name,slug,state_code,state_name');
+                                },
+                            ]);
+                        },
+                    ])
+                    ->get()
+                    ->sortBy(fn($p) => array_search($p->id, $topProductIds))
+                    ->values()
+                    ->map(fn($product) => new ProductCatalogResource($product));
+            } else {
+                // No order data yet — fall back to featured/newest products
+                $products = Product::query()
+                    ->where('verification_status', ProductVarificationStatusEnum::APPROVED->value)
+                    ->where('status', ProductStatusEnum::ACTIVE->value)
+                    ->with([
+                        'category:id,title,slug',
+                        'brand:id,title,slug',
+                        'taxClasses:id,title',
+                        'taxClasses.taxRates:id,title,rate',
+                        'variants' => function ($variantQuery) {
+                            $variantQuery->with([
+                                'attributes.attribute:id,title,slug',
+                                'attributes.attributeValue:id,title,swatche_value',
+                                'storeProductVariants' => function ($spvQuery) {
+                                    $spvQuery->with('store:id,name,slug,state_code,state_name');
+                                },
+                            ]);
+                        },
+                    ])
+                    ->orderByDesc('featured')
+                    ->orderByDesc('id')
+                    ->limit($limit)
+                    ->get()
+                    ->map(fn($product) => new ProductCatalogResource($product))
+                    ->values();
+            }
+
+            return ApiResponseType::sendJsonResponse(
+                success: true,
+                message: 'labels.product_fetched_successfully',
+                data: $products
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.validation_error',
+                data: $e->errors()
+            );
+        } catch (\Exception $e) {
+            Log::error('Best sellers API failed.', ['message' => $e->getMessage()]);
             return ApiResponseType::sendJsonResponse(
                 success: false,
                 message: 'labels.error_fetching_products',

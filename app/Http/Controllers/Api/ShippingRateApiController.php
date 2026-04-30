@@ -57,7 +57,6 @@ class ShippingRateApiController extends Controller
                 'pincode'        => $pincode,
                 'is_serviceable' => false,
                 'reason'         => $exists ? 'Pincode is not serviceable.' : 'Pincode not found.',
-                'zone'           => null,
                 'delivery_time'  => null,
                 'weight_grams'   => $weightGrams,
                 'rates'          => [],
@@ -72,7 +71,6 @@ class ShippingRateApiController extends Controller
             return ApiResponseType::sendJsonResponse(true, 'Shipping rates fetched.', [
                 'pincode'        => $pincode,
                 'is_serviceable' => true,
-                'zone'           => $zoneCode,
                 'delivery_time'  => $deliveryTime,
                 'weight_grams'   => $weightGrams,
                 'rates'          => [],
@@ -116,7 +114,6 @@ class ShippingRateApiController extends Controller
         return ApiResponseType::sendJsonResponse(true, 'Shipping rates fetched.', [
             'pincode'        => $pincode,
             'is_serviceable' => true,
-            'zone'           => $zoneCode,
             'delivery_time'  => $deliveryTime,
             'weight_grams'   => $weightGrams,
             'rates'          => $rates,

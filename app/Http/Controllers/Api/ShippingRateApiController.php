@@ -66,7 +66,7 @@ class ShippingRateApiController extends Controller
         }
 
         $zoneCode     = $pin->zone_ref_code ?? $pin->zone;
-        $deliveryTime = $pin->delivery_time ?? $pin->zone_ref_delivery_time;
+        $deliveryTime = $pin->zone_ref_delivery_time ?? $pin->delivery_time;
 
         if (!$pin->zone_ref_id) {
             return ApiResponseType::sendJsonResponse(true, 'Shipping rates fetched.', [

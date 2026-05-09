@@ -24,8 +24,27 @@
 <body>
 @php
     $appName = $systemSettings['appName'] ?? config('app.name', 'Pethiyan');
-    $logoUrl = !empty($systemSettings['logo']) ? $systemSettings['logo'] : asset('logos/hyper-local-logo.png');
-    $enquiry = $enquiry ?? null;
+    $logoUrl  = !empty($systemSettings['logo']) ? $systemSettings['logo'] : asset('logos/hyper-local-logo.png');
+
+    // Resolve logo to a local file path so it can be embedded as a CID attachment.
+    // This avoids broken images when APP_URL is localhost or unreachable from email clients.
+    $logoPath = public_path('logos/hyper-local-logo.png');
+    if (!empty($systemSettings['logo'])) {
+        $parsedPath = parse_url($systemSettings['logo'], PHP_URL_PATH);
+        if (is_string($parsedPath) && str_starts_with($parsedPath, '/storage/')) {
+            $candidate = storage_path('app/public/' . ltrim(substr($parsedPath, strlen('/storage/')), '/'));
+            if (is_file($candidate)) {
+                $logoPath = $candidate;
+            }
+        } elseif (is_string($systemSettings['logo']) && str_starts_with($systemSettings['logo'], '/')) {
+            $candidate = public_path(ltrim($systemSettings['logo'], '/'));
+            if (is_file($candidate)) {
+                $logoPath = $candidate;
+            }
+        }
+    }
+
+    $enquiry    = $enquiry ?? null;
     $receivedAt = $enquiry?->created_at?->setTimezone('Asia/Kolkata')?->format('d M Y, h:i A') . ' IST';
 @endphp
 
@@ -39,8 +58,11 @@
             <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
                 <tr>
                     <td>
-                        @if($logoUrl)
-                            <img src="{{ $logoUrl }}" alt="{{ $appName }}" height="40" style="display:block; margin-bottom:12px; max-width:160px;">
+                        @if($logoPath || $logoUrl)
+                            <img src="{{ (isset($message) && is_file($logoPath)) ? $message->embed($logoPath) : $logoUrl }}"
+                                 alt="{{ $appName }}"
+                                 height="40"
+                                 style="display:block; margin-bottom:12px; max-width:160px; border:0;">
                         @endif
                         <div class="title">New Contact Enquiry</div>
                         <div class="sub" style="margin-top:4px;">Received via the Contact Us form</div>

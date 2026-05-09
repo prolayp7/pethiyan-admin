@@ -521,7 +521,7 @@ class OrderService
             'subtotal' => $paymentSummary['items_total'],
             'total_payable' => $paymentSummary['payable_amount'],
             'final_total' => $paymentSummary['order_total'],
-            'status' => ($data['payment_type'] === PaymentTypeEnum::COD()) ? OrderStatusEnum::AWAITING_STORE_RESPONSE() : OrderStatusEnum::PENDING(),
+            'status' => OrderStatusEnum::ACCEPTED_BY_SELLER(),
             // Billing info
             'billing_name' => $user->name,
             'billing_company_name' => $data['address']['company_name'] ?? $user->company_name,
@@ -810,9 +810,7 @@ class OrderService
     private
     function determineOrderItemStatus(Order $order): string
     {
-        return in_array($order->payment_method, [PaymentTypeEnum::WALLET(), PaymentTypeEnum::COD()])
-            ? OrderItemStatusEnum::AWAITING_STORE_RESPONSE()
-            : OrderItemStatusEnum::PENDING();
+        return OrderItemStatusEnum::ACCEPTED();
     }
 
     /**

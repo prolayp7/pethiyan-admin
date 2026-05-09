@@ -95,6 +95,8 @@ class WebSettingResource extends JsonResource
                 'googleAnalyticsId' => $this->value['googleAnalyticsId'] ?? '',
                 'googleTagManagerId' => $this->value['googleTagManagerId'] ?? '',
                 'facebookPixelId' => $this->value['facebookPixelId'] ?? '',
+                'googleAdsId' => $this->value['googleAdsId'] ?? '',
+                'googleAdsBeginCheckoutLabel' => $this->value['googleAdsBeginCheckoutLabel'] ?? '',
                 'footerSeoEnabled' => $this->value['footerSeoEnabled'] ?? true,
                 'footerSeoHomepageOnly' => $this->value['footerSeoHomepageOnly'] ?? false,
                 'footerSeoIntro' => $this->value['footerSeoIntro'] ?? '',

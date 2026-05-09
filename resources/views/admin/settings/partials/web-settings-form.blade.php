@@ -309,6 +309,27 @@
                         value="{{ $settings['facebookPixelId'] ?? '' }}" maxlength="50"/>
                 <small class="form-hint">Found in Meta Events Manager → your pixel → Pixel ID.</small>
             </div>
+            <hr class="my-4">
+            <div class="mb-1">
+                <h5 class="mb-0">Google Ads Conversion Tracking</h5>
+                <small class="text-muted">Required to fire conversion events (e.g. Begin Checkout) to Google Ads.</small>
+            </div>
+            <div class="mb-3 mt-3">
+                <label class="form-label">Google Ads Conversion ID</label>
+                <input type="text" class="form-control" name="googleAdsId" form="web-seo-settings-form"
+                        placeholder="e.g. AW-123456789"
+                        value="{{ $settings['googleAdsId'] ?? '' }}" maxlength="50"/>
+                <small class="form-hint">Found in Google Ads → Tools → Conversions → Google tag → Tag ID. Format: <code>AW-XXXXXXXXX</code>.</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Begin Checkout — Conversion Event Name</label>
+                <input type="text" class="form-control" name="googleAdsBeginCheckoutLabel" form="web-seo-settings-form"
+                        placeholder="e.g. ads_conversion_Begin_checkout_1"
+                        value="{{ $settings['googleAdsBeginCheckoutLabel'] ?? '' }}" maxlength="100"/>
+                <small class="form-hint">
+                    Found in Google Ads → Goals → Conversions → your "Begin checkout" action → <strong>Tag setup → copy the event name</strong> from the snippet, e.g. <code>ads_conversion_Begin_checkout_1</code>.
+                </small>
+            </div>
         </div>
         <div class="card-footer text-end">
             @can('updateSetting', [\App\Models\Setting::class, 'web'])

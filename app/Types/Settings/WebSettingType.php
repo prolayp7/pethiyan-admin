@@ -69,6 +69,8 @@ class WebSettingType implements SettingInterface
     public string $googleAnalyticsId = '';
     public string $googleTagManagerId = '';
     public string $facebookPixelId = '';
+    public string $googleAdsId = '';
+    public string $googleAdsBeginCheckoutLabel = '';
     public bool $footerSeoEnabled = true;
     public bool $footerSeoHomepageOnly = false;
     public string $footerSeoIntro = '';
@@ -150,6 +152,8 @@ class WebSettingType implements SettingInterface
             'googleAnalyticsId' => 'nullable|string|max:50',
             'googleTagManagerId' => 'nullable|string|max:50',
             'facebookPixelId' => 'nullable|string|max:50',
+            'googleAdsId' => 'nullable|string|max:50',
+            'googleAdsBeginCheckoutLabel' => 'nullable|string|max:100',
             'footerSeoEnabled' => 'nullable|boolean',
             'footerSeoHomepageOnly' => 'nullable|boolean',
             'footerSeoIntro' => 'nullable|string',

@@ -22,6 +22,9 @@ class StorageCorsMiddleware
             $response->headers->set('Access-Control-Allow-Origin', '*');
             $response->headers->set('Access-Control-Allow-Methods', 'GET, OPTIONS');
             $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            // Files in /storage/ are served with UUID-based names by Spatie Media Library —
+            // the same filename is never reused for different content, so immutable is safe.
+            $response->headers->set('Cache-Control', 'public, max-age=31536000, immutable');
         }
         return $response;
     }

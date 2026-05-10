@@ -647,14 +647,16 @@ function toggleProductVariantSection() {
             if (simpleSection) simpleSection.innerHTML = '';
         }
 
-        // Only initialize pricing if we're not in edit mode or if pricing data is already loaded
-        if (!window.productData || productPricing) {
-            // Initialize the appropriate pricing container
-            if (isVariant) {
+        // Initialize the appropriate pricing container.
+        // Variant pricing only initializes when data is available (variants drive the table).
+        // Simple pricing initializes immediately from preloaded stores so users don't see a
+        // persistent spinner while waiting for the pricing AJAX response.
+        if (isVariant) {
+            if (!window.productData || productPricing) {
                 initializeVariantPricing();
-            } else {
-                initializeSimplePricing();
             }
+        } else if (isSimple) {
+            initializeSimplePricing();
         }
     } else {
         // Hide all containers if no product type is selected
@@ -2311,7 +2313,7 @@ function fetchProductPricing(productId) {
 // Initialize pricing for simple products
 function initializeSimplePricing() {
     const container = document.getElementById('simplePricingContainer');
-    container.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p>Loading stores...</p></div>';
+    if (!container) return;
 
     // Create accordion container
     const accordionContainer = document.createElement('div');
@@ -2458,6 +2460,11 @@ function initializeSimplePricing() {
         bindSimpleGstPreviewEvents();
         recalculateAllSimpleGstRows();
         initPanIndiaToggles(accordionContainer);
+    }).catch(err => {
+        console.error('Error initializing simple pricing:', err);
+        if (container) {
+            container.innerHTML = '<div class="alert alert-warning m-2">Could not load store pricing. Please refresh the page.</div>';
+        }
     });
 }
 

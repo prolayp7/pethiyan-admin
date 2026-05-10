@@ -400,6 +400,20 @@
     }
 
     // ── Load addresses ────────────────────────────────────────────────────
+    let addressRows = [];
+    const canEditAddr   = {{ $editPermission   ? 'true' : 'false' }};
+    const canDeleteAddr = {{ $deletePermission ? 'true' : 'false' }};
+
+    const editAddrSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    const delAddrSvg  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+
+    function renderAddrActions(id) {
+        const actions = [];
+        if (canEditAddr)   actions.push(`<button type="button" class="btn btn-sm btn-outline-primary edit-address-btn" data-addr-id="${id}" title="{{ __('labels.edit') }}">${editAddrSvg}</button>`);
+        if (canDeleteAddr) actions.push(`<button type="button" class="btn btn-sm btn-outline-danger delete-address-btn" data-address-id="${id}" title="{{ __('labels.delete') }}">${delAddrSvg}</button>`);
+        return `<div class="d-flex gap-1 justify-content-center">${actions.join('')}</div>`;
+    }
+
     function loadAddresses() {
         fetch(`${baseUrl}/addresses`, {
             headers: { 'Accept': 'application/json' },
@@ -407,21 +421,21 @@
         .then(r => r.json())
         .then(res => {
             const body = document.getElementById('addressesBody');
-            const rows = res.data ?? [];
-            document.getElementById('addressCountBadge').textContent = rows.length;
+            addressRows = res.data ?? [];
+            document.getElementById('addressCountBadge').textContent = addressRows.length;
 
-            if (!rows.length) {
+            if (!addressRows.length) {
                 body.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-secondary">{{ __('labels.no_addresses_found') }}</td></tr>`;
                 return;
             }
 
-            body.innerHTML = rows.map((r, i) => `
+            body.innerHTML = addressRows.map((r, i) => `
                 <tr>
                     <td>${i + 1}</td>
                     <td><span class="badge bg-secondary-lt">${r.address_type}</span></td>
                     <td>${r.full_address}</td>
                     <td>${r.mobile}</td>
-                    <td>${r.action}</td>
+                    <td>${(canEditAddr || canDeleteAddr) ? renderAddrActions(r.id) : ''}</td>
                 </tr>
             `).join('');
         });
@@ -444,7 +458,7 @@
         document.getElementById('editStatus').value  = btn.dataset.status ?? '1';
         document.getElementById('editGstin').value   = btn.dataset.gstin  ?? '';
         document.getElementById('editPassword').value = '';
-        new bootstrap.Modal(document.getElementById('editCustomerModal')).show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('editCustomerModal')).show();
     });
 
     document.getElementById('editCustomerForm')?.addEventListener('submit', (e) => {
@@ -496,14 +510,16 @@
     document.addEventListener('click', (e) => {
         const editBtn = e.target.closest('.edit-address-btn');
         if (editBtn) {
-            const addr = JSON.parse(editBtn.dataset.address ?? '{}');
-            openAddressModal(addr);
+            const addrId = parseInt(editBtn.dataset.addrId, 10);
+            const addr   = addressRows.find(r => r.id === addrId);
+            if (addr) openAddressModal(addr);
+            return;
         }
 
         const delBtn = e.target.closest('.delete-address-btn');
         if (delBtn) {
             deleteAddressId = delBtn.dataset.addressId;
-            new bootstrap.Modal(document.getElementById('deleteAddressModal')).show();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('deleteAddressModal')).show();
         }
     });
 
@@ -534,7 +550,7 @@
         document.getElementById('addrMobile').value  = addr?.mobile        ?? '';
         document.getElementById('addrType').value    = addr?.address_type  ?? 'home';
         document.getElementById('addrLandmark').value= addr?.landmark      ?? '';
-        new bootstrap.Modal(document.getElementById('addressModal')).show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('addressModal')).show();
     }
 
     document.getElementById('addressForm')?.addEventListener('submit', (e) => {

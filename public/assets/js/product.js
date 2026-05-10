@@ -508,6 +508,8 @@ if (attributesElement !== null) {
 
 let variants = [], removedVariants = [];
 let productPricing = null;
+let cachedStores = null;
+let storesPromise = null;
 
 // Function to initialize the form in edit mode
 function initializeEditMode() {
@@ -2253,9 +2255,6 @@ function initPanIndiaToggles(container) {
 }
 
 // Fetch stores from the server
-let cachedStores = null; // Store cached result
-let storesPromise = null; // Store the fetch promise for concurrent calls
-
 function fetchStores() {
     // Use server-preloaded stores if available (avoids AJAX latency and failures)
     if (cachedStores !== null) {

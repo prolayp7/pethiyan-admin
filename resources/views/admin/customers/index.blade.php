@@ -440,7 +440,7 @@
                             </div>
                             <div class="d-flex gap-1 flex-shrink-0">
                                 <button type="button" class="btn btn-sm btn-ghost-secondary edit-modal-addr-btn py-0 px-1"
-                                        data-addr='${JSON.stringify(addr).replace(/'/g, "&#39;")}' title="Edit">
+                                        data-addr='${JSON.stringify({id:addr.id,address_type:addr.address_type,address_line1:addr.address_line1,address_line2:addr.address_line2,city:addr.city,state:addr.state,zipcode:addr.zipcode,country:addr.country,mobile:addr.mobile,landmark:addr.landmark}).replace(/'/g, "&#39;")}' title="Edit">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                                          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>

@@ -80,6 +80,8 @@ class SettingController extends Controller
             'googleAnalyticsId',
             'googleTagManagerId',
             'facebookPixelId',
+            'googleAdsId',
+            'googleAdsBeginCheckoutLabel',
         ],
         'footer_seo' => ['footerSeoEnabled', 'footerSeoHomepageOnly', 'footerSeoIntro'],
     ];

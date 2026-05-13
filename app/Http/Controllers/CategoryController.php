@@ -10,6 +10,7 @@ use App\Http\Requests\Category\StoreCategoryRequest;
 use App\Http\Requests\Category\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
+use App\Services\FrontendRevalidateService;
 use App\Services\ImageWebpService;
 use App\Traits\ChecksPermissions;
 use Illuminate\Support\Facades\Storage;
@@ -117,6 +118,8 @@ class CategoryController extends Controller
             $this->handleSeoImageUploads($request, $category);
             $category->refresh();
 
+            FrontendRevalidateService::revalidate(['categories'], ['/category/' . $category->slug]);
+
             return ApiResponseType::sendJsonResponse(
                 success: true,
                 message: 'labels.category_created_successfully',
@@ -212,6 +215,8 @@ class CategoryController extends Controller
             $this->handleSeoImageUploads($request, $category);
             $category->refresh();
 
+            FrontendRevalidateService::revalidate(['categories'], ['/category/' . $category->slug]);
+
             return ApiResponseType::sendJsonResponse(
                 success: true,
                 message: 'labels.category_updated_successfully',
@@ -273,6 +278,9 @@ class CategoryController extends Controller
             $category->clearMediaCollection('background_image');
             $category->children()->update(['parent_id' => null]);
             DB::commit();
+
+            FrontendRevalidateService::revalidate(['categories'], ['/category/' . $category->slug]);
+
             return ApiResponseType::sendJsonResponse(
                 success: true,
                 message: 'labels.category_deleted_successfully',

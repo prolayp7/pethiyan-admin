@@ -63,8 +63,10 @@ class Category extends Model implements HasMedia
     public function setTitleAttribute($value): void
     {
         $this->attributes['title'] = $value;
-        $this->attributes['slug'] = generateUniqueSlug(self::class, $value);
-        $this->attributes['uuid'] = (string)Str::uuid();
+        $this->attributes['slug'] = generateUniqueSlug(model: self::class, title: $value, id: $this->id ?? null);
+        if (empty($this->attributes['uuid'])) {
+            $this->attributes['uuid'] = (string)Str::uuid();
+        }
     }
 
     public function setCommissionAttribute($value): void

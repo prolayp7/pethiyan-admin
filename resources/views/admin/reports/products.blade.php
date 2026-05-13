@@ -88,6 +88,7 @@ $(function () {
     loadData();
     $('#applyFilter').on('click', loadData);
     $('#limitSelect').on('change', loadData);
+    document.addEventListener('reportFilterApply', loadData);
 
     $('#downloadProductsCsv').on('click', function (event) {
         event.preventDefault();

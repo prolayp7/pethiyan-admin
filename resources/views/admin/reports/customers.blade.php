@@ -95,6 +95,7 @@ $(function () {
     $('#dateTo').val(today);
     loadData();
     $('#applyFilter').on('click', loadData);
+    document.addEventListener('reportFilterApply', loadData);
 
     $('#downloadCustomersCsv').on('click', function (event) {
         event.preventDefault();

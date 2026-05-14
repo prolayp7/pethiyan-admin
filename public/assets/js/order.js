@@ -2,6 +2,7 @@ $(document).ready(function () {
 
     const table = $('#orders-table').DataTable();
     let currentOrderId = null;
+    let litepicker = null;
 
     const updateOrderCount = () => {
         if (table.page.info() !== undefined) {
@@ -10,10 +11,72 @@ $(document).ready(function () {
         }
     };
 
-    // Reload table when filters change
-    $('#rangeFilter, #statusFilter, #paymentFilter').on('change', function () {
+    // Helper: read custom date range from litepicker input value
+    function getCustomDates() {
+        const val = $('#customDateRange').val();
+        if (!val || !val.includes(' - ')) return { start: null, end: null };
+        const parts = val.split(' - ');
+        return { start: parts[0] || null, end: parts[1] || null };
+    }
+
+    // Initialize Litepicker for custom date range (admin orders page only)
+    if (document.getElementById('customDateRange')) {
+        const now = new Date();
+        const daysAgo = (n) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - n);
+
+        litepicker = new Litepicker({
+            element: document.getElementById('customDateRange'),
+            singleMode: false,
+            format: 'YYYY-MM-DD',
+            separator: ' - ',
+            numberOfMonths: 2,
+            numberOfColumns: 2,
+            autoApply: true,
+            plugins: ['ranges'],
+            ranges: {
+                position: 'left',
+                customRanges: {
+                    'Last 7 days':   [daysAgo(6),   now],
+                    'Last 30 days':  [daysAgo(29),  now],
+                    'Last 90 days':  [daysAgo(89),  now],
+                    'Last 365 days': [daysAgo(364), now],
+                    'This month':    [new Date(now.getFullYear(), now.getMonth(), 1), now],
+                    'Last month':    [new Date(now.getFullYear(), now.getMonth() - 1, 1),
+                                      new Date(now.getFullYear(), now.getMonth(), 0)],
+                },
+            },
+            setup: (picker) => {
+                picker.on('selected', () => {
+                    // Clear preset dropdown without triggering its change event
+                    $('#rangeFilter').val('');
+                    $('#clearDateRange').show();
+                    table.ajax.reload(updateOrderCount, false);
+                });
+            },
+        });
+    }
+
+    // Clear custom range button
+    $('#clearDateRange').on('click', function () {
+        if (litepicker) litepicker.clearSelection();
+        $('#customDateRange').val('');
+        $(this).hide();
         table.ajax.reload(updateOrderCount, false);
     });
+
+    // Preset dropdown: clear litepicker when a preset is chosen
+    $('#statusFilter, #paymentFilter').on('change', function () {
+        table.ajax.reload(updateOrderCount, false);
+    });
+    $('#rangeFilter').on('change', function () {
+        if ($(this).val()) {
+            if (litepicker) litepicker.clearSelection();
+            $('#customDateRange').val('');
+            $('#clearDateRange').hide();
+        }
+        table.ajax.reload(updateOrderCount, false);
+    });
+
     let promoFilterTimer;
     $('#promoFilter').on('input', function () {
         clearTimeout(promoFilterTimer);
@@ -21,21 +84,42 @@ $(document).ready(function () {
             table.ajax.reload(updateOrderCount, false);
         }, 400);
     });
+
     $('#refresh').on('click', function () {
         table.ajax.reload(updateOrderCount, false);
     });
 
+    $('#exportOrders').on('click', function () {
+        const baseUrl = $(this).data('export-url');
+        const params = new URLSearchParams({
+            range:        $('#rangeFilter').val(),
+            status:       $('#statusFilter').val(),
+            payment_type: $('#paymentFilter').val(),
+            promo_code:   $('#promoFilter').val(),
+        });
+        const { start, end } = getCustomDates();
+        if (start && end) {
+            params.set('start_date', start);
+            params.set('end_date', end);
+        }
+        window.location.href = baseUrl + '?' + params.toString();
+    });
+
     setTimeout(function () {
-        // Initial order count
         updateOrderCount();
-    }, 1000)
+    }, 1000);
 
     // Add filter params to AJAX request
     $('#orders-table').on('preXhr.dt', function (e, settings, data) {
-        data.range = $('#rangeFilter').val();
-        data.status = $('#statusFilter').val();
+        data.range        = $('#rangeFilter').val();
+        data.status       = $('#statusFilter').val();
         data.payment_type = $('#paymentFilter').val();
-        data.promo_code = $('#promoFilter').val();
+        data.promo_code   = $('#promoFilter').val();
+        const { start, end } = getCustomDates();
+        if (start && end) {
+            data.start_date = start;
+            data.end_date   = end;
+        }
     });
 
     // Capture order ID when accept/reject/preparing buttons are clicked

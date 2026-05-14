@@ -106,6 +106,8 @@ class OrderController extends Controller
         $paymentType = $request->get('payment_type');
         $dateRange = $request->get('range');
         $promoCode = trim($request->get('promo_code', ''));
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
 
         $orderColumnIndex = $request->get('order')[0]['column'] ?? 0;
         $orderDirection = $request->get('order')[0]['dir'] ?? 'desc';
@@ -131,7 +133,12 @@ class OrderController extends Controller
                 $query->where('payment_method', $paymentType);
             }
 
-            if ($dateRange !== null && $dateRange !== '') {
+            if (!empty($startDate) && !empty($endDate) && strtotime($startDate) && strtotime($endDate)) {
+                $query->whereBetween('created_at', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay(),
+                ]);
+            } elseif ($dateRange !== null && $dateRange !== '') {
                 $fromDate = $this->getDateRange($dateRange);
                 if ($fromDate) {
                     $query->where('created_at', '>=', $fromDate);
@@ -222,8 +229,12 @@ class OrderController extends Controller
         }
 
         // Filter by date range if provided
-        if ($dateRange !== null && $dateRange !== '') {
-
+        if (!empty($startDate) && !empty($endDate) && strtotime($startDate) && strtotime($endDate)) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay(),
+            ]);
+        } elseif ($dateRange !== null && $dateRange !== '') {
             $fromDate = $this->getDateRange($dateRange);
             if ($fromDate) {
                 $query->where('created_at', '>=', $fromDate);
@@ -770,6 +781,8 @@ class OrderController extends Controller
         $paymentType = $request->get('payment_type');
         $dateRange   = $request->get('range');
         $promoCode   = trim($request->get('promo_code', ''));
+        $startDate   = $request->get('start_date');
+        $endDate     = $request->get('end_date');
 
         $query = Order::with(['items.product', 'items.variant', 'user']);
 
@@ -781,7 +794,12 @@ class OrderController extends Controller
             $query->where('payment_method', $paymentType);
         }
 
-        if ($dateRange !== null && $dateRange !== '') {
+        if (!empty($startDate) && !empty($endDate) && strtotime($startDate) && strtotime($endDate)) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay(),
+            ]);
+        } elseif ($dateRange !== null && $dateRange !== '') {
             $fromDate = $this->getDateRange($dateRange);
             if ($fromDate) {
                 $query->where('created_at', '>=', $fromDate);

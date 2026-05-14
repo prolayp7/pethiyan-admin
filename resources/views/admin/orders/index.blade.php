@@ -55,6 +55,15 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
+                                        <div class="input-group" style="width:230px;">
+                                            <input type="text" class="form-control" id="customDateRange"
+                                                   placeholder="Custom range…" readonly style="cursor:pointer;">
+                                            <button class="btn btn-outline-secondary" type="button" id="clearDateRange" title="Clear custom range" style="display:none;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
                                         <input type="text" class="form-control" id="promoFilter" placeholder="Promo code…" style="width:140px">
                                     </div>
                                     <div class="col-auto">
@@ -261,6 +270,12 @@
     <!-- END MODAL -->
 @endsection
 
+@push('styles')
+    <link rel="stylesheet" href="{{hyperAsset('assets/vendor/litepicker/dist/css/litepicker.css')}}">
+@endpush
+
 @push('scripts')
+    <script src="{{hyperAsset('assets/vendor/litepicker/dist/litepicker.js')}}" defer></script>
+    <script src="{{hyperAsset('assets/vendor/litepicker/dist/plugins/ranges.js')}}" defer></script>
     <script src="{{hyperAsset('assets/js/order.js')}}" defer></script>
 @endpush

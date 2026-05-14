@@ -63,7 +63,7 @@ class OrderController extends Controller
         $this->orderService = $orderService;
         $this->currencyService = $currencyService;
         $this->settingService = $settingService;
-        $user = auth()->user();
+        $user = Auth::user();
         if ($user) {
             $this->editPermission = $this->hasPermission(SellerPermissionEnum::ORDER_EDIT()) || $user->hasRole(DefaultSystemRolesEnum::SELLER());
         }
@@ -186,7 +186,7 @@ class OrderController extends Controller
             });
 
         if ($this->getPanel() === 'seller') {
-            $user = auth()->user();
+            $user = Auth::user();
             $seller = $user?->seller();
 
             if (!$seller) {
@@ -513,7 +513,7 @@ class OrderController extends Controller
     public function show(int $id): View
     {
         if ($this->getPanel() === 'seller') {
-            $user = auth()->user();
+            $user = Auth::user();
             $seller = $user?->seller();
 
             if (!$seller) {
@@ -623,7 +623,7 @@ class OrderController extends Controller
     public function updateStatus(int $id, string $status): JsonResponse
     {
         try {
-            $seller = auth()->user()->seller();
+            $seller = Auth::user()->seller();
             if (!$seller) {
                 return ApiResponseType::sendJsonResponse(false, __('labels.seller_not_found'));
             }
@@ -760,6 +760,97 @@ class OrderController extends Controller
         } catch (AuthorizationException) {
             abort(403, __('messages.unauthorized_action'));
         }
+    }
+
+    public function exportOrders(Request $request)
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $status      = $request->get('status');
+        $paymentType = $request->get('payment_type');
+        $dateRange   = $request->get('range');
+        $promoCode   = trim($request->get('promo_code', ''));
+
+        $query = Order::with(['items.product', 'items.variant', 'user']);
+
+        if ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        if ($paymentType !== null && $paymentType !== '') {
+            $query->where('payment_method', $paymentType);
+        }
+
+        if ($dateRange !== null && $dateRange !== '') {
+            $fromDate = $this->getDateRange($dateRange);
+            if ($fromDate) {
+                $query->where('created_at', '>=', $fromDate);
+            }
+        }
+
+        if (!empty($promoCode)) {
+            $query->where('promo_code', 'like', "%$promoCode%");
+        }
+
+        $orders = $query->orderBy('id', 'desc')->get();
+
+        $filename = 'orders-export-' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($orders) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'Order ID', 'Order Number', 'Date', 'Buyer Name', 'Email',
+                'Phone', 'Payment Method', 'Payment Status', 'Order Status',
+                'Subtotal', 'Shipping', 'Handling', 'GST', 'Promo Code',
+                'Promo Discount', 'Gift Card Discount', 'Total Payable',
+                'Shipping Address', 'City', 'State', 'Country', 'Pincode',
+                'Tracking Code', 'Is Rush Order', 'Items Count',
+            ]);
+
+            foreach ($orders as $order) {
+                fputcsv($handle, [
+                    $order->id,
+                    $order->slug ?? $order->id,
+                    $order->created_at?->format('Y-m-d H:i:s'),
+                    $order->shipping_name ?? '',
+                    $order->email ?? '',
+                    $order->shipping_phone ?? '',
+                    $order->payment_method ?? '',
+                    $order->payment_status ?? '',
+                    $order->status ?? '',
+                    $order->subtotal ?? 0,
+                    $order->delivery_charge ?? 0,
+                    $order->handling_charges ?? 0,
+                    $order->total_gst ?? 0,
+                    $order->promo_code ?? '',
+                    $order->promo_discount ?? 0,
+                    $order->gift_card_discount ?? 0,
+                    $order->total_payable ?? $order->final_total ?? 0,
+                    trim(implode(', ', array_filter([
+                        $order->shipping_address_1,
+                        $order->shipping_address_2,
+                        $order->shipping_landmark,
+                    ]))),
+                    $order->shipping_city ?? '',
+                    $order->shipping_state ?? '',
+                    $order->shipping_country ?? '',
+                    $order->shipping_zip ?? '',
+                    $order->tracking_code ?? '',
+                    $order->is_rush_order ? 'Yes' : 'No',
+                    $order->items->count(),
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     private function canManageAdminOrder(): bool

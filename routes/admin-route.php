@@ -526,6 +526,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('index');
             Route::get('/datatable', [OrderController::class, 'getOrders'])->name('datatable');
+            Route::get('/export', [OrderController::class, 'exportOrders'])->name('export');
             Route::get('invoice', [OrderController::class, 'orderInvoice']);
             Route::get('/{id}/invoice/download', [OrderController::class, 'downloadInvoice'])->name('invoice.download');
             Route::get('/{id}/shipping-address/download', [OrderController::class, 'downloadShippingAddress'])->name('shipping-address.download');

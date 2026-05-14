@@ -100,7 +100,7 @@
                             <div class="row w-full">
                                 <x-datatable id="orders-table" :columns="$columns"
                                              route="{{ route('admin.orders.datatable') }}"
-                                             :options="['order' => [[0, 'desc']],'pageLength' => 10,]"/>
+                                             :options="['order' => [[0, 'desc']],'pageLength' => 10,'noExport' => true]"/>
                             </div>
                         </div>
                     </div>
@@ -272,6 +272,26 @@
 
 @push('styles')
     <link rel="stylesheet" href="{{hyperAsset('assets/vendor/litepicker/dist/css/litepicker.css')}}">
+    <style>
+        /* Force nav arrows visible — Tabler's button reset can hide them */
+        .litepicker .month-item-header .button-previous-month,
+        .litepicker .month-item-header .button-next-month {
+            visibility: visible !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center;
+            padding: 3px 6px;
+            color: #9e9e9e;
+        }
+        .litepicker .month-item-header .button-previous-month:hover,
+        .litepicker .month-item-header .button-next-month:hover {
+            color: #2196f3 !important;
+        }
+        .litepicker .month-item-header .button-previous-month svg,
+        .litepicker .month-item-header .button-next-month svg {
+            fill: currentColor;
+        }
+    </style>
 @endpush
 
 @push('scripts')

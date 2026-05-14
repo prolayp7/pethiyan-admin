@@ -61,6 +61,8 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
             // Read the custom options, if they exist.
             const rawOptions = element.getAttribute('data-options');
             let customOptions = rawOptions ? JSON.parse(rawOptions) : {};
+            const noExport = customOptions.noExport === true;
+            delete customOptions.noExport;
 
             // Check if the DataTable is already initialized
             if (jq.fn.DataTable.isDataTable(element)) {
@@ -78,8 +80,8 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
                         pageLength: true
                     },
                     topEnd: {
-                        buttons: [
-                            {
+                        buttons: (function () {
+                            const colvisBtn = {
                                 extend: 'colvis',
                                 text: 'Columns',
                                 columnText: function (dt, idx, title) {
@@ -88,8 +90,8 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
                                 init: function (dt, node, config) {
                                     jq(node).removeClass('btn-secondary').addClass('dropdown-toggle rounded-2');
                                 }
-                            },
-                            {
+                            };
+                            const exportBtn = {
                                 extend: 'collection',
                                 text: '<i class="ti ti-download fs-3"></i> Export',
                                 className: 'btn',
@@ -97,23 +99,20 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
                                     {
                                         extend: 'csvHtml5',
                                         text: '<div class="d-flex justify-content-center align-items-center"><i class="ti ti-file-type-csv fs-2"></i>CSV</div>',
-                                        exportOptions: {
-                                            columns: ':visible'
-                                        }
+                                        exportOptions: { columns: ':visible' }
                                     },
                                     {
                                         extend: 'excelHtml5',
                                         text: '<div class="d-flex justify-content-center align-items-center"><i class="ti ti-file-type-csv fs-2"></i>Excel</div>',
-                                        exportOptions: {
-                                            columns: ':visible'
-                                        }
+                                        exportOptions: { columns: ':visible' }
                                     }
                                 ],
                                 init: function (dt, node, config) {
                                     jq(node).removeClass('btn-secondary').addClass('btn-outline-primary ms-2 rounded-2');
                                 }
-                            },
-                        ]
+                            };
+                            return noExport ? [colvisBtn] : [colvisBtn, exportBtn];
+                        })()
                     },
                 },
                 initComplete: function () {

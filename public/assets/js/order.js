@@ -31,6 +31,7 @@ $(document).ready(function () {
             separator: ' - ',
             numberOfMonths: 2,
             numberOfColumns: 2,
+            splitView: true,
             autoApply: true,
             plugins: ['ranges'],
             ranges: {

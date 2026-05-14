@@ -31,7 +31,6 @@ $(document).ready(function () {
             separator: ' - ',
             numberOfMonths: 2,
             numberOfColumns: 2,
-            splitView: true,
             autoApply: true,
             plugins: ['ranges'],
             ranges: {
@@ -47,8 +46,24 @@ $(document).ready(function () {
                 },
             },
             setup: (picker) => {
+                // Force nav button visibility via inline style on every render
+                // (overrides any stylesheet that hides them)
+                picker.on('render', () => {
+                    picker.ui.querySelectorAll('.button-previous-month, .button-next-month')
+                        .forEach(btn => {
+                            btn.style.visibility = 'visible';
+                            btn.style.cursor     = 'pointer';
+                            btn.style.color      = '#666';
+                            // Make sure child SVG paths inherit the colour
+                            btn.querySelectorAll('svg path').forEach(p => {
+                                if (!p.getAttribute('fill') || p.getAttribute('fill') === 'none') {
+                                    p.setAttribute('fill', 'currentColor');
+                                }
+                            });
+                        });
+                });
+
                 picker.on('selected', () => {
-                    // Clear preset dropdown without triggering its change event
                     $('#rangeFilter').val('');
                     $('#clearDateRange').show();
                     table.ajax.reload(updateOrderCount, false);

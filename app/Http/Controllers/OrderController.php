@@ -810,7 +810,7 @@ class OrderController extends Controller
             $query->where('promo_code', 'like', "%$promoCode%");
         }
 
-        $orders = $query->orderBy('id', 'desc')->get();
+        $orders = $query->orderBy('id', 'asc')->get();
 
         $filename = 'orders-export-' . now()->format('Y-m-d_H-i-s') . '.csv';
 

@@ -233,9 +233,15 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">SEO Keywords</label>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label class="form-label mb-0">SEO Keywords</label>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="copy-seo-keywords-btn" title="Copy keywords as comma-separated text" style="font-size:.75rem;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                                Copy
+                                            </button>
+                                        </div>
                                         <input type="hidden" name="seo_keywords" id="category-seo-keywords-value"/>
-                                             <input type="text" class="form-control" id="category-seo-keywords-input" maxlength="1000"
+                                             <input type="text" class="form-control mt-1" id="category-seo-keywords-input" maxlength="1000"
                                                placeholder="e.g. standup pouch, kraft bag"/>
                                              <small class="form-hint">Comma-separated keywords, up to 1000 characters.</small>
                                     </div>
@@ -755,6 +761,21 @@
             setKeywordTags(seoKeywordsValueInput?.value || '');
             refreshCounters();
         }
+
+        const copyKeywordsBtn = document.getElementById('copy-seo-keywords-btn');
+        copyKeywordsBtn?.addEventListener('click', function () {
+            const value = seoKeywordsValueInput?.value || '';
+            if (!value.trim()) return;
+            navigator.clipboard.writeText(value).then(function () {
+                const original = copyKeywordsBtn.innerHTML;
+                copyKeywordsBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><polyline points="20 6 9 17 4 12"></polyline></svg>Copied!';
+                copyKeywordsBtn.classList.replace('btn-outline-secondary', 'btn-outline-success');
+                setTimeout(function () {
+                    copyKeywordsBtn.innerHTML = original;
+                    copyKeywordsBtn.classList.replace('btn-outline-success', 'btn-outline-secondary');
+                }, 2000);
+            });
+        });
 
         titleInput?.addEventListener('input', syncSeoTitleFromCategory);
         descriptionInput?.addEventListener('input', syncSeoDescriptionFromCategory);

@@ -581,7 +581,7 @@ class OrderController extends Controller
             'tracking_code' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $result = $this->orderService->updateOrderByAdmin($order, $validated, Auth::id());
+        $result = $this->orderService->updateOrderByAdmin($order, $validated, Auth::guard('admin')->id());
 
         return redirect()
             ->route('admin.orders.show', $order->id)

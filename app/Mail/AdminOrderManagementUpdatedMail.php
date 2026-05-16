@@ -13,6 +13,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use App\Enums\Order\OrderStatusEnum;
 use Illuminate\Support\Str;
 
 class AdminOrderManagementUpdatedMail extends Mailable
@@ -36,8 +37,11 @@ class AdminOrderManagementUpdatedMail extends Mailable
         $statusChanged = $this->previousStatus !== (string) $this->order->status;
         $paymentChanged = $this->previousPaymentStatus !== (string) $this->order->payment_status;
 
+        $statusLabel = OrderStatusEnum::tryFrom((string) $this->order->status)?->label()
+            ?? Str::headline((string) $this->order->status);
+
         $subjectSuffix = $statusChanged
-            ? 'status is now ' . Str::headline((string) $this->order->status)
+            ? 'status is now ' . $statusLabel
             : ($paymentChanged
                 ? 'payment is now ' . Str::headline((string) $this->order->payment_status)
                 : 'has been updated');

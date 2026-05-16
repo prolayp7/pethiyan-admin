@@ -30,6 +30,6 @@ class OrderManagementHistory extends Model
 
     public function adminUser(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'admin_user_id');
+        return $this->belongsTo(AdminUser::class, 'admin_user_id');
     }
 }

@@ -207,8 +207,8 @@
                                                         <div class="d-flex flex-wrap gap-2 mt-1">
                                                             @if(in_array('status', $history->changed_fields ?? []))
                                                                 <span class="badge bg-blue-lt">
-                                                                    Status: <span class="text-capitalize">{{ Str::replace('_', ' ', $history->previous_status) }}</span>
-                                                                    &rarr; <span class="text-capitalize">{{ Str::replace('_', ' ', $history->new_status) }}</span>
+                                                                    Status: {{ \App\Enums\Order\OrderStatusEnum::tryFrom($history->previous_status)?->label() ?? Str::headline($history->previous_status) }}
+                                                                    &rarr; {{ \App\Enums\Order\OrderStatusEnum::tryFrom($history->new_status)?->label() ?? Str::headline($history->new_status) }}
                                                                 </span>
                                                             @endif
                                                             @if(in_array('payment_status', $history->changed_fields ?? []))

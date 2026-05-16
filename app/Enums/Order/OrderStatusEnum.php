@@ -38,4 +38,19 @@ enum OrderStatusEnum: string
     case DELIVERED = 'delivered';
     case CANCELLED = 'cancelled';
     case FAILED = 'failed';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::ACCEPTED_BY_SELLER  => 'Order Accepted',
+            self::PREPARING           => 'Order Start Packing',
+            self::READY_FOR_PICKUP    => 'Order Packing Done',
+            self::ASSIGNED            => 'Order Ready for Pickup',
+            self::COLLECTED           => 'Order Collected',
+            self::CANCELLED           => 'Order Cancelled',
+            self::FAILED              => 'Order Failed',
+            self::DELIVERED           => 'Order Dispatched',
+            default                   => \Illuminate\Support\Str::headline($this->value),
+        };
+    }
 }

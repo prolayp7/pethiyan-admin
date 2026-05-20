@@ -163,7 +163,9 @@ class AddressApiController extends Controller
     {
         try {
             $validatedData = $request->validate([
+                'name' => 'required|string|max:100',
                 'company_name' => ['nullable', 'string', 'max:255', 'regex:' . self::COMPANY_NAME_REGEX],
+                'is_default' => 'sometimes|boolean',
                 'address_line1' => 'required|string|max:255',
                 'address_line2' => 'nullable|string|max:255',
                 'city' => 'required|string|max:100',
@@ -274,7 +276,9 @@ class AddressApiController extends Controller
             }
 
             $validatedData = $request->validate([
+                'name' => 'sometimes|required|string|max:100',
                 'company_name' => ['nullable', 'string', 'max:255', 'regex:' . self::COMPANY_NAME_REGEX],
+                'is_default' => 'sometimes|boolean',
                 'address_line1' => 'sometimes|required|string|max:255',
                 'address_line2' => 'nullable|string|max:255',
                 'city' => 'sometimes|required|string|max:100',
@@ -301,6 +305,12 @@ class AddressApiController extends Controller
                         success: false, message: __('labels.delivery_zone_not_found')
                     );
                 }
+            }
+
+            if (!empty($validatedData['is_default'])) {
+                Address::where('user_id', Auth::id())
+                    ->where('id', '!=', $address->id)
+                    ->update(['is_default' => false]);
             }
 
             $address->update($validatedData);

@@ -85,6 +85,7 @@ class OrderController extends Controller
             ['data' => 'product_details', 'name' => 'product_details', 'title' => __('labels.product_details'), 'orderable' => false, 'searchable' => false],
             ['data' => 'promo', 'name' => 'promo', 'title' => 'Promo', 'orderable' => false, 'searchable' => false],
             ['data' => 'payment_status', 'name' => 'payment_status', 'title' => __('labels.payment_status'), 'orderable' => false, 'searchable' => false],
+            ['data' => 'order_status', 'name' => 'order_status', 'title' => __('labels.order_status'), 'orderable' => false, 'searchable' => false],
             ['data' => 'actions', 'name' => 'actions', 'title' => __('labels.actions'), 'orderable' => false, 'searchable' => false],
         ];
         return view($this->panelView('orders.index'), compact('columns'));
@@ -371,6 +372,7 @@ class OrderController extends Controller
                    </div>"
                 : "<span class='text-muted'>—</span>",
             'payment_status' => $this->renderPaymentStatusBadge((string) ($order->payment_status ?? PaymentStatusEnum::PENDING())),
+            'order_status' => $this->renderOrderStatusBadge((string) ($order->status ?? OrderStatusEnum::PENDING())),
             'actions' => view('partials.order-actions', [
                 'panel' => 'admin',
                 'uuid' => $order->uuid ?? '',
@@ -482,6 +484,22 @@ class OrderController extends Controller
         };
 
         return '<span class="badge bg-' . $color . '-lt text-uppercase">' . e(Str::replace('_', ' ', $paymentStatus)) . '</span>';
+    }
+
+    private function renderOrderStatusBadge(string $orderStatus): string
+    {
+        $color = match ($orderStatus) {
+            OrderStatusEnum::DELIVERED() => 'green',
+            OrderStatusEnum::CANCELLED(), OrderStatusEnum::FAILED(), OrderStatusEnum::REJECTED_BY_SELLER() => 'red',
+            OrderStatusEnum::ACCEPTED_BY_SELLER(), OrderStatusEnum::PARTIALLY_ACCEPTED() => 'teal',
+            OrderStatusEnum::PREPARING(), OrderStatusEnum::READY_FOR_PICKUP(), OrderStatusEnum::ASSIGNED(),
+            OrderStatusEnum::COLLECTED(), OrderStatusEnum::OUT_FOR_DELIVERY() => 'blue',
+            default => 'yellow',
+        };
+
+        $label = OrderStatusEnum::tryFrom($orderStatus)?->label() ?? Str::headline($orderStatus);
+
+        return '<span class="badge bg-' . $color . '-lt">' . e($label) . '</span>';
     }
 
     private function getDateRange($dateRange): ?Carbon

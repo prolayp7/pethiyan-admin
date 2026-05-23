@@ -41,7 +41,13 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Cover Image</label>
-                            <x-filepond_image name="cover_image" imageUrl="{{ $category->cover_image_url ?? '' }}"/>
+                            @if($category->exists && ($category->cover_image_url ?? ''))
+                                <div class="mb-2 d-flex align-items-center gap-3">
+                                    <img src="{{ $category->cover_image_url }}" alt="Cover image" class="rounded border" style="height: 72px; object-fit: cover;">
+                                    <span class="text-muted small">Current image — upload a new file below to replace it.</span>
+                                </div>
+                            @endif
+                            <x-filepond_image name="cover_image" imageUrl=""/>
                             <div class="form-hint mt-2">Recommended: 1200 x 630 px. Max upload size: 4 MB.</div>
                         </div>
                         <div class="col-md-3">

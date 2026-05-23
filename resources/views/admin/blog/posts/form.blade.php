@@ -62,12 +62,24 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Featured Image</label>
-                            <x-filepond_image name="featured_image" imageUrl="{{ $post->featured_image_url ?? '' }}"/>
+                            @if($post->exists && ($post->featured_image_url ?? ''))
+                                <div class="mb-2 d-flex align-items-center gap-3">
+                                    <img src="{{ $post->featured_image_url }}" alt="Featured image" class="rounded border" style="height: 72px; object-fit: cover;">
+                                    <span class="text-muted small">Current image — upload a new file below to replace it.</span>
+                                </div>
+                            @endif
+                            <x-filepond_image name="featured_image" imageUrl=""/>
                             <div class="form-hint mt-2">Recommended: 1600 x 900 px. Max upload size: 5 MB.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Author Avatar</label>
-                            <x-filepond_image name="author_avatar" imageUrl="{{ $post->author_avatar_url ?? '' }}"/>
+                            @if($post->exists && ($post->author_avatar_url ?? ''))
+                                <div class="mb-2 d-flex align-items-center gap-3">
+                                    <img src="{{ $post->author_avatar_url }}" alt="Author avatar" class="rounded-circle border" style="height: 72px; width: 72px; object-fit: cover;">
+                                    <span class="text-muted small">Current avatar — upload a new file below to replace it.</span>
+                                </div>
+                            @endif
+                            <x-filepond_image name="author_avatar" imageUrl=""/>
                             <div class="form-hint mt-2">Recommended: 256 x 256 px. Max upload size: 3 MB.</div>
                         </div>
                         <div class="col-md-4">

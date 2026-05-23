@@ -31,25 +31,49 @@
         };
 
         FilePond.registerPlugin(FilePondPluginImagePreview);
-            const input = document.querySelector('[name="{{ $name }}"]');
+        const input = document.querySelector('[name="{{ $name }}"]');
         if (input) {
             let imageUrl = normalizeLocalhostOrigin(input.getAttribute('data-image-url'));
-            FilePond.create(input, {
+            let userAddedNewFile = false;
+            let suppressServerRemove = false;
+
+            const pond = FilePond.create(input, {
                 allowImagePreview: true,
                 instantUpload: false,
                 acceptedFileTypes: ['image/*'],
                 credits: false,
                 storeAsFile: true,
+                onaddfile: (error, fileItem) => {
+                    if (!error && fileItem.origin === FilePond.FileOrigin.INPUT) {
+                        userAddedNewFile = true;
+                    }
+                },
+                onremovefile: (error, fileItem) => {
+                    if (fileItem && fileItem.origin === FilePond.FileOrigin.INPUT) {
+                        userAddedNewFile = false;
+                    }
+                },
                 server: {
                     load: (source, load, error, progress, abort) => {
                         fetch(normalizeLocalhostOrigin(source))
-                            .then(response => response.blob())
-                            .then(blob => load(blob))
+                            .then(response => {
+                                const contentType = response.headers.get('content-type') || 'image/jpeg';
+                                return response.blob().then(blob => {
+                                    const ext = contentType.split('/').pop() || 'jpg';
+                                    return new File([blob], `image.${ext}`, { type: contentType });
+                                });
+                            })
+                            .then(file => load(file))
                             .catch(err => error(err));
                         return { abort: () => {} };
                     },
                     // If the input provides model/collection data attributes, call server to remove the media
                     remove: (source, load, error) => {
+                        if (suppressServerRemove) {
+                            suppressServerRemove = false;
+                            load();
+                            return;
+                        }
                         try {
                             const modelId = input.dataset.modelId || null;
                             const collection = input.dataset.collection || null;
@@ -87,6 +111,19 @@
                     }
                 }] : []
             });
+
+            // Before form submit: if the user hasn't uploaded a new image, clear the
+            // preloaded original so the field arrives empty and the controller keeps
+            // the existing stored image (via its hasFile() guard).
+            const form = input.closest('form');
+            if (form && imageUrl) {
+                form.addEventListener('submit', function () {
+                    if (!userAddedNewFile && pond.getFiles().length > 0) {
+                        suppressServerRemove = true;
+                        pond.removeFiles();
+                    }
+                });
+            }
         }
     });
 </script>

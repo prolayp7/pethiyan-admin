@@ -1,11 +1,11 @@
 @php use App\Enums\DateRangeFilterEnum;use App\Enums\Order\OrderStatusEnum;use App\Enums\Payment\PaymentTypeEnum;use Illuminate\Support\Str; @endphp
 @extends('layouts.admin.app', ['page' => $menuAdmin['orders']['active'] ?? ""])
 
-@section('title', __('labels.orders'))
+@section('title', $pageTitle ?? __('labels.orders'))
 
 @section('header_data')
     @php
-        $page_title = __('labels.orders');
+        $page_title = $pageTitle ?? __('labels.orders');
         $page_pretitle = __('labels.admin') . " " . __('labels.orders');
     @endphp
 @endsection
@@ -24,7 +24,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">{{ __('labels.orders') }} <span class="order-count"></span></h3>
+                            <h3 class="card-title">{{ $pageTitle ?? __('labels.orders') }} <span class="order-count"></span></h3>
                             <div class="card-actions">
                                 <div class="row g-2">
                                     <div class="col-auto">
@@ -37,11 +37,12 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <select class="form-select text-capitalize" id="statusFilter">
+                                        <select class="form-select text-capitalize" id="statusFilter" @isset($defaultStatus) disabled @endisset>
                                             <option value="">{{ __('labels.status') }}</option>
                                             @foreach(OrderStatusEnum::values() as $value)
-                                                <option
-                                                    value="{{$value}}">{{Str::replace("_", " ", $value)}}</option>
+                                                <option value="{{$value}}" @selected(isset($defaultStatus) && $defaultStatus === $value)>
+                                                    {{Str::replace("_", " ", $value)}}
+                                                </option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -297,5 +298,8 @@
 @push('scripts')
     <script src="{{hyperAsset('assets/vendor/litepicker/dist/litepicker.js')}}" defer></script>
     <script src="{{hyperAsset('assets/vendor/litepicker/dist/plugins/ranges.js')}}" defer></script>
+    @isset($defaultStatus)
+    <script>window.orderDefaultStatus = @json($defaultStatus);</script>
+    @endisset
     <script src="{{hyperAsset('assets/js/order.js')}}" defer></script>
 @endpush

@@ -525,6 +525,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // orders
         Route::prefix('orders')->name('orders.')->group(function () {
             Route::get('/', [OrderController::class, 'index'])->name('index');
+            Route::get('/accepted', [OrderController::class, 'indexAccepted'])->name('accepted');
+            Route::get('/cancelled', [OrderController::class, 'indexCancelled'])->name('cancelled');
+            Route::get('/dispatched', [OrderController::class, 'indexDispatched'])->name('dispatched');
             Route::get('/datatable', [OrderController::class, 'getOrders'])->name('datatable');
             Route::get('/export', [OrderController::class, 'exportOrders'])->name('export');
             Route::get('invoice', [OrderController::class, 'orderInvoice']);

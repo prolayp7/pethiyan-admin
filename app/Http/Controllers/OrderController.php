@@ -77,8 +77,43 @@ class OrderController extends Controller
     public function index(): View
     {
         $this->authorize('viewAny', SellerOrder::class);
+        $columns = $this->buildOrderColumns();
+        return view($this->panelView('orders.index'), compact('columns'));
+    }
 
-        $columns = [
+    public function indexAccepted(): View
+    {
+        $this->authorize('viewAny', SellerOrder::class);
+        $columns = $this->buildOrderColumns();
+        return view($this->panelView('orders.index'), array_merge(compact('columns'), [
+            'defaultStatus' => OrderStatusEnum::ACCEPTED_BY_SELLER(),
+            'pageTitle'     => 'Order Accepted',
+        ]));
+    }
+
+    public function indexCancelled(): View
+    {
+        $this->authorize('viewAny', SellerOrder::class);
+        $columns = $this->buildOrderColumns();
+        return view($this->panelView('orders.index'), array_merge(compact('columns'), [
+            'defaultStatus' => OrderStatusEnum::CANCELLED(),
+            'pageTitle'     => 'Order Cancelled',
+        ]));
+    }
+
+    public function indexDispatched(): View
+    {
+        $this->authorize('viewAny', SellerOrder::class);
+        $columns = $this->buildOrderColumns();
+        return view($this->panelView('orders.index'), array_merge(compact('columns'), [
+            'defaultStatus' => OrderStatusEnum::DELIVERED(),
+            'pageTitle'     => 'Order Dispatched',
+        ]));
+    }
+
+    private function buildOrderColumns(): array
+    {
+        return [
             ['data' => 'id', 'name' => 'id', 'title' => __('labels.id')],
             ['data' => 'order_date', 'name' => 'order_date', 'title' => __('labels.order_date'), 'orderable' => false, 'searchable' => false],
             ['data' => 'order_details', 'name' => 'order_details', 'title' => __('labels.order_details'), 'orderable' => false, 'searchable' => false],
@@ -88,7 +123,6 @@ class OrderController extends Controller
             ['data' => 'order_status', 'name' => 'order_status', 'title' => __('labels.order_status'), 'orderable' => false, 'searchable' => false],
             ['data' => 'actions', 'name' => 'actions', 'title' => __('labels.actions'), 'orderable' => false, 'searchable' => false],
         ];
-        return view($this->panelView('orders.index'), compact('columns'));
     }
 
     /**

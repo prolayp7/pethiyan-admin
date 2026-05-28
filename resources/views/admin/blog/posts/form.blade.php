@@ -60,6 +60,20 @@
                             <label class="form-label">Content</label>
                             <textarea class="hugerte-mytextarea form-control" name="content" rows="12">{{ old('content', $post->content) }}</textarea>
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Table of Contents</label>
+                            <div id="toc-list" class="d-flex flex-column gap-2 mb-2">
+                                @foreach(old('toc_items', $post->metadata['table_of_contents'] ?? []) as $i => $item)
+                                <div class="input-group toc-row">
+                                    <span class="input-group-text text-muted toc-num" style="min-width:42px">{{ $i + 1 }}</span>
+                                    <input type="text" class="form-control" name="toc_items[]" value="{{ $item }}" placeholder="Section heading…">
+                                    <button type="button" class="btn btn-outline-danger toc-remove-btn" tabindex="-1">&times;</button>
+                                </div>
+                                @endforeach
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toc-add-btn">+ Add Item</button>
+                            <div class="form-hint mt-1">Displayed in the "In This Article" block on the blog post page.</div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Featured Image</label>
                             @if($post->exists && ($post->featured_image_url ?? ''))

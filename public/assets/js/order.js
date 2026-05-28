@@ -107,9 +107,12 @@ $(document).ready(function () {
 
     $('#exportOrders').on('click', function () {
         const baseUrl = $(this).data('export-url');
+        const statusVal = (typeof window.orderDefaultStatus !== 'undefined')
+                          ? window.orderDefaultStatus
+                          : $('#statusFilter').val();
         const params = new URLSearchParams({
             range:        $('#rangeFilter').val(),
-            status:       $('#statusFilter').val(),
+            status:       statusVal,
             payment_type: $('#paymentFilter').val(),
             promo_code:   $('#promoFilter').val(),
         });
@@ -128,7 +131,9 @@ $(document).ready(function () {
     // Add filter params to AJAX request
     $('#orders-table').on('preXhr.dt', function (e, settings, data) {
         data.range        = $('#rangeFilter').val();
-        data.status       = $('#statusFilter').val();
+        data.status       = (typeof window.orderDefaultStatus !== 'undefined')
+                            ? window.orderDefaultStatus
+                            : $('#statusFilter').val();
         data.payment_type = $('#paymentFilter').val();
         data.promo_code   = $('#promoFilter').val();
         const { start, end } = getCustomDates();

@@ -12,6 +12,7 @@ use ArchTech\Enums\Values;
  * @method static PREPARING()
  * @method static COLLECTED()
  * @method static DELIVERED()
+ * @method static ORDER_DISPATCHED()
  * @method static CANCELLED()
  * @method static FAILED()
  * @method static PARTIALLY_ACCEPTED()
@@ -36,6 +37,7 @@ enum OrderStatusEnum: string
     case COLLECTED = 'collected';
     case OUT_FOR_DELIVERY = 'out_for_delivery';
     case DELIVERED = 'delivered';
+    case ORDER_DISPATCHED = 'order_dispatched';
     case CANCELLED = 'cancelled';
     case FAILED = 'failed';
 
@@ -49,7 +51,8 @@ enum OrderStatusEnum: string
             self::COLLECTED           => 'Order Collected',
             self::CANCELLED           => 'Order Cancelled',
             self::FAILED              => 'Order Failed',
-            self::DELIVERED           => 'Order Dispatched',
+            self::DELIVERED           => 'Order Delivered',
+            self::ORDER_DISPATCHED    => 'Order Dispatched',
             default                   => \Illuminate\Support\Str::headline($this->value),
         };
     }

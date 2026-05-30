@@ -48,9 +48,10 @@ class OrderController extends Controller
         'ready_for_pickup' => 'Order Packing Done',
         'assigned' => 'Order Ready for Pickup',
         'collected' => 'Order Collected',
+        'order_dispatched' => 'Order Dispatched',
         'cancelled' => 'Order Cancelled',
         'failed' => 'Order Failed',
-        'delivered' => 'Order Dispatched',
+        'delivered' => 'Order Delivered',
     ];
 
     public bool $editPermission = false;
@@ -110,7 +111,7 @@ class OrderController extends Controller
         $this->authorize('viewAny', SellerOrder::class);
         $columns = $this->buildOrderColumns();
         return view($this->panelView('orders.index'), array_merge(compact('columns'), [
-            'defaultStatus' => OrderStatusEnum::DELIVERED(),
+            'defaultStatus' => OrderStatusEnum::ORDER_DISPATCHED(),
             'pageTitle'     => 'Order Dispatched',
             'subPage'       => 'dispatched_orders',
         ]));

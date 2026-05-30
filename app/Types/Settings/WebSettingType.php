@@ -55,6 +55,7 @@ class WebSettingType implements SettingInterface
     public string $metaAuthor = '';
     public string $metaPublisher = '';
     public string $googleSiteVerification = '';
+    public string $googleBusinessProfile = '';
     public string $bingSiteVerification = '';
     public string $ogTitle = '';
     public string $ogDescription = '';
@@ -138,6 +139,7 @@ class WebSettingType implements SettingInterface
             'metaAuthor' => 'nullable|string|max:255',
             'metaPublisher' => 'nullable|string|max:255',
             'googleSiteVerification' => 'nullable|string|max:255',
+            'googleBusinessProfile' => 'nullable|string|max:255',
             'bingSiteVerification' => 'nullable|string|max:255',
             'ogTitle' => 'nullable|string|max:255',
             'ogDescription' => 'nullable|string|max:500',

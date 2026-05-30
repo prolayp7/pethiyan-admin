@@ -213,6 +213,17 @@
                     </div>
                 </div>
             </div>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Google Business Profile</label>
+                        <input type="text" class="form-control" name="googleBusinessProfile" form="web-seo-settings-form"
+                                placeholder="Paste Google Business Profile verification token"
+                                value="{{ $settings['googleBusinessProfile'] ?? '' }}" maxlength="255"/>
+                        <div class="form-text">Adds a separate <code>google-site-verification</code> meta tag for Google Business Profile.</div>
+                    </div>
+                </div>
+            </div>
             <hr class="my-4">
             <h5 class="mb-3">Open Graph</h5>
             <div class="mb-3">

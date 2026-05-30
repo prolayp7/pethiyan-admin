@@ -81,6 +81,7 @@ class WebSettingResource extends JsonResource
                 'metaAuthor' => $this->value['metaAuthor'] ?? '',
                 'metaPublisher' => $this->value['metaPublisher'] ?? '',
                 'googleSiteVerification' => $this->value['googleSiteVerification'] ?? '',
+                'googleBusinessProfile' => $this->value['googleBusinessProfile'] ?? '',
                 'bingSiteVerification' => $this->value['bingSiteVerification'] ?? '',
                 'ogTitle' => $this->value['ogTitle'] ?? '',
                 'ogDescription' => $this->value['ogDescription'] ?? '',

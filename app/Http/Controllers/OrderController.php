@@ -78,7 +78,9 @@ class OrderController extends Controller
     {
         $this->authorize('viewAny', SellerOrder::class);
         $columns = $this->buildOrderColumns();
-        return view($this->panelView('orders.index'), compact('columns'));
+        return view($this->panelView('orders.index'), array_merge(compact('columns'), [
+            'subPage' => 'all_orders',
+        ]));
     }
 
     public function indexAccepted(): View
@@ -88,6 +90,7 @@ class OrderController extends Controller
         return view($this->panelView('orders.index'), array_merge(compact('columns'), [
             'defaultStatus' => OrderStatusEnum::ACCEPTED_BY_SELLER(),
             'pageTitle'     => 'Order Accepted',
+            'subPage'       => 'accepted_orders',
         ]));
     }
 
@@ -98,6 +101,7 @@ class OrderController extends Controller
         return view($this->panelView('orders.index'), array_merge(compact('columns'), [
             'defaultStatus' => OrderStatusEnum::CANCELLED(),
             'pageTitle'     => 'Order Cancelled',
+            'subPage'       => 'cancelled_orders',
         ]));
     }
 
@@ -108,6 +112,7 @@ class OrderController extends Controller
         return view($this->panelView('orders.index'), array_merge(compact('columns'), [
             'defaultStatus' => OrderStatusEnum::DELIVERED(),
             'pageTitle'     => 'Order Dispatched',
+            'subPage'       => 'dispatched_orders',
         ]));
     }
 

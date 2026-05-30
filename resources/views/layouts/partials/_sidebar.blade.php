@@ -90,41 +90,38 @@
                         }
                     @endphp
 
-                    <li class="nav-item {{ $isDropdown ? 'dropdown' : '' }} {{ $isActive ? 'active' : '' }}">
+                    <li class="nav-item {{ $isActive ? 'active' : '' }}">
                         @if ($isDropdown)
-                            <a class="nav-link dropdown-toggle {{ $isActive ? 'active show' : '' }}"
-                               href="#navbar-{{ $key }}" data-bs-toggle="dropdown" data-bs-auto-close="false"
-                               aria-expanded="{{ $isActive ? 'true' : 'false' }}">
+                            {{-- Collapse-based sub-menu: expands inline so it is never clipped by the sidebar's overflow-auto --}}
+                            <a class="nav-link {{ $isActive ? 'active' : '' }}"
+                               href="#navbar-{{ $key }}"
+                               data-bs-toggle="collapse"
+                               role="button"
+                               aria-expanded="{{ $isActive ? 'true' : 'false' }}"
+                               aria-controls="navbar-{{ $key }}">
                                 <span class="nav-link-icon d-md-none d-lg-inline-block">
                                     <i class="ti {{ $item['icon'] }} fs-2"></i>
                                 </span>
                                 <span class="nav-link-title">{{ __($item['title']) }}</span>
                             </a>
                             @if (count($visibleSubRoutes) > 0)
-                                <div class="dropdown-menu {{ $isActive ? 'show' : '' }}">
-                                    @foreach ($visibleSubRoutes as $subRoute)
-                                        @php
-                                            // If the sub-route is an array, support passing route parameters.
-                                            if (is_array($subRoute)) {
-                                                // If the array has an explicit 'route' key, use it; otherwise, assume the first value is the route name.
-                                                $routeName = $subRoute['route'] ?? array_values($subRoute)[0];
-                                                $routeParams =
-                                                    $subRoute['params'] ?? (is_array($subRoute) ? $subRoute : []);
-                                            } else {
-                                                $routeName = $subRoute;
-                                                $routeParams = [];
-                                            }
-                                            $isSubActive =
-                                                isset($subRoute) &&
-                                                isset($sub_page) &&
-                                                $subRoute['sub_active'] === $sub_page;
-    //                                        dd($subRoute['sub_title'])
-                                        @endphp
-                                        <a class="dropdown-item {{ $isSubActive ? 'active' : '' }}"
-                                           href="{{route($subRoute['sub_route'],$subRoute['route_param'] ?? []) }}">
-                                            <i class="ti ti-point{{ $isSubActive ? '-filled' : '' }} fs-2"></i>{{ __($subRoute['sub_title']) }}
-                                        </a>
-                                    @endforeach
+                                <div class="navbar-submenu collapse {{ $isActive ? 'show' : '' }}" id="navbar-{{ $key }}">
+                                    <ul class="navbar-nav">
+                                        @foreach ($visibleSubRoutes as $subRoute)
+                                            @php
+                                                $isSubActive = isset($sub_page) && $subRoute['sub_active'] === $sub_page;
+                                            @endphp
+                                            <li class="nav-item {{ $isSubActive ? 'active' : '' }}">
+                                                <a class="nav-link {{ $isSubActive ? 'active' : '' }}"
+                                                   href="{{ route($subRoute['sub_route'], $subRoute['route_param'] ?? []) }}">
+                                                    <span class="nav-link-icon d-md-none d-lg-inline-block">
+                                                        <i class="ti ti-point{{ $isSubActive ? '-filled' : '' }} fs-2"></i>
+                                                    </span>
+                                                    <span class="nav-link-title">{{ __($subRoute['sub_title']) }}</span>
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 </div>
                             @endif
                         @else

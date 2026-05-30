@@ -1,5 +1,5 @@
 @php use App\Enums\DateRangeFilterEnum;use App\Enums\Order\OrderStatusEnum;use App\Enums\Payment\PaymentTypeEnum;use Illuminate\Support\Str; @endphp
-@extends('layouts.admin.app', ['page' => $menuAdmin['orders']['active'] ?? ""])
+@extends('layouts.admin.app', ['page' => $menuAdmin['orders']['active'] ?? "", 'sub_page' => $subPage ?? 'all_orders'])
 
 @section('title', $pageTitle ?? __('labels.orders'))
 

@@ -111,7 +111,7 @@ class OrderController extends Controller
         $this->authorize('viewAny', SellerOrder::class);
         $columns = $this->buildOrderColumns();
         return view($this->panelView('orders.index'), array_merge(compact('columns'), [
-            'defaultStatus' => OrderStatusEnum::ORDER_DISPATCHED(),
+            'defaultStatus' => OrderStatusEnum::DELIVERED(),
             'pageTitle'     => 'Order Dispatched',
             'subPage'       => 'dispatched_orders',
         ]));

@@ -132,6 +132,14 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
                 scrollX: true,
                 ajax: {
                     url: route,
+                    // Pass page-level default filters (e.g. status on filtered order pages)
+                    // on the very first request, before any preXhr.dt handlers fire.
+                    data: function (d) {
+                        if (typeof window.orderDefaultStatus !== 'undefined' && window.orderDefaultStatus !== null) {
+                            d.status = window.orderDefaultStatus;
+                        }
+                        return d;
+                    }
                 },
                 columns: columns,
                 drawCallback: function() {

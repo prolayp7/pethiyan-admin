@@ -51,7 +51,7 @@ class OrderController extends Controller
         'order_dispatched' => 'Order Dispatched',
         'cancelled' => 'Order Cancelled',
         'failed' => 'Order Failed',
-        'delivered' => 'Order Delivered',
+        'delivered' => 'Order Dispatched',
     ];
 
     public bool $editPermission = false;

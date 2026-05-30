@@ -51,7 +51,7 @@ enum OrderStatusEnum: string
             self::COLLECTED           => 'Order Collected',
             self::CANCELLED           => 'Order Cancelled',
             self::FAILED              => 'Order Failed',
-            self::DELIVERED           => 'Order Delivered',
+            self::DELIVERED           => 'Order Dispatched',
             self::ORDER_DISPATCHED    => 'Order Dispatched',
             default                   => \Illuminate\Support\Str::headline($this->value),
         };

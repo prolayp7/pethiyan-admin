@@ -141,8 +141,13 @@
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label">Square Logo <span class="text-muted">(for Google / SEO)</span></label>
-                                            <input type="file" class="form-control" name="squareLogo"
-                                                   data-image-url="{{ $settings['squareLogo'] ?? '' }}"/>
+                                            <x-filepond_image name="squareLogo"
+                                                imageUrl="{{ $settings['squareLogo'] ?? '' }}"
+                                                data-accepted-file-types="image/png,image/jpeg,image/webp"
+                                                data-max-file-size="4MB"
+                                                data-image-crop-aspect-ratio="1:1"
+                                                data-image-resize-target-width="512"
+                                                data-image-resize-target-height="512"/>
                                             <small class="form-hint">Used in Google Knowledge Panel and rich results. Must be <strong>square</strong>, minimum 512&times;512 px, PNG/WebP/JPG. Google requires at least 112&times;112 px.</small>
                                         </div>
                                         <div class="mb-3">

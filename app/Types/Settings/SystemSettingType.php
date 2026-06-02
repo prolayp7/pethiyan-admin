@@ -18,6 +18,7 @@ class SystemSettingType implements SettingInterface
     public string $copyrightDetails = "";
     public string $logo = "";
     public string $favicon = "";
+    public string $squareLogo = "";
     // Custom additions
     public string $companyAddress = "";
     public string $companyGstin   = "";
@@ -82,6 +83,7 @@ class SystemSettingType implements SettingInterface
             // Optional on update: validate only when a new file is uploaded.
             'logo' => ['nullable', 'image', 'mimes:png,webp'],
             'favicon' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp'],
+            'squareLogo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp'],
             // New settings
             'companyAddress' => ['nullable', 'string', 'max:500'],
             'companyGstin'   => ['nullable', 'string', 'max:15', 'regex:/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i'],

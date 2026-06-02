@@ -24,6 +24,7 @@ class SystemSettingResource extends JsonResource
                 'copyrightDetails' => $this->value['copyrightDetails'] ?? '',
                 'logo' => $this->value['logo'] ? url('storage/' . $this->value['logo']) : '',
                 'favicon' => $this->value['favicon'] ? url('storage/' . $this->value['favicon']) : '',
+                'squareLogo' => !empty($this->value['squareLogo']) ? url('storage/' . $this->value['squareLogo']) : '',
                 'companyAddress' => $this->value['companyAddress'] ?? '',
                 'companyGstin' => $this->value['companyGstin'] ?? '',
                 'adminSignature' => !empty($this->value['adminSignature']) ? url('storage/' . $this->value['adminSignature']) : '',

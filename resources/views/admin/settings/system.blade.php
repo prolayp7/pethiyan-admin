@@ -140,6 +140,12 @@
                                             </div>
                                         </div>
                                         <div class="mb-3">
+                                            <label class="form-label">Square Logo <span class="text-muted">(for Google / SEO)</span></label>
+                                            <input type="file" class="form-control" name="squareLogo"
+                                                   data-image-url="{{ $settings['squareLogo'] ?? '' }}"/>
+                                            <small class="form-hint">Used in Google Knowledge Panel and rich results. Must be <strong>square</strong>, minimum 512&times;512 px, PNG/WebP/JPG. Google requires at least 112&times;112 px.</small>
+                                        </div>
+                                        <div class="mb-3">
                                             <label class="form-label">Company Address</label>
                                             <textarea class="form-control" name="companyAddress" rows="3" placeholder="Enter company address shown on invoice">{{ $settings['companyAddress'] ?? '' }}</textarea>
                                         </div>

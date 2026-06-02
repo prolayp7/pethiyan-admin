@@ -47,7 +47,7 @@ class SettingController extends Controller
 
     /** Fields belonging to each system-settings section for partial saves */
     private const SYSTEM_SECTION_FIELDS = [
-        'general'  => ['appName', 'systemTimezone', 'copyrightDetails', 'currency', 'currencySymbol', 'logo', 'favicon', 'companyAddress', 'companyGstin', 'adminSignature'],
+        'general'  => ['appName', 'systemTimezone', 'copyrightDetails', 'currency', 'currencySymbol', 'logo', 'favicon', 'squareLogo', 'companyAddress', 'companyGstin', 'adminSignature'],
         'support'  => ['sellerSupportEmail', 'sellerSupportNumber'],
         'cart'     => ['checkoutType', 'minimumCartAmount', 'maximumItemsAllowedInCart', 'lowStockLimit'],
         'order'    => ['customerInvoiceDownloadEnabled', 'customerInvoiceDownloadMinStatus'],
@@ -68,6 +68,7 @@ class SettingController extends Controller
             'metaAuthor',
             'metaPublisher',
             'googleSiteVerification',
+            'googleBusinessProfile',
             'bingSiteVerification',
             'ogTitle',
             'ogDescription',
@@ -176,7 +177,7 @@ class SettingController extends Controller
             // Some file widgets submit existing media URLs/paths as plain strings.
             // Strip those non-file values before validation and preserve existing value later.
             if ($type === SettingTypeEnum::SYSTEM()) {
-                foreach (['logo', 'favicon', 'adminSignature'] as $mediaField) {
+                foreach (['logo', 'favicon', 'squareLogo', 'adminSignature'] as $mediaField) {
                     if (!$request->hasFile($mediaField)) {
                         unset($payload[$mediaField]);
                     }
@@ -207,7 +208,7 @@ class SettingController extends Controller
                 // Validate only the submitted section keys, not the entire System settings model
                 $rules = $method::validationRules($sectionKeys);
                 $validationPayload = $payload;
-                foreach (['logo', 'favicon', 'adminSignature'] as $mediaField) {
+                foreach (['logo', 'favicon', 'squareLogo', 'adminSignature'] as $mediaField) {
                     if (!$request->hasFile($mediaField)) {
                         unset($validationPayload[$mediaField]);
                     }
@@ -226,7 +227,7 @@ class SettingController extends Controller
 
                 // The merge re-introduces logo/favicon/adminSignature as stored path strings.
                 // Strip them again so the object correctly receives empty strings for unmodified media.
-                foreach (['logo', 'favicon', 'adminSignature'] as $mediaField) {
+                foreach (['logo', 'favicon', 'squareLogo', 'adminSignature'] as $mediaField) {
                     if (!$request->hasFile($mediaField)) {
                         unset($payload[$mediaField]);
                     }
@@ -242,7 +243,7 @@ class SettingController extends Controller
                 : $method::fromArray($payload);
 
             if ($type === SettingTypeEnum::SYSTEM()) {
-                foreach (['logo', 'favicon', 'adminSignature'] as $mediaField) {
+                foreach (['logo', 'favicon', 'squareLogo', 'adminSignature'] as $mediaField) {
                     if (!$request->hasFile($mediaField) && !empty($existingValues[$mediaField])) {
                         $settings->{$mediaField} = $existingValues[$mediaField];
                     }
@@ -350,6 +351,7 @@ class SettingController extends Controller
         $webpFields = [
             'logo'               => ['base' => fn() => 'logo-'                    . time(), 'path' => 'settings'],
             'favicon'            => ['base' => fn() => 'favicon-'                 . time(), 'path' => 'settings'],
+            'squareLogo'         => ['base' => fn() => 'square-logo-'            . time(), 'path' => 'settings'],
             'siteHeaderDarkLogo' => ['base' => fn() => 'site-header-dark-logo-'   . time(), 'path' => 'settings'],
             'siteHeaderLogo'     => ['base' => fn() => 'site-header-logo-'        . time(), 'path' => 'settings'],
             'siteFooterLogo'     => ['base' => fn() => 'site-footer-logo-'        . time(), 'path' => 'settings'],
@@ -676,6 +678,7 @@ class SettingController extends Controller
         $webValues['metaAuthor'] = $request->input('metaAuthor', $webValues['metaAuthor'] ?? '');
         $webValues['metaPublisher'] = $request->input('metaPublisher', $webValues['metaPublisher'] ?? '');
         $webValues['googleSiteVerification'] = $request->input('googleSiteVerification', $webValues['googleSiteVerification'] ?? '');
+        $webValues['googleBusinessProfile'] = $request->input('googleBusinessProfile', $webValues['googleBusinessProfile'] ?? '');
         $webValues['bingSiteVerification'] = $request->input('bingSiteVerification', $webValues['bingSiteVerification'] ?? '');
         $webValues['ogTitle'] = $request->input('ogTitle', $webValues['ogTitle'] ?? '');
         $webValues['ogDescription'] = $request->input('ogDescription', $webValues['ogDescription'] ?? '');

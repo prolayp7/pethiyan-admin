@@ -45,7 +45,7 @@
     $orderIdentifier = $order->order_number ?: $order->slug ?: $order->id;
 
     $statusLabels = [
-        'awaiting_store_response' => 'Awaiting Store Response',
+        'awaiting_store_response' => 'Processing',
         'accepted_by_seller'      => 'Order Accepted',
         'preparing'               => 'Order Start Packing',
         'ready_for_pickup'        => 'Order Packing Done',

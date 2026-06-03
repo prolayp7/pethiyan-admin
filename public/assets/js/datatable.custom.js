@@ -135,7 +135,9 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
                     // Pass page-level default filters (e.g. status on filtered order pages)
                     // on the very first request, before any preXhr.dt handlers fire.
                     data: function (d) {
-                        if (typeof window.orderDefaultStatus !== 'undefined' && window.orderDefaultStatus !== null) {
+                        if (typeof window.orderDefaultStatuses !== 'undefined' && Array.isArray(window.orderDefaultStatuses)) {
+                            d.statuses = window.orderDefaultStatuses;
+                        } else if (typeof window.orderDefaultStatus !== 'undefined' && window.orderDefaultStatus !== null) {
                             d.status = window.orderDefaultStatus;
                         }
                         return d;

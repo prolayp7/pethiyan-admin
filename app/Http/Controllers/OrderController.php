@@ -125,7 +125,6 @@ class OrderController extends Controller
                 OrderStatusEnum::ACCEPTED_BY_SELLER(),
                 OrderStatusEnum::PREPARING(),
                 OrderStatusEnum::ASSIGNED(),
-                OrderStatusEnum::CANCELLED(),
             ],
             'pageTitle' => 'Processing Orders',
             'subPage'   => 'processing_orders',

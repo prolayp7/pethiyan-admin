@@ -117,6 +117,24 @@ class OrderController extends Controller
         ]));
     }
 
+    public function indexProcessing(): View
+    {
+        $this->authorize('viewAny', SellerOrder::class);
+        $columns = $this->buildOrderColumns();
+        return view($this->panelView('orders.index'), array_merge(compact('columns'), [
+            'defaultStatuses' => [
+                OrderStatusEnum::AWAITING_STORE_RESPONSE(),
+                OrderStatusEnum::ACCEPTED_BY_SELLER(),
+                OrderStatusEnum::PREPARING(),
+                OrderStatusEnum::READY_FOR_PICKUP(),
+                OrderStatusEnum::ASSIGNED(),
+                OrderStatusEnum::COLLECTED(),
+            ],
+            'pageTitle' => 'Processing Orders',
+            'subPage'   => 'processing_orders',
+        ]));
+    }
+
     private function buildOrderColumns(): array
     {
         return [
@@ -144,6 +162,7 @@ class OrderController extends Controller
         $length = $request->get('length');
         $searchValue = $request->get('search')['value'] ?? '';
         $status = $request->get('status');
+        $statuses = $request->get('statuses');
         $paymentType = $request->get('payment_type');
         $dateRange = $request->get('range');
         $promoCode = trim($request->get('promo_code', ''));
@@ -166,7 +185,9 @@ class OrderController extends Controller
 
             $totalRecords = $query->count();
 
-            if ($status !== null && $status !== '') {
+            if (!empty($statuses) && is_array($statuses)) {
+                $query->whereIn('status', $statuses);
+            } elseif ($status !== null && $status !== '') {
                 $query->where('status', $status);
             }
 
@@ -836,6 +857,7 @@ class OrderController extends Controller
         $this->authorize('viewAny', Order::class);
 
         $status      = $request->get('status');
+        $statuses    = $request->get('statuses');
         $paymentType = $request->get('payment_type');
         $dateRange   = $request->get('range');
         $promoCode   = trim($request->get('promo_code', ''));
@@ -844,7 +866,9 @@ class OrderController extends Controller
 
         $query = Order::with(['items.product', 'items.variant', 'user']);
 
-        if ($status !== null && $status !== '') {
+        if (!empty($statuses) && is_array($statuses)) {
+            $query->whereIn('status', $statuses);
+        } elseif ($status !== null && $status !== '') {
             $query->where('status', $status);
         }
 

@@ -86,22 +86,10 @@ return [
                     'sub_title'  => 'All Orders',
                     'permission' => 'orders.view',
                 ],
-                'accepted_orders' => [
-                    'sub_active' => 'accepted_orders',
-                    'sub_route'  => 'admin.orders.accepted',
-                    'sub_title'  => 'Order Accepted',
-                    'permission' => 'orders.view',
-                ],
-                'cancelled_orders' => [
-                    'sub_active' => 'cancelled_orders',
-                    'sub_route'  => 'admin.orders.cancelled',
-                    'sub_title'  => 'Order Cancelled',
-                    'permission' => 'orders.view',
-                ],
-                'dispatched_orders' => [
-                    'sub_active' => 'dispatched_orders',
-                    'sub_route'  => 'admin.orders.dispatched',
-                    'sub_title'  => 'Order Dispatched',
+                'processing_orders' => [
+                    'sub_active' => 'processing_orders',
+                    'sub_route'  => 'admin.orders.processing',
+                    'sub_title'  => 'Processing Orders',
                     'permission' => 'orders.view',
                 ],
             ],

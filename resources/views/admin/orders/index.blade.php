@@ -37,7 +37,7 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <select class="form-select text-capitalize" id="statusFilter" @isset($defaultStatus) disabled @endisset>
+                                        <select class="form-select text-capitalize" id="statusFilter" @if(isset($defaultStatus) || isset($defaultStatuses)) disabled @endif>
                                             <option value="">{{ __('labels.status') }}</option>
                                             @foreach(OrderStatusEnum::values() as $value)
                                                 <option value="{{$value}}" @selected(isset($defaultStatus) && $defaultStatus === $value)>
@@ -300,6 +300,9 @@
     <script src="{{hyperAsset('assets/vendor/litepicker/dist/plugins/ranges.js')}}" defer></script>
     @isset($defaultStatus)
     <script>window.orderDefaultStatus = @json($defaultStatus);</script>
+    @endisset
+    @isset($defaultStatuses)
+    <script>window.orderDefaultStatuses = @json($defaultStatuses);</script>
     @endisset
     <script src="{{hyperAsset('assets/js/order.js')}}" defer></script>
 @endpush

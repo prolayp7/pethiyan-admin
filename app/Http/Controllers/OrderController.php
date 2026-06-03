@@ -123,12 +123,10 @@ class OrderController extends Controller
         $columns = $this->buildOrderColumns();
         return view($this->panelView('orders.index'), array_merge(compact('columns'), [
             'defaultStatuses' => [
-                OrderStatusEnum::AWAITING_STORE_RESPONSE(),
                 OrderStatusEnum::ACCEPTED_BY_SELLER(),
                 OrderStatusEnum::PREPARING(),
-                OrderStatusEnum::READY_FOR_PICKUP(),
                 OrderStatusEnum::ASSIGNED(),
-                OrderStatusEnum::COLLECTED(),
+                OrderStatusEnum::CANCELLED(),
             ],
             'pageTitle' => 'Processing Orders',
             'subPage'   => 'processing_orders',

@@ -37,11 +37,11 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <select class="form-select text-capitalize" id="statusFilter" @if(isset($defaultStatus) || isset($defaultStatuses)) disabled @endif>
+                                        <select class="form-select" id="statusFilter" @if(isset($defaultStatus) || isset($defaultStatuses)) disabled @endif>
                                             <option value="">{{ __('labels.status') }}</option>
-                                            @foreach(OrderStatusEnum::values() as $value)
-                                                <option value="{{$value}}" @selected(isset($defaultStatus) && $defaultStatus === $value)>
-                                                    {{Str::replace("_", " ", $value)}}
+                                            @foreach(OrderStatusEnum::cases() as $case)
+                                                <option value="{{$case->value}}" @selected(isset($defaultStatus) && $defaultStatus === $case->value)>
+                                                    {{$case->label()}}
                                                 </option>
                                             @endforeach
                                         </select>

@@ -92,6 +92,18 @@ return [
                     'sub_title'  => 'Processing Orders',
                     'permission' => 'orders.view',
                 ],
+                'cancelled_orders' => [
+                    'sub_active' => 'cancelled_orders',
+                    'sub_route'  => 'admin.orders.cancelled',
+                    'sub_title'  => 'Order Cancelled',
+                    'permission' => 'orders.view',
+                ],
+                'dispatched_orders' => [
+                    'sub_active' => 'dispatched_orders',
+                    'sub_route'  => 'admin.orders.dispatched',
+                    'sub_title'  => 'Order Dispatched',
+                    'permission' => 'orders.view',
+                ],
             ],
         ],
         

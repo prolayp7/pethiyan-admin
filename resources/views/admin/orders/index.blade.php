@@ -1,4 +1,20 @@
-@php use App\Enums\DateRangeFilterEnum;use App\Enums\Order\OrderStatusEnum;use App\Enums\Payment\PaymentTypeEnum;use Illuminate\Support\Str; @endphp
+@php
+use App\Enums\DateRangeFilterEnum;
+use App\Enums\Order\OrderStatusEnum;
+use App\Enums\Payment\PaymentTypeEnum;
+use Illuminate\Support\Str;
+
+$adminStatusOptions = [
+    'accepted_by_seller' => 'Order Accepted',
+    'preparing'          => 'Order Start Packing',
+    'ready_for_pickup'   => 'Order Packing Done',
+    'assigned'           => 'Order Ready for Pickup',
+    'collected'          => 'Order Collected',
+    'order_dispatched'   => 'Order Dispatched',
+    'cancelled'          => 'Order Cancelled',
+    'failed'             => 'Order Failed',
+];
+@endphp
 @extends('layouts.admin.app', ['page' => $menuAdmin['orders']['active'] ?? "", 'sub_page' => $subPage ?? 'all_orders'])
 
 @section('title', $pageTitle ?? __('labels.orders'))
@@ -39,9 +55,9 @@
                                     <div class="col-auto">
                                         <select class="form-select" id="statusFilter" @if(isset($defaultStatus) || isset($defaultStatuses)) disabled @endif>
                                             <option value="">{{ __('labels.status') }}</option>
-                                            @foreach(OrderStatusEnum::cases() as $case)
-                                                <option value="{{$case->value}}" @selected(isset($defaultStatus) && $defaultStatus === $case->value)>
-                                                    {{$case->label()}}
+                                            @foreach($adminStatusOptions as $value => $label)
+                                                <option value="{{ $value }}" @selected(isset($defaultStatus) && $defaultStatus === $value)>
+                                                    {{ $label }}
                                                 </option>
                                             @endforeach
                                         </select>

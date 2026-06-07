@@ -55,7 +55,7 @@ class BlogPostController extends Controller
     public function create(): View
     {
         $categories = BlogCategory::active()->orderBy('title')->get(['id', 'title']);
-        $authors = Author::active()->orderBy('name')->get(['id', 'name', 'role']);
+        $authors = Author::active()->orderBy('name')->get(['id', 'name', 'role', 'image']);
 
         return view('admin.blog.posts.form', [
             'post' => new BlogPost(),
@@ -85,7 +85,7 @@ class BlogPostController extends Controller
     public function edit(BlogPost $post): View
     {
         $categories = BlogCategory::active()->orderBy('title')->get(['id', 'title']);
-        $authors = Author::active()->orderBy('name')->get(['id', 'name', 'role']);
+        $authors = Author::active()->orderBy('name')->get(['id', 'name', 'role', 'image']);
 
         return view('admin.blog.posts.form', [
             'post' => $post,

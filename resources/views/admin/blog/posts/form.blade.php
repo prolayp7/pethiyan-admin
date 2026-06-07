@@ -87,15 +87,18 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Author</label>
-                            <select class="form-select" name="author_id">
-                                <option value="">No author</option>
-                                @foreach($authors as $author)
-                                    <option value="{{ $author->id }}" {{ (string) old('author_id', $post->author_id) === (string) $author->id ? 'selected' : '' }}>
-                                        {{ $author->name }}{{ $author->role ? ' — ' . $author->role : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="form-hint mt-2">Manage authors and their avatars on the <a href="{{ route('admin.authors.index') }}">Authors</a> page.</div>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <img id="author-avatar-preview" src="{{ old('author_id', $post->author_id) ? ($authors->firstWhere('id', (int) old('author_id', $post->author_id))?->image_url ?? '') : '' }}" alt="Author avatar" class="rounded-circle border {{ old('author_id', $post->author_id) ? '' : 'd-none' }}" style="height: 48px; width: 48px; object-fit: cover;">
+                                <select class="form-select" name="author_id" id="author-select">
+                                    <option value="">No author</option>
+                                    @foreach($authors as $author)
+                                        <option value="{{ $author->id }}" data-avatar="{{ $author->image_url }}" {{ (string) old('author_id', $post->author_id) === (string) $author->id ? 'selected' : '' }}>
+                                            {{ $author->name }}{{ $author->role ? ' — ' . $author->role : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-hint">Manage authors and their avatars on the <a href="{{ route('admin.authors.index') }}">Authors</a> page.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tags</label>
@@ -136,4 +139,29 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    (function () {
+        var select = document.getElementById('author-select');
+        var preview = document.getElementById('author-avatar-preview');
+        if (!select || !preview) {
+            return;
+        }
+
+        select.addEventListener('change', function () {
+            var option = select.options[select.selectedIndex];
+            var avatar = option ? option.getAttribute('data-avatar') : '';
+
+            if (avatar) {
+                preview.src = avatar;
+                preview.classList.remove('d-none');
+            } else {
+                preview.src = '';
+                preview.classList.add('d-none');
+            }
+        });
+    })();
+</script>
+@endpush
 @endsection

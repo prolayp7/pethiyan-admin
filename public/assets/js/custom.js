@@ -1102,8 +1102,8 @@ try {
             "wordcount",
         ],
         toolbar:
-            "undo redo | formatselect | " +
-            "bold italic backcolor | alignleft aligncenter " +
+            "undo redo | blocks fontfamily fontsize | " +
+            "bold italic forecolor backcolor | alignleft aligncenter " +
             "alignright alignjustify | bullist numlist outdent indent | " +
             "removeformat",
         content_style:

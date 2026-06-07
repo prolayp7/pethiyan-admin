@@ -1078,6 +1078,9 @@ try {
     let options = {
         selector: ".hugerte-mytextarea",
         height: 300,
+        min_height: 300,
+        max_height: 1200,
+        autoresize_bottom_margin: 32,
         menubar: false,
         statusbar: false,
         license_key: "gpl",
@@ -1100,6 +1103,7 @@ try {
             "code",
             "help",
             "wordcount",
+            "autoresize",
         ],
         toolbar:
             "undo redo | blocks fontfamily fontsize | " +

@@ -10,6 +10,7 @@ class BlogPost extends Model
 {
     protected $fillable = [
         'blog_category_id',
+        'author_id',
         'title',
         'slug',
         'excerpt',
@@ -41,6 +42,11 @@ class BlogPost extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(BlogCategory::class, 'blog_category_id');
+    }
+
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(Author::class, 'author_id');
     }
 
     public function getFeaturedImageUrlAttribute(): ?string

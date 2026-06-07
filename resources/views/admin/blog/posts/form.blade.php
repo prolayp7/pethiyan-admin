@@ -86,31 +86,20 @@
                             <div class="form-hint mt-2">Recommended: 1600 x 900 px. Max upload size: 5 MB.</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Author Avatar</label>
-                            @if($post->exists && ($post->author_avatar_url ?? ''))
-                                <div class="mb-2 d-flex align-items-center gap-3">
-                                    <img src="{{ $post->author_avatar_url }}" alt="Author avatar" class="rounded-circle border" style="height: 72px; width: 72px; object-fit: cover;">
-                                    <span class="text-muted small">Current avatar — upload a new file below to replace it.</span>
-                                </div>
-                            @endif
-                            <x-filepond_image name="author_avatar" imageUrl=""/>
-                            <div class="form-hint mt-2">Recommended: 256 x 256 px. Max upload size: 3 MB.</div>
+                            <label class="form-label">Author</label>
+                            <select class="form-select" name="author_id">
+                                <option value="">No author</option>
+                                @foreach($authors as $author)
+                                    <option value="{{ $author->id }}" {{ (string) old('author_id', $post->author_id) === (string) $author->id ? 'selected' : '' }}>
+                                        {{ $author->name }}{{ $author->role ? ' — ' . $author->role : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-hint mt-2">Manage authors and their avatars on the <a href="{{ route('admin.authors.index') }}">Authors</a> page.</div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Author Name</label>
-                            <input type="text" class="form-control" name="author_name" value="{{ old('author_name', $post->author_name) }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Author Role</label>
-                            <input type="text" class="form-control" name="author_role" value="{{ old('author_role', $post->author_role) }}">
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Tags</label>
                             <input type="text" class="form-control" name="tags_input" value="{{ old('tags_input', $tagString) }}" placeholder="packaging, logistics, branding">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Author Bio</label>
-                            <textarea class="form-control" name="author_bio" rows="3">{{ old('author_bio', $post->author_bio) }}</textarea>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Meta Title</label>

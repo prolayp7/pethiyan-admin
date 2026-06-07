@@ -29,10 +29,10 @@ class BlogApiController extends Controller
                 'postsPerPage' => $settings['posts_per_page'],
             ],
             'featuredPosts' => $this->transformPosts(
-                BlogPost::published()->with('category')->where('is_featured', true)->latest('published_at')->take(4)->get()
+                BlogPost::published()->with(['category', 'author'])->where('is_featured', true)->latest('published_at')->take(4)->get()
             ),
             'latestPosts' => $this->transformPosts(
-                BlogPost::published()->with('category')->latest('published_at')->take(9)->get()
+                BlogPost::published()->with(['category', 'author'])->latest('published_at')->take(9)->get()
             ),
             'categories' => $this->transformCategories(
                 BlogCategory::active()->withCount(['posts' => fn ($query) => $query->published()])->orderBy('sort_order')->orderBy('title')->get()
@@ -42,7 +42,7 @@ class BlogApiController extends Controller
 
     public function posts(Request $request): JsonResponse
     {
-        $query = BlogPost::published()->with('category');
+        $query = BlogPost::published()->with(['category', 'author']);
 
         if ($request->filled('category')) {
             $query->whereHas('category', fn ($builder) => $builder->where('slug', $request->input('category')));
@@ -75,12 +75,12 @@ class BlogApiController extends Controller
     public function show(string $slug): JsonResponse
     {
         $post = BlogPost::published()
-            ->with('category')
+            ->with(['category', 'author'])
             ->where('slug', $slug)
             ->firstOrFail();
 
         $related = BlogPost::published()
-            ->with('category')
+            ->with(['category', 'author'])
             ->where('id', '!=', $post->id)
             ->when($post->blog_category_id, fn ($query) => $query->where('blog_category_id', $post->blog_category_id))
             ->latest('published_at')
@@ -113,7 +113,7 @@ class BlogApiController extends Controller
             ->firstOrFail();
 
         $posts = BlogPost::published()
-            ->with('category')
+            ->with(['category', 'author'])
             ->where('blog_category_id', $category->id)
             ->latest('published_at')
             ->paginate((int) $request->input('per_page', 9));
@@ -147,7 +147,12 @@ class BlogApiController extends Controller
             'readingTime' => $post->reading_time,
             'tags' => $post->tags ?? [],
             'category' => $post->category ? $this->transformCategory($post->category) : null,
-            'author' => [
+            'author' => $post->author ? [
+                'name' => $post->author->name,
+                'role' => $post->author->role,
+                'bio' => $includeContent ? $post->author->bio : null,
+                'avatar' => $post->author->image_url,
+            ] : [
                 'name' => $post->author_name,
                 'role' => $post->author_role,
                 'bio' => $includeContent ? $post->author_bio : null,

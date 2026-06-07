@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\AdminPermissionEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Author;
 use App\Models\BlogCategory;
 use App\Models\BlogPost;
 use App\Services\ImageWebpService;
@@ -54,10 +55,12 @@ class BlogPostController extends Controller
     public function create(): View
     {
         $categories = BlogCategory::active()->orderBy('title')->get(['id', 'title']);
+        $authors = Author::active()->orderBy('name')->get(['id', 'name', 'role']);
 
         return view('admin.blog.posts.form', [
             'post' => new BlogPost(),
             'categories' => $categories,
+            'authors' => $authors,
             'tagString' => '',
         ]);
     }
@@ -71,10 +74,6 @@ class BlogPostController extends Controller
             $data['featured_image'] = $this->storeImage($request->file('featured_image'), 'blog/posts');
         }
 
-        if ($request->hasFile('author_avatar')) {
-            $data['author_avatar'] = $this->storeImage($request->file('author_avatar'), 'blog/authors');
-        }
-
         BlogPost::create($data);
         $this->triggerFrontendRevalidate();
 
@@ -86,10 +85,12 @@ class BlogPostController extends Controller
     public function edit(BlogPost $post): View
     {
         $categories = BlogCategory::active()->orderBy('title')->get(['id', 'title']);
+        $authors = Author::active()->orderBy('name')->get(['id', 'name', 'role']);
 
         return view('admin.blog.posts.form', [
             'post' => $post,
             'categories' => $categories,
+            'authors' => $authors,
             'tagString' => implode(', ', $post->tags ?? []),
         ]);
     }
@@ -106,13 +107,6 @@ class BlogPostController extends Controller
             $data['featured_image'] = $this->storeImage($request->file('featured_image'), 'blog/posts');
         }
 
-        if ($request->hasFile('author_avatar')) {
-            if ($post->author_avatar && !str_starts_with($post->author_avatar, 'http')) {
-                Storage::disk('public')->delete($post->author_avatar);
-            }
-            $data['author_avatar'] = $this->storeImage($request->file('author_avatar'), 'blog/authors');
-        }
-
         $post->update($data);
         $this->triggerFrontendRevalidate();
 
@@ -123,10 +117,8 @@ class BlogPostController extends Controller
 
     public function destroy(BlogPost $post): RedirectResponse
     {
-        foreach (['featured_image', 'author_avatar'] as $field) {
-            if ($post->{$field} && !str_starts_with((string) $post->{$field}, 'http')) {
-                Storage::disk('public')->delete($post->{$field});
-            }
+        if ($post->featured_image && !str_starts_with($post->featured_image, 'http')) {
+            Storage::disk('public')->delete($post->featured_image);
         }
 
         $post->delete();
@@ -141,15 +133,12 @@ class BlogPostController extends Controller
     {
         $data = $request->validate([
             'blog_category_id' => 'nullable|integer|exists:blog_categories,id',
+            'author_id' => 'nullable|integer|exists:authors,id',
             'title' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:blog_posts,slug,' . ($postId ?? 'NULL') . ',id',
             'excerpt' => 'nullable|string|max:1000',
             'content' => 'nullable|string',
             'featured_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
-            'author_name' => 'nullable|string|max:120',
-            'author_role' => 'nullable|string|max:120',
-            'author_bio' => 'nullable|string|max:1000',
-            'author_avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:3072',
             'tags_input' => 'nullable|string|max:500',
             'reading_time' => 'nullable|integer|min:1|max:120',
             'is_featured' => 'nullable|boolean',
@@ -173,13 +162,11 @@ class BlogPostController extends Controller
 
         return [
             'blog_category_id' => $data['blog_category_id'] ?? null,
+            'author_id' => $data['author_id'] ?? null,
             'title' => $data['title'],
             'slug' => $data['slug'] ?? '',
             'excerpt' => $excerpt,
             'content' => $content ?: null,
-            'author_name' => $data['author_name'] ?? null,
-            'author_role' => $data['author_role'] ?? null,
-            'author_bio' => $data['author_bio'] ?? null,
             'tags' => $this->normalizeTags($data['tags_input'] ?? ''),
             'reading_time' => $readingTime,
             'is_featured' => $request->boolean('is_featured', false),

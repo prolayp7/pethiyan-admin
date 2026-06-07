@@ -253,6 +253,13 @@ return [
                 ],
             ],
         ],
+        'authors' => [
+            'icon'       => 'ti-user-edit',
+            'route'      => 'admin.authors.index',
+            'title'      => 'Authors',
+            'active'     => 'authors',
+            'permission' => 'author.view',
+        ],
         'menus' => [
             'icon'   => 'ti-menu-2',
             'title'  => 'labels.menus',

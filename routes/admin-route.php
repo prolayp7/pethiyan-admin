@@ -626,6 +626,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
             });
         });
 
+        // authors
+        Route::prefix('authors')->name('authors.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AuthorController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\Admin\AuthorController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\Admin\AuthorController::class, 'store'])->name('store');
+            Route::get('/{author}/edit', [\App\Http\Controllers\Admin\AuthorController::class, 'edit'])->name('edit');
+            Route::post('/{author}', [\App\Http\Controllers\Admin\AuthorController::class, 'update'])->name('update');
+            Route::delete('/{author}', [\App\Http\Controllers\Admin\AuthorController::class, 'destroy'])->name('destroy');
+        });
+
         // enquiries
         Route::prefix('enquiries')->name('enquiries.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\EnquiryController::class, 'index'])->name('index');

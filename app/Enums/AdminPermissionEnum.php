@@ -96,6 +96,10 @@ use ArchTech\Enums\Values;
  * @method static BLOG_CREATE()
  * @method static BLOG_EDIT()
  * @method static BLOG_DELETE()
+ * @method static AUTHOR_VIEW()
+ * @method static AUTHOR_CREATE()
+ * @method static AUTHOR_EDIT()
+ * @method static AUTHOR_DELETE()
  * @method static MENU_VIEW()
  * @method static MENU_CREATE()
  * @method static MENU_EDIT()
@@ -257,6 +261,10 @@ enum AdminPermissionEnum: string
     case BLOG_CREATE = 'blog.create';
     case BLOG_EDIT = 'blog.edit';
     case BLOG_DELETE = 'blog.delete';
+    case AUTHOR_VIEW = 'author.view';
+    case AUTHOR_CREATE = 'author.create';
+    case AUTHOR_EDIT = 'author.edit';
+    case AUTHOR_DELETE = 'author.delete';
     case MENU_VIEW = 'menu.view';
     case MENU_CREATE = 'menu.create';
     case MENU_EDIT = 'menu.edit';
@@ -419,6 +427,15 @@ enum AdminPermissionEnum: string
                     self::BLOG_CREATE(),
                     self::BLOG_EDIT(),
                     self::BLOG_DELETE(),
+                ],
+            ],
+            'author' => [
+                'name' => 'Author',
+                'permissions' => [
+                    self::AUTHOR_VIEW(),
+                    self::AUTHOR_CREATE(),
+                    self::AUTHOR_EDIT(),
+                    self::AUTHOR_DELETE(),
                 ],
             ],
             'menu' => [

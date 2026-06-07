@@ -98,7 +98,7 @@ class AuthorController extends Controller
             'name' => 'required|string|max:255',
             'role' => 'nullable|string|max:255',
             'bio' => 'nullable|string|max:2000',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:3072',
+            'image' => 'nullable|mimes:jpg,jpeg,png,webp,avif|max:3072',
             'is_active' => 'nullable|boolean',
         ]);
 

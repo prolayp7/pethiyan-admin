@@ -74,8 +74,8 @@ class BlogPostController extends Controller
             $data['featured_image'] = $this->storeImage($request->file('featured_image'), 'blog/posts');
         }
 
-        BlogPost::create($data);
-        $this->triggerFrontendRevalidate();
+        $post = BlogPost::create($data);
+        $this->triggerFrontendRevalidate($post->load('category'));
 
         return redirect()
             ->route('admin.blog.posts.index')
@@ -108,7 +108,7 @@ class BlogPostController extends Controller
         }
 
         $post->update($data);
-        $this->triggerFrontendRevalidate();
+        $this->triggerFrontendRevalidate($post->load('category'));
 
         return redirect()
             ->route('admin.blog.posts.index')
@@ -117,12 +117,14 @@ class BlogPostController extends Controller
 
     public function destroy(BlogPost $post): RedirectResponse
     {
+        $post->load('category');
+
         if ($post->featured_image && !str_starts_with($post->featured_image, 'http')) {
             Storage::disk('public')->delete($post->featured_image);
         }
 
         $post->delete();
-        $this->triggerFrontendRevalidate();
+        $this->triggerFrontendRevalidate($post);
 
         return redirect()
             ->route('admin.blog.posts.index')
@@ -221,7 +223,7 @@ class BlogPostController extends Controller
         return $stored;
     }
 
-    private function triggerFrontendRevalidate(): void
+    private function triggerFrontendRevalidate(?BlogPost $post = null): void
     {
         $frontendUrl = rtrim((string) env('FRONTEND_APP_URL', ''), '/');
         $secret = (string) env('FRONTEND_REVALIDATE_SECRET', '');
@@ -230,11 +232,21 @@ class BlogPostController extends Controller
             return;
         }
 
+        $paths = ['/blog'];
+
+        if ($post) {
+            $paths[] = '/blog/' . $post->slug;
+
+            if ($post->category) {
+                $paths[] = '/blog/category/' . $post->category->slug;
+            }
+        }
+
         try {
             Http::timeout(3)->post("{$frontendUrl}/api/revalidate", [
                 'secret' => $secret,
                 'tags' => ['blog'],
-                'paths' => ['/blog'],
+                'paths' => array_values(array_unique($paths)),
             ]);
         } catch (\Throwable $e) {
             Log::warning('Blog post revalidation failed.', ['message' => $e->getMessage()]);

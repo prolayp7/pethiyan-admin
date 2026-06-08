@@ -169,8 +169,8 @@ class BlogCategoryController extends Controller
 
     private function triggerFrontendRevalidate(): void
     {
-        $frontendUrl = rtrim((string) env('FRONTEND_APP_URL', ''), '/');
-        $secret = (string) env('FRONTEND_REVALIDATE_SECRET', '');
+        $frontendUrl = rtrim((string) env('FRONTEND_URL', env('FRONTEND_APP_URL', '')), '/');
+        $secret = (string) env('REVALIDATE_SECRET', env('FRONTEND_REVALIDATE_SECRET', ''));
 
         if ($frontendUrl === '' || $secret === '') {
             return;

@@ -1110,8 +1110,30 @@ try {
             "bold italic forecolor backcolor | alignleft aligncenter " +
             "alignright alignjustify | bullist numlist outdent indent | " +
             "removeformat",
+        // Inter is the font used to render blog content on the storefront, so it's
+        // listed first and set as the default here to keep the editor preview matching.
+        font_family_formats:
+            "Inter='Inter', sans-serif;" +
+            "Andale Mono=andale mono,times;" +
+            "Arial=arial,helvetica,sans-serif;" +
+            "Arial Black=arial black,avant garde;" +
+            "Book Antiqua=book antiqua,palatino;" +
+            "Comic Sans MS=comic sans ms,sans-serif;" +
+            "Courier New=courier new,courier;" +
+            "Georgia=georgia,palatino;" +
+            "Helvetica=helvetica;" +
+            "Impact=impact,chicago;" +
+            "Symbol=symbol;" +
+            "Tahoma=tahoma,arial,helvetica,sans-serif;" +
+            "Terminal=terminal,monaco;" +
+            "Times New Roman=times new roman,times;" +
+            "Trebuchet MS=trebuchet ms,geneva;" +
+            "Verdana=verdana,geneva;" +
+            "Webdings=webdings;" +
+            "Wingdings=wingdings,zapf dingbats",
+        content_css: ["https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"],
         content_style:
-            "body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }",
+            "body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }",
     };
     if (localStorage.getItem("tablerTheme") === "dark") {
         options.skin = "oxide-dark";

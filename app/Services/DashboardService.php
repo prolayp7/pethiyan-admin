@@ -12,6 +12,7 @@ use App\Models\Category;
 use App\Models\DeliveryBoy;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderManagementHistory;
 use App\Models\Product;
 use App\Models\Seller;
 use App\Models\SellerOrderItem;
@@ -33,6 +34,42 @@ class DashboardService
     }
 
     /**
+     * Get orders that transitioned to "delivered" within the given window, keyed by order_id,
+     * with the value being the history record holding the actual delivery timestamp.
+     * Orders are tracked here by when they were delivered (via order_management_histories),
+     * not by when they were placed (orders.created_at) - those can differ by weeks.
+     */
+    private function getOrdersDeliveredInPeriod(Carbon $startDate, Carbon $endDate): \Illuminate\Support\Collection
+    {
+        return OrderManagementHistory::where('new_status', OrderStatusEnum::DELIVERED())
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->orderBy('created_at')
+            ->get(['order_id', 'created_at'])
+            ->unique('order_id')
+            ->keyBy('order_id');
+    }
+
+    /**
+     * Count users with more than one order delivered within the given window.
+     */
+    private function countRepeatedCustomersDeliveredBetween(Carbon $startDate, Carbon $endDate): int
+    {
+        $deliveredOrderIds = $this->getOrdersDeliveredInPeriod($startDate, $endDate)->keys();
+
+        if ($deliveredOrderIds->isEmpty()) {
+            return 0;
+        }
+
+        return Order::whereIn('id', $deliveredOrderIds)
+            ->whereNotNull('user_id')
+            ->select('user_id')
+            ->groupBy('user_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->get()
+            ->count();
+    }
+
+    /**
      * Get revenue data for the specified number of days.
      */
     public function getRevenueData(int $days, ?int $sellerId = null): array
@@ -49,31 +86,48 @@ class DashboardService
             $query->whereHas('store', function ($q) use ($sellerId) {
                 $q->where('seller_id', $sellerId);
             });
-        } else {
-            $query = Order::whereBetween('created_at', [$startDate, $endDate])
-                ->where('status', OrderStatusEnum::DELIVERED());
-        }
 
-        $revenueByDay = $query->get()
-            ->groupBy(function ($item) {
-                return $item->created_at->format('Y-m-d');
-            })
-            ->map(function ($items) use ($sellerId) {
-                $totalRevenue = $items->sum(function ($item) use ($sellerId) {
-                    if ($sellerId) {
+            $revenueByDay = $query->get()
+                ->groupBy(function ($item) {
+                    return $item->created_at->format('Y-m-d');
+                })
+                ->map(function ($items) {
+                    $totalRevenue = $items->sum(function ($item) {
                         return $item->subtotal - $item->admin_commission_amount;
-                    }
-                    return $item->total_payable;
-                });
+                    });
 
-                return [
-                    'date' => $items->first()->created_at->format('Y-m-d'),
-                    'revenue' => $totalRevenue,
-                    'formatted_revenue' => $this->currencyService->format($totalRevenue)
-                ];
-            })
-            ->values()
-            ->toArray();
+                    return [
+                        'date' => $items->first()->created_at->format('Y-m-d'),
+                        'revenue' => $totalRevenue,
+                        'formatted_revenue' => $this->currencyService->format($totalRevenue)
+                    ];
+                })
+                ->values()
+                ->toArray();
+        } else {
+            // Revenue is recognized on the date an order was actually delivered,
+            // not the date it was placed - those can be weeks apart.
+            $deliveries = $this->getOrdersDeliveredInPeriod($startDate, $endDate);
+            $orders = Order::whereIn('id', $deliveries->keys())->get()->keyBy('id');
+
+            $revenueByDay = $deliveries
+                ->groupBy(function ($history) {
+                    return Carbon::parse($history->created_at)->format('Y-m-d');
+                })
+                ->map(function ($histories, $dateStr) use ($orders) {
+                    $totalRevenue = $histories->sum(function ($history) use ($orders) {
+                        return $orders->get($history->order_id)?->total_payable ?? 0;
+                    });
+
+                    return [
+                        'date' => $dateStr,
+                        'revenue' => $totalRevenue,
+                        'formatted_revenue' => $this->currencyService->format($totalRevenue)
+                    ];
+                })
+                ->values()
+                ->toArray();
+        }
 
         // Fill in missing days with zero revenue
         $result = [];
@@ -636,22 +690,21 @@ class DashboardService
         $previousPeriodStart = Carbon::now()->subDays($days * 2)->startOfDay();
         $previousPeriodEnd = Carbon::now()->subDays($days)->endOfDay();
 
-        // Get total orders for the current period
-        $currentPeriodTotalOrders = OrderItem::whereBetween('created_at', [$currentPeriodStart, $currentPeriodEnd])
+        // Get total orders placed in the current period
+        $currentPeriodTotalOrders = Order::whereBetween('created_at', [$currentPeriodStart, $currentPeriodEnd])
             ->count();
 
-        // Get delivered orders for the current period
-        $currentPeriodDeliveredOrders = OrderItem::where('status', OrderItemStatusEnum::DELIVERED())
-            ->whereBetween('created_at', [$currentPeriodStart, $currentPeriodEnd])
+        // Get orders that were actually delivered during the current period
+        // (tracked via order_management_histories, since an order's delivery date
+        // can be weeks after it was placed - using created_at here would undercount).
+        $currentPeriodDeliveredOrders = $this->getOrdersDeliveredInPeriod($currentPeriodStart, $currentPeriodEnd)->count();
+
+        // Get total orders placed in the previous period
+        $previousPeriodTotalOrders = Order::whereBetween('created_at', [$previousPeriodStart, $previousPeriodEnd])
             ->count();
 
-        // Get total orders for a previous period
-        $previousPeriodTotalOrders = OrderItem::whereBetween('created_at', [$previousPeriodStart, $previousPeriodEnd])
-            ->count();
-
-        // Get delivered orders for a previous period
-        $previousPeriodDeliveredOrders = OrderItem::where('status', OrderItemStatusEnum::DELIVERED())->whereBetween('created_at', [$previousPeriodStart, $previousPeriodEnd])
-            ->count();
+        // Get orders that were actually delivered during the previous period
+        $previousPeriodDeliveredOrders = $this->getOrdersDeliveredInPeriod($previousPeriodStart, $previousPeriodEnd)->count();
 
         // Calculate conversion rates
         $currentPeriodRate = $currentPeriodTotalOrders > 0
@@ -801,21 +854,11 @@ class DashboardService
         $previousPeriodStart = Carbon::now()->subDays($days * 2)->startOfDay();
         $previousPeriodEnd = Carbon::now()->subDays($days)->endOfDay();
 
-        $currentPeriodRepeatedCustomers = Order::whereNotNull('user_id')
-            ->where('status', OrderStatusEnum::DELIVERED())
-            ->whereBetween('created_at', [$currentPeriodStart, $currentPeriodEnd])
-            ->groupBy('user_id')
-            ->havingRaw('COUNT(*) > 1')
-            ->get(['user_id'])
-            ->count();
-
-        $previousPeriodRepeatedCustomers = Order::whereNotNull('user_id')
-            ->where('status', OrderStatusEnum::DELIVERED())
-            ->whereBetween('created_at', [$previousPeriodStart, $previousPeriodEnd])
-            ->groupBy('user_id')
-            ->havingRaw('COUNT(*) > 1')
-            ->get(['user_id'])
-            ->count();
+        // A customer is "repeated" if they have more than one order that was actually
+        // delivered within the period - tracked via order_management_histories, since
+        // delivery date can be weeks after the order was placed (orders.created_at).
+        $currentPeriodRepeatedCustomers = $this->countRepeatedCustomersDeliveredBetween($currentPeriodStart, $currentPeriodEnd);
+        $previousPeriodRepeatedCustomers = $this->countRepeatedCustomersDeliveredBetween($previousPeriodStart, $previousPeriodEnd);
 
         $percentageChange = 0;
         if ($previousPeriodRepeatedCustomers > 0) {
@@ -824,18 +867,21 @@ class DashboardService
             $percentageChange = 100;
         }
 
-        $orders = Order::whereNotNull('user_id')
-            ->where('status', OrderStatusEnum::DELIVERED())
-            ->whereBetween('created_at', [$currentPeriodStart, $currentPeriodEnd])
-            ->orderBy('created_at')
-            ->get(['user_id', 'created_at']);
+        $deliveries = $this->getOrdersDeliveredInPeriod($currentPeriodStart, $currentPeriodEnd);
+        $orderUserIds = Order::whereIn('id', $deliveries->keys())
+            ->whereNotNull('user_id')
+            ->pluck('user_id', 'id');
 
         $userOrderCounts = [];
         $repeatCustomersByDay = [];
 
-        foreach ($orders as $order) {
-            $userId = $order->user_id;
-            $dateStr = $order->created_at->format('Y-m-d');
+        foreach ($deliveries->sortBy('created_at') as $orderId => $history) {
+            $userId = $orderUserIds[$orderId] ?? null;
+            if ($userId === null) {
+                continue;
+            }
+
+            $dateStr = Carbon::parse($history->created_at)->format('Y-m-d');
 
             $userOrderCounts[$userId] = ($userOrderCounts[$userId] ?? 0) + 1;
 

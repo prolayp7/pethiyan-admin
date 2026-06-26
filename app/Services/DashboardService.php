@@ -923,13 +923,22 @@ class DashboardService
         $startDate = Carbon::now()->subDays($days)->startOfDay();
         $endDate = Carbon::now()->endOfDay();
 
+        // Same as revenue/conversion-rate: an item's order can be delivered weeks after
+        // it was placed, so filter by orders actually delivered in the window rather
+        // than order_items.created_at.
+        $deliveredOrderIds = $this->getOrdersDeliveredInPeriod($startDate, $endDate)->keys();
+
+        if ($deliveredOrderIds->isEmpty()) {
+            return [];
+        }
+
         $topProducts = Product::select('products.*')->with('category')
             ->selectRaw('SUM(order_items.quantity) as total_quantity')
             ->selectRaw('SUM(order_items.subtotal) as total_revenue')
             ->selectRaw('COUNT(order_items.id) as total_orders')
             ->join('order_items', 'products.id', '=', 'order_items.product_id')
             ->where('order_items.status', OrderItemStatusEnum::DELIVERED())
-            ->whereBetween('order_items.created_at', [$startDate, $endDate])
+            ->whereIn('order_items.order_id', $deliveredOrderIds)
             ->where('products.status', ProductStatusEnum::ACTIVE())
             ->groupBy('products.id')
             ->orderBy('total_quantity', 'desc')

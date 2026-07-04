@@ -89,7 +89,7 @@
                                             @if($isUnlocked)
                                                 <p class="text-muted mb-0">Editing is temporarily unlocked for {{ $paymentUnlockTtlMinutes ?? 10 }} minutes.</p>
                                             @else
-                                                <p class="text-muted mb-0">Credentials are masked and locked by default. Verify password + authenticator code to edit.</p>
+                                                <p class="text-muted mb-0">Credentials are masked and locked by default. Verify your admin password to edit.</p>
                                             @endif
                                         </div>
                                         <div class="d-flex gap-2">
@@ -383,8 +383,6 @@
             const unlockPaymentSettings = async () => {
                 const password = window.prompt('Enter your admin password');
                 if (!password) return;
-                const totp = window.prompt('Enter 6-digit authenticator code');
-                if (!totp) return;
 
                 const response = await fetch(@json(route('admin.settings.payment.unlock')), {
                     method: 'POST',
@@ -394,8 +392,7 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                     },
                     body: JSON.stringify({
-                        password: password,
-                        totp_code: totp
+                        password: password
                     })
                 });
 

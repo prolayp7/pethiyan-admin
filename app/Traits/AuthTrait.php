@@ -11,7 +11,6 @@ use App\Models\OtpVerification;
 use App\Models\User;
 use App\Models\UserFcmToken;
 use App\Services\SmsService;
-use App\Services\TotpService;
 use App\Types\Api\ApiResponseType;
 use App\Services\SettingService;
 use App\Enums\SettingTypeEnum;
@@ -20,11 +19,9 @@ use App\Support\FrontendAuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth as FacadesAuth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 trait AuthTrait
@@ -58,10 +55,6 @@ trait AuthTrait
         try {
             $guard = $this->resolveSessionGuard();
             $isAdminLogin = property_exists($this, 'role') && $this->role === 'admin' && $guard === 'admin';
-
-            if ($isAdminLogin && $request->filled('challenge_token')) {
-                return $this->verifyAdminTotpChallenge($request);
-            }
 
             // Validate either email or mobile with password
             $validated = $request->validate([
@@ -138,28 +131,6 @@ trait AuthTrait
                     return response()->json([
                         'success' => false,
                         'message' => __('labels.invalid_credentials'),
-                        'data' => []
-                    ]);
-                }
-
-                if ($userForRoleCheck instanceof AdminUser && $userForRoleCheck->isTotpEnabled()) {
-                    $token = Str::random(64);
-                    $ttlSeconds = 300; // 5 minutes
-                    Cache::put(
-                        "admin_totp_login_challenge:{$token}",
-                        [
-                            'admin_user_id' => $userForRoleCheck->id,
-                            'attempts' => 0,
-                            'expires_at' => now()->addSeconds($ttlSeconds)->timestamp,
-                        ],
-                        now()->addSeconds($ttlSeconds)
-                    );
-
-                    return response()->json([
-                        'success' => true,
-                        'requires_totp' => true,
-                        'challenge_token' => $token,
-                        'message' => 'Enter the 6-digit code from Google Authenticator.',
                         'data' => []
                     ]);
                 }
@@ -244,110 +215,6 @@ trait AuthTrait
                 'data' => []
             ], 500);
         }
-    }
-
-    private function verifyAdminTotpChallenge(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'challenge_token' => 'required|string',
-            'totp_code' => 'nullable|string',
-            'recovery_code' => 'nullable|string',
-        ]);
-
-        $challengeKey = 'admin_totp_login_challenge:' . $validated['challenge_token'];
-        $challenge = Cache::get($challengeKey);
-
-        if (!is_array($challenge) || empty($challenge['admin_user_id'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'TOTP challenge expired. Please login again.',
-                'data' => []
-            ], 422);
-        }
-
-        $admin = AdminUser::query()->find($challenge['admin_user_id']);
-        if (!$admin || !$admin->isTotpEnabled()) {
-            Cache::forget($challengeKey);
-            return response()->json([
-                'success' => false,
-                'message' => 'TOTP challenge is no longer valid. Please login again.',
-                'data' => []
-            ], 422);
-        }
-
-        $providedTotp = trim((string) ($validated['totp_code'] ?? ''));
-        $providedRecovery = strtoupper(trim((string) ($validated['recovery_code'] ?? '')));
-        if ($providedTotp === '' && $providedRecovery === '') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Provide either an authenticator code or a recovery code.',
-                'data' => []
-            ], 422);
-        }
-
-        $totpService = app(TotpService::class);
-        $isValid = false;
-        $usedRecovery = false;
-
-        if ($providedTotp !== '' && $totpService->verifyCode($admin->totp_secret, $providedTotp)) {
-            $isValid = true;
-        }
-
-        if (!$isValid && $providedRecovery !== '') {
-            $recoveryCodes = is_array($admin->totp_recovery_codes) ? $admin->totp_recovery_codes : [];
-            $index = array_search($providedRecovery, $recoveryCodes, true);
-            if ($index !== false) {
-                unset($recoveryCodes[$index]);
-                $admin->totp_recovery_codes = array_values($recoveryCodes);
-                $usedRecovery = true;
-                $isValid = true;
-            }
-        }
-
-        if (!$isValid) {
-            $attempts = (int) ($challenge['attempts'] ?? 0) + 1;
-            if ($attempts >= 5) {
-                Cache::forget($challengeKey);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Too many invalid OTP attempts. Please login again.',
-                    'data' => []
-                ], 429);
-            }
-
-            $expiresAt = (int) ($challenge['expires_at'] ?? now()->addMinutes(5)->timestamp);
-            $secondsLeft = max(1, $expiresAt - now()->timestamp);
-            $challenge['attempts'] = $attempts;
-            Cache::put($challengeKey, $challenge, now()->addSeconds($secondsLeft));
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid OTP/recovery code.',
-                'data' => []
-            ], 422);
-        }
-
-        if ($usedRecovery) {
-            $admin->save();
-        }
-
-        Cache::forget($challengeKey);
-
-        FacadesAuth::guard('admin')->login($admin);
-        if ($request->hasSession()) {
-            $request->session()->regenerate();
-        }
-
-        $token = $admin->createToken($admin->email ?? ('admin-token-' . $admin->id))->plainTextToken;
-        event(new UserLoggedIn($admin));
-
-        return $this->respondWithFrontendAuthCookie([
-            'success' => true,
-            'message' => __('labels.login_successful'),
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'data' => new UserResource($admin)
-        ], $token);
     }
 
     public function register(Request $request): JsonResponse

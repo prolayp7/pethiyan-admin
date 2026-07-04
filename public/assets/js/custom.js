@@ -277,32 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitButton.disabled = false;
                 submitButton.innerHTML = originalButtonContent;
                 let data = response.data;
-                if (data.requires_totp) {
-                    const challengeInput = loginForm.querySelector('input[name="challenge_token"]');
-                    if (challengeInput) challengeInput.value = data.challenge_token || '';
-
-                    const totpStep = document.getElementById('admin-totp-step');
-                    const credentialsStep = document.getElementById('admin-credentials-step');
-                    if (totpStep) {
-                        totpStep.classList.remove('d-none');
-                        if (credentialsStep) {
-                            credentialsStep.classList.add('d-none');
-                        }
-                        const emailInput = loginForm.querySelector('input[name="email"]');
-                        const mobileInput = loginForm.querySelector('input[name="mobile"]');
-                        const passwordInput = loginForm.querySelector('input[name="password"]');
-                        if (emailInput) emailInput.disabled = true;
-                        if (mobileInput) mobileInput.disabled = true;
-                        if (passwordInput) passwordInput.disabled = true;
-                        submitButton.textContent = 'Verify OTP';
-                        document.getElementById('totp_code')?.focus();
-                    }
-
-                    return Toast.fire({
-                        icon: "info",
-                        title: data.message || 'Enter authenticator code to continue'
-                    });
-                }
                 if (data.success === false) {
                     return Toast.fire({
                         icon: "error",

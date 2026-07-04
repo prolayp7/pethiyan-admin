@@ -33,9 +33,6 @@ class AdminUser extends Authenticatable implements HasMedia
         'email',
         'mobile',
         'password',
-        'totp_secret',
-        'totp_enabled_at',
-        'totp_recovery_codes',
         'status',
         'remember_token',
         'email_verified_at',
@@ -56,28 +53,11 @@ class AdminUser extends Authenticatable implements HasMedia
             'email' => 'string',
             'mobile' => 'string',
             'password' => 'hashed',
-            'totp_secret' => 'encrypted',
-            'totp_enabled_at' => 'datetime',
-            'totp_recovery_codes' => 'encrypted:array',
             'status' => 'boolean',
             'email_verified_at' => 'datetime',
             'mobile_verified_at' => 'datetime',
             'legacy_user_id' => 'integer',
         ];
-    }
-
-    public function isTotpEnabled(): bool
-    {
-        if (empty($this->totp_enabled_at)) {
-            return false;
-        }
-
-        try {
-            return !empty($this->totp_secret);
-        } catch (\Throwable $e) {
-            report($e);
-            return false;
-        }
     }
 
     public function getDefaultGuardName(): string

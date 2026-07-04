@@ -9,7 +9,6 @@ use App\Models\Setting;
 use App\Services\FrontendRevalidateService;
 use App\Services\ImageConversionService;
 use App\Services\SettingService;
-use App\Services\TotpService;
 use App\Types\Api\ApiResponseType;
 use App\Types\Settings\AppSettingType;
 use App\Types\Settings\AuthenticationSettingType;
@@ -100,12 +99,10 @@ class SettingController extends Controller
     private const WEB_BOOLEAN_FIELDS = ['footerSeoEnabled', 'footerSeoHomepageOnly'];
 
     protected SettingService $settingService;
-    protected TotpService $totpService;
 
-    public function __construct(SettingService $settingService, TotpService $totpService)
+    public function __construct(SettingService $settingService)
     {
         $this->settingService = $settingService;
-        $this->totpService = $totpService;
     }
 
 
@@ -473,7 +470,6 @@ class SettingController extends Controller
 
         $validated = $request->validate([
             'password' => 'required|string',
-            'totp_code' => 'required|string|size:6',
         ]);
 
         $admin = Auth::guard('admin')->user();
@@ -483,18 +479,6 @@ class SettingController extends Controller
 
         if (!Hash::check($validated['password'], $admin->password)) {
             return ApiResponseType::sendJsonResponse(false, __('Invalid password.'), [], 422);
-        }
-
-        $totpEnabled = $admin instanceof \App\Models\AdminUser && method_exists($admin, 'isTotpEnabled')
-            ? $admin->isTotpEnabled()
-            : (!empty($admin->totp_secret) && !empty($admin->totp_enabled_at));
-
-        if (!$totpEnabled) {
-            return ApiResponseType::sendJsonResponse(false, __('Admin TOTP is not enabled.'), [], 422);
-        }
-
-        if (!$this->totpService->verifyCode($admin->totp_secret, trim($validated['totp_code']))) {
-            return ApiResponseType::sendJsonResponse(false, __('Invalid authenticator code.'), [], 422);
         }
 
         $request->session()->put(self::PAYMENT_UNLOCK_SESSION_KEY, now()->timestamp);
@@ -600,7 +584,6 @@ class SettingController extends Controller
 
         $validated = $request->validate([
             'password' => 'required|string',
-            'totp_code' => 'required|string|size:6',
         ]);
 
         $admin = Auth::guard('admin')->user();
@@ -610,18 +593,6 @@ class SettingController extends Controller
 
         if (!Hash::check($validated['password'], $admin->password)) {
             return ApiResponseType::sendJsonResponse(false, __('Invalid password.'), [], 422);
-        }
-
-        $totpEnabled = $admin instanceof \App\Models\AdminUser && method_exists($admin, 'isTotpEnabled')
-            ? $admin->isTotpEnabled()
-            : (!empty($admin->totp_secret) && !empty($admin->totp_enabled_at));
-
-        if (!$totpEnabled) {
-            return ApiResponseType::sendJsonResponse(false, __('Admin TOTP is not enabled.'), [], 422);
-        }
-
-        if (!$this->totpService->verifyCode($admin->totp_secret, trim($validated['totp_code']))) {
-            return ApiResponseType::sendJsonResponse(false, __('Invalid authenticator code.'), [], 422);
         }
 
         $request->session()->put(self::AUTHENTICATION_UNLOCK_SESSION_KEY, now()->timestamp);

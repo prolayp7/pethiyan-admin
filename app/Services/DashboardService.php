@@ -619,8 +619,8 @@ class DashboardService
         $totalUsers = User::count();
         $totalProducts = Product::count();
         $lowStockThreshold = 10;
-        $lowStockCount = StoreProductVariant::where('stock', '<=', $lowStockThreshold)->count();
-        $outOfStockCount = StoreProductVariant::where('stock', 0)->count();
+        $lowStockCount = StoreProductVariant::withoutGlobalScopes()->where('stock', '<=', $lowStockThreshold)->count();
+        $outOfStockCount = StoreProductVariant::withoutGlobalScopes()->where('stock', 0)->count();
 
         return [
             'total_orders' => $ordersData->total_orders,

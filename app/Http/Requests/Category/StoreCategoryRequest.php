@@ -35,6 +35,7 @@ class StoreCategoryRequest extends FormRequest
             'requires_approval' => 'boolean',
             'commission' => 'nullable|numeric|min:0|max:100',
             'metadata' => 'nullable|array',
+            'metadata.header_title' => 'nullable|string|max:255',
             'metadata.seo_title' => 'nullable|string|max:255',
             'metadata.seo_description' => 'nullable|string|max:500',
             'metadata.seo_keywords' => 'nullable|string|max:1000',
@@ -103,6 +104,7 @@ class StoreCategoryRequest extends FormRequest
             'status'             => $this->status ?? CategoryStatusEnum::INACTIVE->value,
             'requires_approval'  => false, // always auto-approved
             'metadata'           => array_merge($this->metadata ?? [], [
+                'header_title'    => $this->input('header_title') ?: null,
                 'seo_title'       => $this->input('seo_title') ?: null,
                 'seo_description' => $this->input('seo_description') ?: null,
                 'seo_keywords'    => $this->normalizeSeoKeywords(),

@@ -232,6 +232,15 @@
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
+                                        <label class="form-label">Page Header (H1)</label>
+                                        <input type="text" class="form-control" name="header_title" id="category-header-title-input" maxlength="255"
+                                               placeholder="Leave blank to use SEO Title"/>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <small class="form-hint">Shown as the on-page heading, in place of the category name.</small>
+                                            <small class="text-muted" id="catHeaderTitleCount">0 / 255</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
                                         <label class="form-label">SEO Title</label>
                                         <input type="text" class="form-control" name="seo_title" id="category-seo-title-input" maxlength="255"
                                                placeholder="e.g. Buy Standup Pouches | Pethiyan"/>
@@ -593,6 +602,8 @@
         const form = modal.querySelector('form');
         const titleInput = modal.querySelector('#category-title-input');
         const descriptionInput = modal.querySelector('#category-description-input');
+        const headerTitleInput = modal.querySelector('#category-header-title-input');
+        const headerTitleCount = document.getElementById('catHeaderTitleCount');
         const seoTitleInput = modal.querySelector('#category-seo-title-input');
         const seoDescriptionInput = modal.querySelector('#category-seo-description-input');
         const seoKeywordsInput = modal.querySelector('#category-seo-keywords-input');
@@ -650,6 +661,7 @@
         }
 
         function refreshCounters() {
+            updateCounter(headerTitleInput, headerTitleCount, 255);
             updateCounter(seoTitleInput, seoTitleCount, 255);
             updateCounter(seoDescriptionInput, seoDescriptionCount, 500);
         }
@@ -787,6 +799,7 @@
 
         titleInput?.addEventListener('input', syncSeoTitleFromCategory);
         descriptionInput?.addEventListener('input', syncSeoDescriptionFromCategory);
+        headerTitleInput?.addEventListener('input', refreshCounters);
 
         seoTitleInput?.addEventListener('input', function () {
             if (!programmaticSeoUpdate) {

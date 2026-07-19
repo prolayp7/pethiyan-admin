@@ -134,6 +134,7 @@ document.addEventListener('show.bs.modal', function (event) {
                     if (isIndexableSwitch) isIndexableSwitch.checked = data.is_indexable !== false;
 
                     // SEO fields
+                    form.querySelector('input[name="header_title"]').value = data.metadata?.header_title || '';
                     form.querySelector('input[name="seo_title"]').value = data.metadata?.seo_title || '';
                     form.querySelector('textarea[name="seo_description"]').value = data.metadata?.seo_description || '';
                     form.querySelector('input[name="seo_keywords"]').value = data.metadata?.seo_keywords || '';
@@ -220,6 +221,7 @@ document.addEventListener('show.bs.modal', function (event) {
             }
             const isIndexableSwitchNew = form.querySelector('input[name="is_indexable"]');
             if (isIndexableSwitchNew) isIndexableSwitchNew.checked = true;
+            setFormFieldValue('input[name="header_title"]', '');
             setFormFieldValue('input[name="seo_title"]', '');
             setFormFieldValue('textarea[name="seo_description"]', '');
             setFormFieldValue('input[name="seo_keywords"]', '');

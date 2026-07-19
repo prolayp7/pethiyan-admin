@@ -32,6 +32,7 @@ class Category extends Model implements HasMedia
         'title',
         'slug',
         'description',
+        'page_content',
         'status',
         'requires_approval',
         'commission',

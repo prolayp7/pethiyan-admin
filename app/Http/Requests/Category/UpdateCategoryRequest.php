@@ -31,6 +31,7 @@ class UpdateCategoryRequest extends FormRequest
             'parent_id' => 'nullable|integer|exists:categories,id',
             'title' => 'required|string|max:255|unique:categories,title,' . $this->route('id'),
             'description' => 'nullable|string',
+            'page_content' => 'nullable|string',
             'status' => ['nullable', new Enum(CategoryStatusEnum::class)],
             'requires_approval' => 'boolean',
             'commission' => 'nullable|numeric|min:0|max:100',

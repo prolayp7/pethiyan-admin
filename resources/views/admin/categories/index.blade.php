@@ -143,6 +143,14 @@
                                     </div>
 
                                     <div class="mb-3">
+                                        <label class="form-label">On-page SEO content</label>
+                                        <div class="form-text mb-1">
+                                            Shown publicly on the category page, above the product grid — for search-engine copy. This is different from the meta description above, which is invisible and only used in search result snippets.
+                                        </div>
+                                        <textarea class="hugerte-mytextarea form-control" name="page_content" id="category-page-content-input" rows="6"></textarea>
+                                    </div>
+
+                                    <div class="mb-3">
                                         <label class="form-label">{{ __('labels.parent_category') }}</label>
                                         <select type="text" class="form-select" id="select-parent-category" name="parent_id">
                                             <!-- Options will be dynamically loaded -->

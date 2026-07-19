@@ -111,6 +111,12 @@ document.addEventListener('show.bs.modal', function (event) {
                     setFormFieldValue('input[name="title"]', data.title || '');
                     setFormFieldValue('input[id="category-id"]', categoryId);
                     setFormFieldValue('textarea[name="description"]', data.description || '');
+                    const pageContentEditor = typeof hugeRTE !== 'undefined' ? hugeRTE.get('category-page-content-input') : null;
+                    if (pageContentEditor) {
+                        pageContentEditor.setContent(data.page_content || '');
+                    } else {
+                        setFormFieldValue('textarea[name="page_content"]', data.page_content || '');
+                    }
                     setFormCheckboxValue('input[name="status"]', data.status === 'active');
 
                     // Set background fields only if the controls still exist
@@ -206,6 +212,12 @@ document.addEventListener('show.bs.modal', function (event) {
             }
             setFormFieldValue('input[name="background_color"]', '');
             setFormFieldValue('input[name="font_color"]', '');
+            const pageContentEditorReset = typeof hugeRTE !== 'undefined' ? hugeRTE.get('category-page-content-input') : null;
+            if (pageContentEditorReset) {
+                pageContentEditorReset.setContent('');
+            } else {
+                setFormFieldValue('textarea[name="page_content"]', '');
+            }
             const isIndexableSwitchNew = form.querySelector('input[name="is_indexable"]');
             if (isIndexableSwitchNew) isIndexableSwitchNew.checked = true;
             setFormFieldValue('input[name="seo_title"]', '');

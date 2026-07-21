@@ -110,7 +110,13 @@ document.addEventListener('show.bs.modal', function (event) {
                     // Fill form fields
                     setFormFieldValue('input[name="title"]', data.title || '');
                     setFormFieldValue('input[id="category-id"]', categoryId);
-                    setFormFieldValue('textarea[name="description"]', data.description || '');
+                    const descriptionEditor = typeof hugeRTE !== 'undefined' ? hugeRTE.get('category-description-input') : null;
+                    if (descriptionEditor) {
+                        descriptionEditor.setContent(data.description || '');
+                        descriptionEditor.save(); // sync hidden textarea so SEO auto-fill reads the loaded value, not stale content
+                    } else {
+                        setFormFieldValue('textarea[name="description"]', data.description || '');
+                    }
                     const pageContentEditor = typeof hugeRTE !== 'undefined' ? hugeRTE.get('category-page-content-input') : null;
                     if (pageContentEditor) {
                         pageContentEditor.setContent(data.page_content || '');
@@ -213,6 +219,13 @@ document.addEventListener('show.bs.modal', function (event) {
             }
             setFormFieldValue('input[name="background_color"]', '');
             setFormFieldValue('input[name="font_color"]', '');
+            const descriptionEditorReset = typeof hugeRTE !== 'undefined' ? hugeRTE.get('category-description-input') : null;
+            if (descriptionEditorReset) {
+                descriptionEditorReset.setContent('');
+                descriptionEditorReset.save();
+            } else {
+                setFormFieldValue('textarea[name="description"]', '');
+            }
             const pageContentEditorReset = typeof hugeRTE !== 'undefined' ? hugeRTE.get('category-page-content-input') : null;
             if (pageContentEditorReset) {
                 pageContentEditorReset.setContent('');

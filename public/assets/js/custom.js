@@ -1108,6 +1108,15 @@ try {
         content_css: ["https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"],
         content_style:
             "body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }",
+        setup: function (editor) {
+            // Keep the hidden textarea (and any `input` listeners bound to it,
+            // e.g. category SEO auto-fill) live-synced while typing, instead of
+            // only on form submit via hugeRTE.triggerSave().
+            editor.on('input change undo redo', function () {
+                editor.save();
+                editor.getElement().dispatchEvent(new Event('input', {bubbles: true}));
+            });
+        },
     };
     if (localStorage.getItem("tablerTheme") === "dark") {
         options.skin = "oxide-dark";

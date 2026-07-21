@@ -138,7 +138,7 @@
 
                                     <div class="mb-3">
                                         <label class="form-label">{{ __('labels.description') }}</label>
-                                        <textarea class="form-control" name="description" id="category-description-input" rows="3"
+                                        <textarea class="hugerte-mytextarea form-control" name="description" id="category-description-input" rows="3"
                                                   placeholder="{{ __('labels.enter_description') }}"></textarea>
                                     </div>
 
@@ -621,6 +621,12 @@
             return (value || '').replace(/\s+/g, ' ').trim();
         }
 
+        function stripHtml(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html || '';
+            return tmp.textContent || '';
+        }
+
         function normalizeKeywords(value) {
             const seen = new Set();
 
@@ -647,7 +653,7 @@
         }
 
         function generatedSeoDescription() {
-            return normalizeText(descriptionInput?.value || '');
+            return normalizeText(stripHtml(descriptionInput?.value || ''));
         }
 
         function updateCounter(el, counterEl, max) {

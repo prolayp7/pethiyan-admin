@@ -145,6 +145,7 @@ document.addEventListener('show.bs.modal', function (event) {
                     form.querySelector('textarea[name="seo_description"]').value = data.metadata?.seo_description || '';
                     form.querySelector('input[name="seo_keywords"]').value = data.metadata?.seo_keywords || '';
                     form.querySelector('input[name="og_title"]').value = data.metadata?.og_title || '';
+                    form.querySelector('input[name="og_image_alt"]').value = data.metadata?.og_image_alt || '';
                     form.querySelector('textarea[name="og_description"]').value = data.metadata?.og_description || '';
                     form.querySelector('input[name="twitter_title"]').value = data.metadata?.twitter_title || '';
                     form.querySelector('textarea[name="twitter_description"]').value = data.metadata?.twitter_description || '';
@@ -239,6 +240,7 @@ document.addEventListener('show.bs.modal', function (event) {
             setFormFieldValue('textarea[name="seo_description"]', '');
             setFormFieldValue('input[name="seo_keywords"]', '');
             setFormFieldValue('input[name="og_title"]', '');
+            setFormFieldValue('input[name="og_image_alt"]', '');
             setFormFieldValue('textarea[name="og_description"]', '');
             setFormFieldValue('input[name="twitter_title"]', '');
             setFormFieldValue('textarea[name="twitter_description"]', '');

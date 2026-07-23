@@ -287,6 +287,11 @@
                                         <small class="form-hint">Recommended: 1200 x 630 px. Max upload size: 2 MB.</small>
                                     </div>
                                     <div class="col-12">
+                                        <label class="form-label">OG Image Alt Text</label>
+                                        <input type="text" class="form-control" name="og_image_alt" maxlength="255"
+                                               placeholder="Describe the OG image for accessibility and screen readers"/>
+                                    </div>
+                                    <div class="col-12">
                                         <label class="form-label">OG Description</label>
                                         <textarea class="form-control" name="og_description" rows="2" maxlength="500"
                                                   placeholder="Leave blank to use SEO description"></textarea>

@@ -39,6 +39,7 @@ class CategoryResource extends JsonResource
             'og_title' => $this->metadata['og_title'] ?? null,
             'og_description' => $this->metadata['og_description'] ?? null,
             'og_image' => $this->resolveMetadataImageUrl('og_image'),
+            'og_image_alt' => $this->metadata['og_image_alt'] ?? null,
             'twitter_title' => $this->metadata['twitter_title'] ?? null,
             'twitter_description' => $this->metadata['twitter_description'] ?? null,
             'twitter_card' => $this->metadata['twitter_card'] ?? null,

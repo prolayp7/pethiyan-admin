@@ -258,9 +258,9 @@
                                             </button>
                                         </div>
                                         <input type="hidden" name="seo_keywords" id="category-seo-keywords-value"/>
-                                             <input type="text" class="form-control mt-1" id="category-seo-keywords-input" maxlength="1000"
+                                             <input type="text" class="form-control mt-1" id="category-seo-keywords-input"
                                                placeholder="e.g. standup pouch, kraft bag"/>
-                                             <small class="form-hint">Comma-separated keywords, up to 1000 characters.</small>
+                                             <small class="form-hint">Comma-separated keywords.</small>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label">SEO Description</label>

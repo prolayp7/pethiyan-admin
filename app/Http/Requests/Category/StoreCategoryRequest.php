@@ -38,7 +38,7 @@ class StoreCategoryRequest extends FormRequest
             'metadata.header_title' => 'nullable|string|max:255',
             'metadata.seo_title' => 'nullable|string|max:255',
             'metadata.seo_description' => 'nullable|string|max:500',
-            'metadata.seo_keywords' => 'nullable|string|max:1000',
+            'metadata.seo_keywords' => 'nullable|string',
             'metadata.og_title' => 'nullable|string|max:255',
             'metadata.og_description' => 'nullable|string|max:500',
             'metadata.og_image_alt' => 'nullable|string|max:255',

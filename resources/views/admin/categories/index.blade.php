@@ -345,6 +345,19 @@
                                         <small class="form-hint">Used only when Schema Mode is set to Custom JSON-LD.</small>
                                     </div>
                                 </div>
+
+                                <hr class="my-4">
+                                <h6 class="text-muted fw-semibold text-uppercase mb-3" style="font-size:.7rem;letter-spacing:.05em;">FAQs</h6>
+                                <div class="mb-0">
+                                    <div class="form-text mb-2">
+                                        Shown as an accordion on the category page and used to auto-generate FAQ structured data (FAQPage schema) for search engines.
+                                    </div>
+                                    <input type="hidden" name="faqs" id="category-faqs-value" value="[]"/>
+                                    <div id="category-faqs-list" class="d-flex flex-column gap-3"></div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-category-faq-btn">
+                                        <i class="ti ti-plus me-1"></i> Add FAQ
+                                    </button>
+                                </div>
                             </div>
 
                         </div>
@@ -771,6 +784,66 @@
             setKeywordTags(seoKeywordsValueInput?.value || '');
         }
 
+        function createFaqRowElement(question, answer) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'border rounded p-3 category-faq-row';
+            wrapper.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-semibold">FAQ</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-category-faq-btn">Remove</button>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Question</label>
+                    <textarea class="form-control category-faq-question" rows="2" placeholder="e.g. Are these jars food-grade?"></textarea>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label">Answer</label>
+                    <textarea class="form-control category-faq-answer" rows="3" placeholder="e.g. Yes, all Pethiyan jars are BPA-free..."></textarea>
+                </div>
+            `;
+
+            wrapper.querySelector('.category-faq-question').value = question || '';
+            wrapper.querySelector('.category-faq-answer').value = answer || '';
+            wrapper.querySelector('.remove-category-faq-btn').addEventListener('click', function () {
+                wrapper.remove();
+            });
+
+            return wrapper;
+        }
+
+        function renderFaqRows(faqs) {
+            const list = document.getElementById('category-faqs-list');
+            if (!list) {
+                return;
+            }
+
+            list.innerHTML = '';
+            (Array.isArray(faqs) ? faqs : []).forEach(function (faq) {
+                list.appendChild(createFaqRowElement(faq?.question, faq?.answer));
+            });
+        }
+
+        function syncFaqRepeaterValue() {
+            const list = document.getElementById('category-faqs-list');
+            const faqsValueField = document.getElementById('category-faqs-value');
+            if (!list || !faqsValueField) {
+                return;
+            }
+
+            const faqs = Array.from(list.querySelectorAll('.category-faq-row')).map(function (row) {
+                return {
+                    question: row.querySelector('.category-faq-question').value,
+                    answer: row.querySelector('.category-faq-answer').value,
+                };
+            });
+
+            faqsValueField.value = JSON.stringify(faqs);
+        }
+
+        document.getElementById('add-category-faq-btn')?.addEventListener('click', function () {
+            document.getElementById('category-faqs-list')?.appendChild(createFaqRowElement('', ''));
+        });
+
         function hydrateSeoState(mode) {
             const currentSeoTitle = normalizeText(seoTitleInput?.value || '');
             const currentSeoDescription = normalizeText(seoDescriptionInput?.value || '');
@@ -836,10 +909,12 @@
             ensureKeywordTagsInput();
             hydrateSeoState(event.detail?.mode || 'create');
             toggleSchemaJsonLdField();
+            renderFaqRows(JSON.parse(document.getElementById('category-faqs-value')?.value || '[]'));
         });
 
         form?.addEventListener('submit', function () {
             syncKeywordInputValue();
+            syncFaqRepeaterValue();
         });
 
         schemaModeSelect?.addEventListener('change', toggleSchemaJsonLdField);

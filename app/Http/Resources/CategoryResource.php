@@ -46,6 +46,7 @@ class CategoryResource extends JsonResource
             'twitter_image' => $this->resolveMetadataImageUrl('twitter_image'),
             'schema_mode' => $this->metadata['schema_mode'] ?? 'auto',
             'schema_json_ld' => $this->metadata['schema_json_ld'] ?? null,
+            'faqs' => $this->metadata['faqs'] ?? [],
             'subcategory_count' => $this->children_count ?? 0,
             'product_count' => $this->products_count ?? 0,
         ];

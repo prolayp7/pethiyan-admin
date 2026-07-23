@@ -152,6 +152,7 @@ document.addEventListener('show.bs.modal', function (event) {
                     form.querySelector('select[name="twitter_card"]').value = data.metadata?.twitter_card || '';
                     form.querySelector('select[name="schema_mode"]').value = data.metadata?.schema_mode || 'auto';
                     form.querySelector('textarea[name="schema_json_ld"]').value = data.metadata?.schema_json_ld || '';
+                    form.querySelector('input[name="faqs"]').value = JSON.stringify(data.metadata?.faqs || []);
 
                     // Set parent_id in TomSelect (auto-select)
                     if (tomSelectInstance) {
@@ -247,6 +248,7 @@ document.addEventListener('show.bs.modal', function (event) {
             setFormFieldValue('select[name="twitter_card"]', '');
             setFormFieldValue('select[name="schema_mode"]', 'auto');
             setFormFieldValue('textarea[name="schema_json_ld"]', '');
+            setFormFieldValue('input[name="faqs"]', '[]');
 
             // Set action for create
             form.querySelector('input[id="category-id"]').value = "";

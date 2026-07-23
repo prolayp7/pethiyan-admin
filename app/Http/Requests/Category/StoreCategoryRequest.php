@@ -47,6 +47,9 @@ class StoreCategoryRequest extends FormRequest
             'metadata.twitter_card' => 'nullable|in:summary,summary_large_image,app,player',
             'metadata.schema_mode' => 'nullable|in:auto,custom',
             'metadata.schema_json_ld' => 'nullable|json',
+            'metadata.faqs' => 'nullable|array',
+            'metadata.faqs.*.question' => 'required|string|max:500',
+            'metadata.faqs.*.answer' => 'required|string|max:5000',
             'is_indexable' => 'nullable|boolean',
         ];
 
@@ -117,6 +120,7 @@ class StoreCategoryRequest extends FormRequest
                 'twitter_card' => $this->input('twitter_card') ?: null,
                 'schema_mode' => $this->input('schema_mode') ?: 'auto',
                 'schema_json_ld' => $this->normalizeSchemaJsonLd(),
+                'faqs' => $this->normalizeFaqs(),
             ]),
             'is_indexable' => $this->has('is_indexable') ? (bool)$this->input('is_indexable') : true,
         ]);
@@ -140,5 +144,29 @@ class StoreCategoryRequest extends FormRequest
         $schema = trim((string) $this->input('schema_json_ld', ''));
 
         return $schema === '' ? null : $schema;
+    }
+
+    private function normalizeFaqs(): array
+    {
+        $decoded = json_decode((string) $this->input('faqs', '[]'), true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return collect($decoded)
+            ->map(function ($row) {
+                if (!is_array($row)) {
+                    return null;
+                }
+
+                $question = trim((string) ($row['question'] ?? ''));
+                $answer = trim((string) ($row['answer'] ?? ''));
+
+                return ($question === '' || $answer === '') ? null : ['question' => $question, 'answer' => $answer];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 }

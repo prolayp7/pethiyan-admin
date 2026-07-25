@@ -51,6 +51,7 @@ class UpdateCategoryRequest extends FormRequest
             'metadata.faqs' => 'nullable|array',
             'metadata.faqs.*.question' => 'required|string|max:500',
             'metadata.faqs.*.answer' => 'required|string|max:5000',
+            'metadata.faq_schema_json_ld' => 'nullable|json',
             'is_indexable' => 'nullable|boolean',
         ];
 
@@ -101,6 +102,7 @@ class UpdateCategoryRequest extends FormRequest
                 'schema_mode' => $this->input('schema_mode') ?: 'auto',
                 'schema_json_ld' => $this->normalizeSchemaJsonLd(),
                 'faqs' => $this->normalizeFaqs(),
+                'faq_schema_json_ld' => $this->normalizeFaqSchemaJsonLd(),
             ]),
             'is_indexable' => $this->has('is_indexable') ? (bool)$this->input('is_indexable') : true,
         ]);
@@ -122,6 +124,13 @@ class UpdateCategoryRequest extends FormRequest
     private function normalizeSchemaJsonLd(): ?string
     {
         $schema = trim((string) $this->input('schema_json_ld', ''));
+
+        return $schema === '' ? null : $schema;
+    }
+
+    private function normalizeFaqSchemaJsonLd(): ?string
+    {
+        $schema = trim((string) $this->input('faq_schema_json_ld', ''));
 
         return $schema === '' ? null : $schema;
     }

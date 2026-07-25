@@ -51,3 +51,18 @@ it('returns an empty array when faqs input is missing, blank, or invalid json', 
     expect(prepareCategoryRequest($requestClass, ['title' => 'Jars', 'faqs' => ''])->input('metadata')['faqs'])->toBe([]);
     expect(prepareCategoryRequest($requestClass, ['title' => 'Jars', 'faqs' => 'not-json'])->input('metadata')['faqs'])->toBe([]);
 })->with('category_faq_request_classes');
+
+it('normalizes faq_schema_json_ld by trimming surrounding whitespace', function (string $requestClass) {
+    $request = prepareCategoryRequest($requestClass, [
+        'title' => 'Jars',
+        'faq_schema_json_ld' => '  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[]}  ',
+    ]);
+
+    expect($request->input('metadata')['faq_schema_json_ld'])
+        ->toBe('{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[]}');
+})->with('category_faq_request_classes');
+
+it('returns null for faq_schema_json_ld when input is missing or blank', function (string $requestClass) {
+    expect(prepareCategoryRequest($requestClass, ['title' => 'Jars'])->input('metadata')['faq_schema_json_ld'])->toBeNull();
+    expect(prepareCategoryRequest($requestClass, ['title' => 'Jars', 'faq_schema_json_ld' => '   '])->input('metadata')['faq_schema_json_ld'])->toBeNull();
+})->with('category_faq_request_classes');

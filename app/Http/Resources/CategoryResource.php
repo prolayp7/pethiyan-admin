@@ -47,6 +47,7 @@ class CategoryResource extends JsonResource
             'schema_mode' => $this->metadata['schema_mode'] ?? 'auto',
             'schema_json_ld' => $this->metadata['schema_json_ld'] ?? null,
             'faqs' => $this->metadata['faqs'] ?? [],
+            'faq_schema_json_ld' => $this->metadata['faq_schema_json_ld'] ?? null,
             'subcategory_count' => $this->children_count ?? 0,
             'product_count' => $this->products_count ?? 0,
         ];

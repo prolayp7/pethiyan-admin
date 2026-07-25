@@ -153,6 +153,7 @@ document.addEventListener('show.bs.modal', function (event) {
                     form.querySelector('select[name="schema_mode"]').value = data.metadata?.schema_mode || 'auto';
                     form.querySelector('textarea[name="schema_json_ld"]').value = data.metadata?.schema_json_ld || '';
                     form.querySelector('input[name="faqs"]').value = JSON.stringify(data.metadata?.faqs || []);
+                    form.querySelector('textarea[name="faq_schema_json_ld"]').value = data.metadata?.faq_schema_json_ld || '';
 
                     // Set parent_id in TomSelect (auto-select)
                     if (tomSelectInstance) {
@@ -249,6 +250,7 @@ document.addEventListener('show.bs.modal', function (event) {
             setFormFieldValue('select[name="schema_mode"]', 'auto');
             setFormFieldValue('textarea[name="schema_json_ld"]', '');
             setFormFieldValue('input[name="faqs"]', '[]');
+            setFormFieldValue('textarea[name="faq_schema_json_ld"]', '');
 
             // Set action for create
             form.querySelector('input[id="category-id"]').value = "";

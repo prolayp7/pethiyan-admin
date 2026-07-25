@@ -357,6 +357,15 @@
                                     <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-category-faq-btn">
                                         <i class="ti ti-plus me-1"></i> Add FAQ
                                     </button>
+                                    <details class="mt-3">
+                                        <summary class="text-muted small" style="cursor:pointer;">Advanced: override generated schema</summary>
+                                        <div class="mt-2">
+                                            <label class="form-label">FAQ Schema JSON-LD</label>
+                                            <textarea class="form-control" name="faq_schema_json_ld" rows="6"
+                                                      placeholder='{"@@context":"https://schema.org","@@type":"FAQPage","mainEntity":[...]}'></textarea>
+                                            <small class="form-hint">Optional. If set, replaces the auto-generated FAQ schema entirely (the visible FAQ list above is unaffected). Leave blank to auto-generate from the Q&amp;A pairs above.</small>
+                                        </div>
+                                    </details>
                                 </div>
                             </div>
 

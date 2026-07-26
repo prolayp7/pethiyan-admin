@@ -122,9 +122,10 @@ class EasepayService
             'firstname'   => $data['firstname']   ?? '',
             'email'       => $data['email']        ?? '',
             'phone'       => $data['phone']        ?? '',
-            // Easebuzz requires both success and failure return URLs.
-            'surl'        => $data['surl'] ?? rtrim(config('app.frontendUrl', config('app.url')), '/') . '/checkout?payment_status=success',
-            'furl'        => $data['furl'] ?? rtrim(config('app.frontendUrl', config('app.url')), '/') . '/checkout?payment_status=failed',
+            // Easebuzz requires both success and failure return URLs. Must
+            // always be the storefront, never app.url (the admin/API origin).
+            'surl'        => $data['surl'] ?? rtrim(config('app.frontend_url'), '/') . '/checkout?payment_status=success',
+            'furl'        => $data['furl'] ?? rtrim(config('app.frontend_url'), '/') . '/checkout?payment_status=failed',
             'udf1'        => $data['udf1']         ?? '',
             'udf2'        => $data['udf2']         ?? '',
             'udf3'        => $data['udf3']         ?? '',

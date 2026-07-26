@@ -96,7 +96,7 @@ class PasswordResetController extends Controller
 
         if ($status === Password::PASSWORD_RESET) {
             if ($this->getLoginRoute() === 'login') {
-                return redirect(config('app.frontendUrl'));
+                return redirect(config('app.frontend_url'));
             }
             return redirect()->route($this->getLoginRoute())->with('status', __($status));
         }

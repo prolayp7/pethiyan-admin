@@ -338,7 +338,7 @@ class MenuApiController extends Controller
             return null;
         }
 
-        $frontendUrl = rtrim((string) config('app.frontend_url', config('app.frontendUrl', 'https://pethiyan.com')), '/');
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'https://pethiyan.com'), '/');
         $variant = $product->variants->first();
         $storeVariant = $variant?->storeProductVariants->first();
         $cost = (float) ($storeVariant?->getRawOriginal('cost') ?? 0);

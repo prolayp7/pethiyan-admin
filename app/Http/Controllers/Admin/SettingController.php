@@ -550,7 +550,7 @@ class SettingController extends Controller
     private function resolveWebhookSecretDomain(Request $request): string
     {
         $candidateUrls = [
-            (string) config('app.frontendUrl', ''),
+            (string) config('app.frontend_url', ''),
             (string) config('app.url', ''),
         ];
 

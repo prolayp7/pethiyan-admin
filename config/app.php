@@ -67,7 +67,9 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
-    'frontendUrl' => env('CUSTOMER_APP_URL', env('FRONTEND_URL', 'https://pethiyan.com')),
+
+    // Canonical storefront origin — the only config key for it. Read via
+    // config('app.frontend_url') everywhere; do not add a second key.
     'frontend_url' => env('FRONTEND_URL', env('CUSTOMER_APP_URL', 'https://pethiyan.com')),
     'revalidate_secret' => env('REVALIDATE_SECRET', env('FRONTEND_REVALIDATE_SECRET', '')),
 

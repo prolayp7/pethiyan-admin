@@ -868,7 +868,7 @@
             errorEl.classList.toggle('d-none', message === '');
         }
 
-        function parseFaqAnswersFromSchema(rawSchema) {
+        function parseFaqEntriesFromSchema(rawSchema) {
             let parsed;
             try {
                 parsed = JSON.parse(rawSchema);
@@ -886,11 +886,21 @@
                 if (typeof text !== 'string' || text.trim() === '') {
                     throw new Error(`Entry ${index + 1} is missing "acceptedAnswer.text".`);
                 }
-                const trimmed = text.trim();
-                if (trimmed.length > 5000) {
+                const answer = text.trim();
+                if (answer.length > 5000) {
                     throw new Error(`Entry ${index + 1}'s answer is longer than 5000 characters.`);
                 }
-                return trimmed;
+
+                const name = item?.name;
+                let question = `Q${index + 1}`;
+                if (typeof name === 'string' && name.trim() !== '') {
+                    question = name.trim();
+                    if (question.length > 500) {
+                        throw new Error(`Entry ${index + 1}'s question is longer than 500 characters.`);
+                    }
+                }
+
+                return { question: question, answer: answer };
             });
         }
 
@@ -904,9 +914,9 @@
                 return;
             }
 
-            let answers;
+            let entries;
             try {
-                answers = parseFaqAnswersFromSchema(rawSchema);
+                entries = parseFaqEntriesFromSchema(rawSchema);
             } catch (e) {
                 setFaqAutoFillError(e.message);
                 return;
@@ -918,9 +928,7 @@
                 return;
             }
 
-            renderFaqRows(answers.map(function (answer, index) {
-                return { question: `Q${index + 1}`, answer: answer };
-            }));
+            renderFaqRows(entries);
             syncFaqRepeaterValue();
         });
 

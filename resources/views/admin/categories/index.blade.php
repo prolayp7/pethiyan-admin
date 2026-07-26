@@ -364,6 +364,12 @@
                                             <textarea class="form-control" name="faq_schema_json_ld" rows="6"
                                                       placeholder='{"@@context":"https://schema.org","@@type":"FAQPage","mainEntity":[...]}'></textarea>
                                             <small class="form-hint">Optional. If set, replaces the auto-generated FAQ schema entirely (the visible FAQ list above is unaffected). Leave blank to auto-generate from the Q&amp;A pairs above.</small>
+                                            <div class="mt-2">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="auto-fill-faq-btn">
+                                                    <i class="ti ti-wand me-1"></i> Auto-fill Q&amp;A from Schema
+                                                </button>
+                                                <div id="faq-auto-fill-error" class="text-danger small mt-1 d-none" role="alert"></div>
+                                            </div>
                                         </div>
                                     </details>
                                 </div>
@@ -853,6 +859,71 @@
             document.getElementById('category-faqs-list')?.appendChild(createFaqRowElement('', ''));
         });
 
+        function setFaqAutoFillError(message) {
+            const errorEl = document.getElementById('faq-auto-fill-error');
+            if (!errorEl) {
+                return;
+            }
+            errorEl.textContent = message;
+            errorEl.classList.toggle('d-none', message === '');
+        }
+
+        function parseFaqAnswersFromSchema(rawSchema) {
+            let parsed;
+            try {
+                parsed = JSON.parse(rawSchema);
+            } catch (e) {
+                throw new Error('Invalid JSON in the FAQ Schema JSON-LD field.');
+            }
+
+            const mainEntity = parsed?.mainEntity;
+            if (!Array.isArray(mainEntity) || mainEntity.length === 0) {
+                throw new Error('The schema must contain a non-empty "mainEntity" array.');
+            }
+
+            return mainEntity.map(function (item, index) {
+                const text = item?.acceptedAnswer?.text;
+                if (typeof text !== 'string' || text.trim() === '') {
+                    throw new Error(`Entry ${index + 1} is missing "acceptedAnswer.text".`);
+                }
+                const trimmed = text.trim();
+                if (trimmed.length > 5000) {
+                    throw new Error(`Entry ${index + 1}'s answer is longer than 5000 characters.`);
+                }
+                return trimmed;
+            });
+        }
+
+        document.getElementById('auto-fill-faq-btn')?.addEventListener('click', function () {
+            const schemaTextarea = document.querySelector('textarea[name="faq_schema_json_ld"]');
+            setFaqAutoFillError('');
+
+            const rawSchema = (schemaTextarea?.value || '').trim();
+            if (rawSchema === '') {
+                setFaqAutoFillError('Add FAQ Schema JSON-LD first.');
+                return;
+            }
+
+            let answers;
+            try {
+                answers = parseFaqAnswersFromSchema(rawSchema);
+            } catch (e) {
+                setFaqAutoFillError(e.message);
+                return;
+            }
+
+            const list = document.getElementById('category-faqs-list');
+            const hasExisting = !!list && list.querySelectorAll('.category-faq-row').length > 0;
+            if (hasExisting && !confirm('This will replace the existing FAQ rows with ones generated from the schema. Continue?')) {
+                return;
+            }
+
+            renderFaqRows(answers.map(function (answer, index) {
+                return { question: `Q${index + 1}`, answer: answer };
+            }));
+            syncFaqRepeaterValue();
+        });
+
         function hydrateSeoState(mode) {
             const currentSeoTitle = normalizeText(seoTitleInput?.value || '');
             const currentSeoDescription = normalizeText(seoDescriptionInput?.value || '');
@@ -919,6 +990,7 @@
             hydrateSeoState(event.detail?.mode || 'create');
             toggleSchemaJsonLdField();
             renderFaqRows(JSON.parse(document.getElementById('category-faqs-value')?.value || '[]'));
+            setFaqAutoFillError('');
         });
 
         form?.addEventListener('submit', function () {

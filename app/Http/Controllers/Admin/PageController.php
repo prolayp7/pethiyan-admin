@@ -8,8 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\Setting;
 use App\Services\FrontendRevalidateService;
+use App\Services\ImageWebpService;
 use App\Traits\ChecksPermissions;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PageController extends Controller
@@ -18,6 +20,7 @@ class PageController extends Controller
 
     private const CONTACT_PAGE_SLUG = 'contact-us';
     private const ABOUT_PAGE_SLUG = 'about-us';
+    private const SHOP_PAGE_SLUG = 'shop';
 
     public function __construct()
     {
@@ -43,7 +46,17 @@ class PageController extends Controller
             $setting = Setting::find(SettingTypeEnum::SYSTEM());
             $systemSettings = is_array($setting?->value) ? $setting->value : [];
         }
-        return view('admin.pages.edit', compact('page', 'systemSettings'));
+
+        $shopImages = [];
+        if ($page->slug === self::SHOP_PAGE_SLUG) {
+            $blocks = is_array($page->content_blocks) ? $page->content_blocks : [];
+            $shopImages = [
+                'og_image'      => !empty($blocks['og_image']) ? url('storage/' . ltrim($blocks['og_image'], '/')) : null,
+                'twitter_image' => !empty($blocks['twitter_image']) ? url('storage/' . ltrim($blocks['twitter_image'], '/')) : null,
+            ];
+        }
+
+        return view('admin.pages.edit', compact('page', 'systemSettings', 'shopImages'));
     }
 
     public function create()
@@ -53,8 +66,9 @@ class PageController extends Controller
             'system_page' => false,
         ]);
         $systemSettings = [];
+        $shopImages = [];
 
-        return view('admin.pages.edit', compact('page', 'systemSettings'));
+        return view('admin.pages.edit', compact('page', 'systemSettings', 'shopImages'));
     }
 
     public function store(Request $request)
@@ -98,6 +112,10 @@ class PageController extends Controller
 
         if ($page->slug === self::ABOUT_PAGE_SLUG) {
             return $this->updateAboutPage($request, $page);
+        }
+
+        if ($page->slug === self::SHOP_PAGE_SLUG) {
+            return $this->updateShopPage($request, $page);
         }
 
         if (!$page->system_page) {
@@ -366,6 +384,120 @@ class PageController extends Controller
         FrontendRevalidateService::revalidate(tags: ['about-page'], paths: ['/about']);
 
         return redirect()->route('admin.pages.index')->with('success', 'About page updated successfully.');
+    }
+
+    private function updateShopPage(Request $request, Page $page): \Illuminate\Http\RedirectResponse
+    {
+        $validated = $request->validate([
+            'title'              => 'required|string|max:255',
+            'header_title'       => 'nullable|string|max:255',
+            'page_content'       => 'nullable|string',
+            'seo_title'          => 'nullable|string|max:255',
+            'seo_description'    => 'nullable|string|max:500',
+            'seo_keywords'       => 'nullable|string',
+            'og_title'           => 'nullable|string|max:255',
+            'og_description'     => 'nullable|string|max:500',
+            'og_image_alt'       => 'nullable|string|max:255',
+            'twitter_title'      => 'nullable|string|max:250',
+            'twitter_description' => 'nullable|string|max:500',
+            'twitter_card'       => 'nullable|in:summary,summary_large_image,app,player',
+            'schema_mode'        => 'nullable|in:auto,custom',
+            'schema_json_ld'     => 'nullable|json',
+            'faqs'               => 'nullable|string',
+            'faq_schema_json_ld' => 'nullable|json',
+            'og_image'           => $this->imageUploadRule($request, 'og_image'),
+            'twitter_image'      => $this->imageUploadRule($request, 'twitter_image'),
+        ]);
+
+        $blocks = is_array($page->content_blocks) ? $page->content_blocks : [];
+
+        $blocks = array_merge($blocks, [
+            'header_title'        => trim((string) ($validated['header_title'] ?? '')) ?: null,
+            'page_content'        => $validated['page_content'] ?? null,
+            'seo_title'           => trim((string) ($validated['seo_title'] ?? '')) ?: null,
+            'seo_description'    => trim((string) ($validated['seo_description'] ?? '')) ?: null,
+            'seo_keywords'        => $this->normalizeSeoKeywords($request->input('seo_keywords', '')),
+            'og_title'            => trim((string) ($validated['og_title'] ?? '')) ?: null,
+            'og_description'      => trim((string) ($validated['og_description'] ?? '')) ?: null,
+            'og_image_alt'        => trim((string) ($validated['og_image_alt'] ?? '')) ?: null,
+            'twitter_title'       => trim((string) ($validated['twitter_title'] ?? '')) ?: null,
+            'twitter_description' => trim((string) ($validated['twitter_description'] ?? '')) ?: null,
+            'twitter_card'        => $validated['twitter_card'] ?? null,
+            'schema_mode'         => $validated['schema_mode'] ?? 'auto',
+            'schema_json_ld'      => trim((string) ($validated['schema_json_ld'] ?? '')) ?: null,
+            'faqs'                => $this->normalizeFaqs($request->input('faqs', '[]')),
+            'faq_schema_json_ld'  => trim((string) ($validated['faq_schema_json_ld'] ?? '')) ?: null,
+        ]);
+
+        foreach (['og_image', 'twitter_image'] as $field) {
+            if (!$request->hasFile($field)) {
+                continue;
+            }
+
+            $converted = ImageWebpService::convert($request->file($field));
+            $stored = Storage::disk('public')->put('seo/shop', new \Illuminate\Http\File($converted['path']), ['visibility' => 'public']);
+            $target = dirname($stored) . '/' . $converted['filename'];
+            if ($stored !== $target) {
+                Storage::disk('public')->move($stored, $target);
+                $stored = $target;
+            }
+            if ($converted['isWebp']) {
+                @unlink($converted['path']);
+            }
+
+            $blocks[$field] = $stored;
+        }
+
+        $page->update([
+            'title'          => $validated['title'],
+            'content_blocks' => $blocks,
+        ]);
+
+        FrontendRevalidateService::revalidate(tags: ['shop-page'], paths: ['/shop']);
+
+        return redirect()->route('admin.pages.index')->with('success', 'Shop page updated successfully.');
+    }
+
+    private function imageUploadRule(Request $request, string $field): string
+    {
+        $hasImage = $request->hasFile($field) && $request->file($field)->getSize() > 0;
+
+        return $hasImage ? 'image|mimes:jpeg,png,jpg,webp|max:4096' : 'nullable';
+    }
+
+    private function normalizeSeoKeywords(string $raw): ?string
+    {
+        $keywords = collect(explode(',', $raw))
+            ->map(fn (string $keyword): string => trim((string) preg_replace('/\s+/', ' ', $keyword)))
+            ->filter()
+            ->unique(fn (string $keyword): string => mb_strtolower($keyword))
+            ->values();
+
+        return $keywords->isEmpty() ? null : $keywords->implode(', ');
+    }
+
+    private function normalizeFaqs(string $raw): array
+    {
+        $decoded = json_decode($raw, true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return collect($decoded)
+            ->map(function ($row) {
+                if (!is_array($row)) {
+                    return null;
+                }
+
+                $question = trim((string) ($row['question'] ?? ''));
+                $answer = trim((string) ($row['answer'] ?? ''));
+
+                return ($question === '' || $answer === '') ? null : ['question' => $question, 'answer' => $answer];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     private function buildCustomPageBlocks(Request $request, Page $page): array

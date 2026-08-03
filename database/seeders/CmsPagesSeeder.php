@@ -43,6 +43,12 @@ class CmsPagesSeeder extends Seeder
                 'content' => '<h2>Get in Touch</h2><p>Have questions? Reach out to us.</p>',
                 'system_page' => true,
             ],
+            [
+                'slug' => 'shop',
+                'title' => 'Shop All Products',
+                'content' => null,
+                'system_page' => true,
+            ],
         ];
 
         foreach ($pages as $page) {

@@ -72,7 +72,36 @@ class PageApiController extends Controller
             return response()->json($base, 200, ['Cache-Control' => 'no-store']);
         }
 
+        if ($slug === 'shop') {
+            $blocks = is_array($page->content_blocks) ? $page->content_blocks : [];
+
+            $base['header_title'] = $blocks['header_title'] ?? null;
+            $base['page_content'] = $blocks['page_content'] ?? null;
+            $base['seo_title'] = $blocks['seo_title'] ?? null;
+            $base['seo_description'] = $blocks['seo_description'] ?? null;
+            $base['seo_keywords'] = $blocks['seo_keywords'] ?? null;
+            $base['og_title'] = $blocks['og_title'] ?? null;
+            $base['og_description'] = $blocks['og_description'] ?? null;
+            $base['og_image'] = $this->resolveStoredImageUrl($blocks['og_image'] ?? null);
+            $base['og_image_alt'] = $blocks['og_image_alt'] ?? null;
+            $base['twitter_title'] = $blocks['twitter_title'] ?? null;
+            $base['twitter_description'] = $blocks['twitter_description'] ?? null;
+            $base['twitter_card'] = $blocks['twitter_card'] ?? null;
+            $base['twitter_image'] = $this->resolveStoredImageUrl($blocks['twitter_image'] ?? null);
+            $base['schema_mode'] = $blocks['schema_mode'] ?? 'auto';
+            $base['schema_json_ld'] = $blocks['schema_json_ld'] ?? null;
+            $base['faqs'] = $blocks['faqs'] ?? [];
+            $base['faq_schema_json_ld'] = $blocks['faq_schema_json_ld'] ?? null;
+
+            return response()->json($base);
+        }
+
         $base['content_blocks'] = $page->content_blocks;
         return response()->json($base);
+    }
+
+    private function resolveStoredImageUrl(?string $path): ?string
+    {
+        return !empty($path) ? url('storage/' . ltrim($path, '/')) : null;
     }
 }

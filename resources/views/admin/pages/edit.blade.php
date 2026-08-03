@@ -506,6 +506,219 @@
                     </div>
                 </template>
 
+            @elseif($page->slug === 'shop')
+                @php
+                    $shopBlocks = is_array($page->content_blocks) ? $page->content_blocks : [];
+                    $sv = fn(string $k, string $d = '') => old($k, $shopBlocks[$k] ?? $d);
+                @endphp
+
+                <form action="{{ route('admin.pages.update', $page) }}" method="POST" id="shop-page-form" enctype="multipart/form-data">
+                    @csrf
+
+                    {{-- ── Page title ── --}}
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">Page</h4></div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label required">Page Title</label>
+                                <input type="text" name="title"
+                                       class="form-control @error('title') is-invalid @enderror"
+                                       value="{{ old('title', $page->title) }}" required>
+                                @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label">Slug</label>
+                                <input type="text" class="form-control" value="{{ $page->slug }}" disabled>
+                                <small class="form-hint">Frontend URL: <code>/shop</code>. Slug cannot be changed for core system pages.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── SEO Settings ── --}}
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">SEO Settings</h4></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Page Header (H1)</label>
+                                    <input type="text" class="form-control" name="header_title" maxlength="255"
+                                           value="{{ $sv('header_title') }}"
+                                           placeholder="e.g. Shop Packaging Products — Pouches, Boxes, Jars &amp; More">
+                                    <small class="form-hint">Shown as the on-page heading, in place of &quot;All Products&quot;.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">SEO Title</label>
+                                    <input type="text" class="form-control" name="seo_title" maxlength="255"
+                                           value="{{ $sv('seo_title') }}"
+                                           placeholder="Shop All Products | Pethiyan">
+                                    <small class="form-hint">Up to 255 characters. Used as the browser tab / search result title.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">SEO Keywords</label>
+                                    <input type="text" class="form-control" name="seo_keywords"
+                                           value="{{ $sv('seo_keywords') }}"
+                                           placeholder="e.g. packaging supplier india, pouches, corrugated boxes, jars, courier bags, adhesive tapes">
+                                    <small class="form-hint">Comma-separated. Cover all live categories.</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">SEO Description</label>
+                                    <textarea class="form-control" name="seo_description" rows="2" maxlength="500"
+                                              placeholder="Browse our full range of premium packaging products — pouches, jars, corrugated boxes, courier bags, and adhesive tapes.">{{ $sv('seo_description') }}</textarea>
+                                    <small class="form-hint">Up to 500 characters.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Open Graph ── --}}
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">Open Graph</h4></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">OG Title</label>
+                                    <input type="text" class="form-control" name="og_title" maxlength="255"
+                                           value="{{ $sv('og_title') }}" placeholder="Leave blank to use SEO title">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">OG Image</label>
+                                    <input type="file" class="form-control" name="og_image" accept="image/*">
+                                    @if(!empty($shopImages['og_image']))
+                                        <div class="form-hint">Current: <a href="{{ $shopImages['og_image'] }}" target="_blank" rel="noopener">{{ $shopImages['og_image'] }}</a></div>
+                                    @endif
+                                    <small class="form-hint">Recommended: 1200 x 630 px. Max upload size: 4 MB.</small>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">OG Image Alt Text</label>
+                                    <input type="text" class="form-control" name="og_image_alt" maxlength="255"
+                                           value="{{ $sv('og_image_alt') }}"
+                                           placeholder="Describe the OG image for accessibility and screen readers">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">OG Description</label>
+                                    <textarea class="form-control" name="og_description" rows="2" maxlength="500"
+                                              placeholder="Leave blank to use SEO description">{{ $sv('og_description') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Twitter ── --}}
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">Twitter</h4></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Twitter Title</label>
+                                    <input type="text" class="form-control" name="twitter_title" maxlength="250"
+                                           value="{{ $sv('twitter_title') }}" placeholder="Leave blank to use SEO title">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Twitter Card</label>
+                                    <select class="form-select" name="twitter_card">
+                                        @php $currentTwCard = old('twitter_card', $shopBlocks['twitter_card'] ?? ''); @endphp
+                                        <option value="" {{ $currentTwCard === '' ? 'selected' : '' }}>Use automatic fallback</option>
+                                        <option value="summary" {{ $currentTwCard === 'summary' ? 'selected' : '' }}>Summary</option>
+                                        <option value="summary_large_image" {{ $currentTwCard === 'summary_large_image' ? 'selected' : '' }}>Summary Large Image</option>
+                                        <option value="app" {{ $currentTwCard === 'app' ? 'selected' : '' }}>App</option>
+                                        <option value="player" {{ $currentTwCard === 'player' ? 'selected' : '' }}>Player</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Twitter Image</label>
+                                    <input type="file" class="form-control" name="twitter_image" accept="image/*">
+                                    @if(!empty($shopImages['twitter_image']))
+                                        <div class="form-hint">Current: <a href="{{ $shopImages['twitter_image'] }}" target="_blank" rel="noopener">{{ $shopImages['twitter_image'] }}</a></div>
+                                    @endif
+                                    <small class="form-hint">Recommended: 1200 x 675 px. Max upload size: 4 MB.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Twitter Description</label>
+                                    <textarea class="form-control" name="twitter_description" rows="2" maxlength="500"
+                                              placeholder="Leave blank to use SEO description">{{ $sv('twitter_description') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Schema ── --}}
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">Schema</h4></div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Schema Mode</label>
+                                    @php $currentSchemaMode = old('schema_mode', $shopBlocks['schema_mode'] ?? 'auto'); @endphp
+                                    <select class="form-select" name="schema_mode" id="shop-schema-mode-select">
+                                        <option value="auto" {{ $currentSchemaMode === 'auto' ? 'selected' : '' }}>Auto-generate</option>
+                                        <option value="custom" {{ $currentSchemaMode === 'custom' ? 'selected' : '' }}>Custom JSON-LD</option>
+                                    </select>
+                                    <small class="form-hint">Auto-generates CollectionPage + Breadcrumb schema from the live catalog.</small>
+                                </div>
+                                <div class="col-12" id="shop-schema-json-ld-wrap">
+                                    <label class="form-label">Schema JSON-LD</label>
+                                    <textarea class="form-control" name="schema_json_ld" rows="6"
+                                              placeholder='{"@@context":"https://schema.org","@@type":"CollectionPage"}'>{{ $sv('schema_json_ld') }}</textarea>
+                                    <small class="form-hint">Used only when Schema Mode is set to Custom JSON-LD.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Page Content ── --}}
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h4 class="card-title mb-0">Page Content <small class="text-muted fw-normal">(optional)</small></h4>
+                            <div class="card-options">
+                                <span class="badge bg-green-lt text-green">Rich Text Editor</span>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="shop-quill-editor"></div>
+                            <input type="hidden" name="page_content" id="shop-quill-content-input"
+                                   value="{{ old('page_content', $shopBlocks['page_content'] ?? '') }}">
+                            <small class="form-hint d-block p-3 pt-0">
+                                Shown below the H1 on the /shop page (collapsible). Good place for a cross-category buying guide.
+                            </small>
+                        </div>
+                    </div>
+
+                    {{-- ── FAQs ── --}}
+                    <div class="card mb-4">
+                        <div class="card-header"><h4 class="card-title mb-0">FAQs</h4></div>
+                        <div class="card-body">
+                            <div class="form-text mb-2">
+                                Shown as an accordion on the /shop page and used to auto-generate FAQ structured data (FAQPage schema) for search engines.
+                            </div>
+                            <input type="hidden" name="faqs" id="shop-faqs-value" value="{{ old('faqs', json_encode($shopBlocks['faqs'] ?? [])) }}"/>
+                            <div id="shop-faqs-list" class="d-flex flex-column gap-3"></div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-shop-faq-btn">
+                                <i class="ti ti-plus me-1"></i> Add FAQ
+                            </button>
+                            <details class="mt-3">
+                                <summary class="text-muted small" style="cursor:pointer;">Advanced: override generated schema</summary>
+                                <div class="mt-2">
+                                    <label class="form-label">FAQ Schema JSON-LD</label>
+                                    <textarea class="form-control" name="faq_schema_json_ld" rows="6"
+                                              placeholder='{"@@context":"https://schema.org","@@type":"FAQPage","mainEntity":[...]}'>{{ $sv('faq_schema_json_ld') }}</textarea>
+                                    <small class="form-hint">Optional. If set, replaces the auto-generated FAQ schema entirely (the visible FAQ list above is unaffected). Leave blank to auto-generate from the Q&amp;A pairs above.</small>
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="shop-auto-fill-faq-btn">
+                                            <i class="ti ti-wand me-1"></i> Auto-fill Q&amp;A from Schema
+                                        </button>
+                                        <div id="shop-faq-auto-fill-error" class="text-danger small mt-1 d-none" role="alert"></div>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+
+                    <div class="form-footer text-end mt-2">
+                        <a href="{{ route('admin.pages.index') }}" class="btn btn-link">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Shop Page</button>
+                    </div>
+                </form>
+
             @elseif(!$page->system_page)
                 @php
                     $oldCustomBlocks = old('custom_page_blocks');
@@ -1277,6 +1490,205 @@
     } else {
         syncEmptyState();
     }
+})();
+</script>
+@endpush
+@elseif($page->slug === 'shop')
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<style>
+    #shop-quill-editor     { min-height: 300px; font-size: 14px; }
+    #shop-page-form .ql-toolbar.ql-snow   { border-left: none; border-right: none; border-top: none;
+                            border-bottom: 1px solid #e6e7e9; border-radius: 0; }
+    #shop-page-form .ql-container.ql-snow { border: none; }
+    #shop-page-form .ql-editor            { padding: 1rem 1.25rem; line-height: 1.7; }
+</style>
+@endpush
+
+@push('script')
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script>
+(function () {
+    const form = document.getElementById('shop-page-form');
+    if (!form) {
+        return;
+    }
+
+    // ── Page content rich text editor ──────────────────────────────────────
+    const quill = new Quill('#shop-quill-editor', {
+        theme: 'snow',
+        placeholder: 'Add a cross-category buying guide or intro copy shown below the H1…',
+        modules: {
+            toolbar: [
+                [{ header: [2, 3, false] }],
+                ['bold', 'italic', 'underline'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['link', 'blockquote'],
+                ['clean'],
+            ],
+        },
+    });
+
+    const contentHiddenInput = document.getElementById('shop-quill-content-input');
+    const existingContent = (contentHiddenInput?.value || '').trim();
+    if (existingContent) {
+        quill.clipboard.dangerouslyPasteHTML(0, existingContent);
+    }
+
+    // ── Schema mode toggle ──────────────────────────────────────────────────
+    const schemaModeSelect = document.getElementById('shop-schema-mode-select');
+    const schemaJsonLdWrap = document.getElementById('shop-schema-json-ld-wrap');
+
+    function toggleSchemaJsonLdField() {
+        if (!schemaModeSelect || !schemaJsonLdWrap) {
+            return;
+        }
+        schemaJsonLdWrap.style.display = schemaModeSelect.value === 'custom' ? '' : 'none';
+    }
+
+    schemaModeSelect?.addEventListener('change', toggleSchemaJsonLdField);
+    toggleSchemaJsonLdField();
+
+    // ── FAQ repeater ──────────────────────────────────────────────────────
+    function createFaqRowElement(question, answer) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'border rounded p-3 shop-faq-row';
+        wrapper.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small fw-semibold">FAQ</span>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-shop-faq-btn">Remove</button>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Question</label>
+                <textarea class="form-control shop-faq-question" rows="2" placeholder="e.g. Which packaging should I use for food products?"></textarea>
+            </div>
+            <div class="mb-0">
+                <label class="form-label">Answer</label>
+                <textarea class="form-control shop-faq-answer" rows="3" placeholder="e.g. For food products we recommend..."></textarea>
+            </div>
+        `;
+
+        wrapper.querySelector('.shop-faq-question').value = question || '';
+        wrapper.querySelector('.shop-faq-answer').value = answer || '';
+        wrapper.querySelector('.remove-shop-faq-btn').addEventListener('click', function () {
+            wrapper.remove();
+        });
+
+        return wrapper;
+    }
+
+    function renderFaqRows(faqs) {
+        const list = document.getElementById('shop-faqs-list');
+        if (!list) {
+            return;
+        }
+
+        list.innerHTML = '';
+        (Array.isArray(faqs) ? faqs : []).forEach(function (faq) {
+            list.appendChild(createFaqRowElement(faq?.question, faq?.answer));
+        });
+    }
+
+    function syncFaqRepeaterValue() {
+        const list = document.getElementById('shop-faqs-list');
+        const faqsValueField = document.getElementById('shop-faqs-value');
+        if (!list || !faqsValueField) {
+            return;
+        }
+
+        const faqs = Array.from(list.querySelectorAll('.shop-faq-row')).map(function (row) {
+            return {
+                question: row.querySelector('.shop-faq-question').value,
+                answer: row.querySelector('.shop-faq-answer').value,
+            };
+        });
+
+        faqsValueField.value = JSON.stringify(faqs);
+    }
+
+    document.getElementById('add-shop-faq-btn')?.addEventListener('click', function () {
+        document.getElementById('shop-faqs-list')?.appendChild(createFaqRowElement('', ''));
+    });
+
+    function setFaqAutoFillError(message) {
+        const errorEl = document.getElementById('shop-faq-auto-fill-error');
+        if (!errorEl) {
+            return;
+        }
+        errorEl.textContent = message;
+        errorEl.classList.toggle('d-none', message === '');
+    }
+
+    function parseFaqEntriesFromSchema(rawSchema) {
+        let parsed;
+        try {
+            parsed = JSON.parse(rawSchema);
+        } catch (e) {
+            throw new Error('Invalid JSON in the FAQ Schema JSON-LD field.');
+        }
+
+        const mainEntity = parsed?.mainEntity;
+        if (!Array.isArray(mainEntity) || mainEntity.length === 0) {
+            throw new Error('The schema must contain a non-empty "mainEntity" array.');
+        }
+
+        return mainEntity.map(function (item, index) {
+            const text = item?.acceptedAnswer?.text;
+            if (typeof text !== 'string' || text.trim() === '') {
+                throw new Error(`Entry ${index + 1} is missing "acceptedAnswer.text".`);
+            }
+            const answer = text.trim();
+            if (answer.length > 5000) {
+                throw new Error(`Entry ${index + 1}'s answer is longer than 5000 characters.`);
+            }
+
+            const name = item?.name;
+            let question = `Q${index + 1}`;
+            if (typeof name === 'string' && name.trim() !== '') {
+                question = name.trim();
+                if (question.length > 500) {
+                    throw new Error(`Entry ${index + 1}'s question is longer than 500 characters.`);
+                }
+            }
+
+            return { question: question, answer: answer };
+        });
+    }
+
+    document.getElementById('shop-auto-fill-faq-btn')?.addEventListener('click', function () {
+        const schemaTextarea = document.querySelector('textarea[name="faq_schema_json_ld"]');
+        setFaqAutoFillError('');
+
+        const rawSchema = (schemaTextarea?.value || '').trim();
+        if (rawSchema === '') {
+            setFaqAutoFillError('Add FAQ Schema JSON-LD first.');
+            return;
+        }
+
+        let entries;
+        try {
+            entries = parseFaqEntriesFromSchema(rawSchema);
+        } catch (e) {
+            setFaqAutoFillError(e.message);
+            return;
+        }
+
+        const list = document.getElementById('shop-faqs-list');
+        const hasExisting = !!list && list.querySelectorAll('.shop-faq-row').length > 0;
+        if (hasExisting && !confirm('This will replace the existing FAQ rows with ones generated from the schema. Continue?')) {
+            return;
+        }
+
+        renderFaqRows(entries);
+        syncFaqRepeaterValue();
+    });
+
+    renderFaqRows(JSON.parse(document.getElementById('shop-faqs-value')?.value || '[]'));
+
+    form.addEventListener('submit', function () {
+        contentHiddenInput.value = quill.getSemanticHTML ? quill.getSemanticHTML() : quill.root.innerHTML;
+        syncFaqRepeaterValue();
+    });
 })();
 </script>
 @endpush

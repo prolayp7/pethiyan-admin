@@ -43,7 +43,7 @@ class MenuSeeder extends Seeder
         $topItems = [
             ['label' => 'Home',              'href' => '/',                             'type' => 'link',          'sort_order' => 1],
             ['label' => 'Shop',              'href' => '/shop',                         'type' => 'shop_dropdown', 'sort_order' => 2],
-            ['label' => 'Categories',        'href' => '/categories',                   'type' => 'mega_menu',     'sort_order' => 3],
+            ['label' => 'Categories',        'href' => '/shop',                         'type' => 'mega_menu',     'sort_order' => 3],
             ['label' => 'Custom Packaging',  'href' => '/categories/custom-packaging',  'type' => 'link',          'sort_order' => 4],
             ['label' => 'Eco Packaging',     'href' => '/categories/eco-packaging',     'type' => 'link',          'sort_order' => 5],
             ['label' => 'New Arrivals',      'href' => '/new-arrivals',                 'type' => 'link',          'sort_order' => 6],

@@ -39,6 +39,11 @@ class PageController extends Controller
         return view('admin.pages.index', compact('pages'));
     }
 
+    public function show(Page $page)
+    {
+        return redirect()->route('admin.pages.edit', $page);
+    }
+
     public function edit(Page $page)
     {
         $systemSettings = [];
@@ -615,7 +620,7 @@ class PageController extends Controller
     private function authorizePagePermission(Request $request)
     {
         $permission = match ($request->route()?->getActionMethod()) {
-            'index'                => AdminPermissionEnum::PAGE_VIEW->value,
+            'index', 'show'        => AdminPermissionEnum::PAGE_VIEW->value,
             'create', 'store', 'edit', 'update', 'destroy' => AdminPermissionEnum::PAGE_EDIT->value,
             default                => null,
         };

@@ -554,10 +554,16 @@
                                     <small class="form-hint">Up to 255 characters. Used as the browser tab / search result title.</small>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">SEO Keywords</label>
-                                    <input type="text" class="form-control" name="seo_keywords"
-                                           value="{{ $sv('seo_keywords') }}"
-                                           placeholder="e.g. packaging supplier india, pouches, corrugated boxes, jars, courier bags, adhesive tapes">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <label class="form-label mb-0">SEO Keywords</label>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="copy-shop-seo-keywords-btn" title="Copy keywords as comma-separated text" style="font-size:.75rem;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="seo_keywords" id="shop-seo-keywords-value" value="{{ $sv('seo_keywords') }}"/>
+                                    <input type="text" class="form-control mt-1" id="shop-seo-keywords-input"
+                                           placeholder="e.g. standup pouch, kraft bag">
                                     <small class="form-hint">Comma-separated. Cover all live categories.</small>
                                 </div>
                                 <div class="col-12">
@@ -1549,6 +1555,104 @@
     schemaModeSelect?.addEventListener('change', toggleSchemaJsonLdField);
     toggleSchemaJsonLdField();
 
+    // ── SEO keyword tags ─────────────────────────────────────────────────
+    const seoKeywordsInput = document.getElementById('shop-seo-keywords-input');
+    const seoKeywordsValueInput = document.getElementById('shop-seo-keywords-value');
+
+    function normalizeText(value) {
+        return (value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function normalizeKeywords(value) {
+        const seen = new Set();
+
+        return (value || '')
+            .split(',')
+            .map((keyword) => normalizeText(keyword))
+            .filter((keyword) => {
+                if (!keyword) {
+                    return false;
+                }
+
+                const normalizedKeyword = keyword.toLowerCase();
+                if (seen.has(normalizedKeyword)) {
+                    return false;
+                }
+
+                seen.add(normalizedKeyword);
+                return true;
+            });
+    }
+
+    function syncKeywordInputValue() {
+        if (!seoKeywordsInput || !seoKeywordsValueInput) {
+            return;
+        }
+
+        const control = seoKeywordsInput.tomselect;
+        if (!control) {
+            return;
+        }
+
+        seoKeywordsValueInput.value = normalizeKeywords(control.items.join(',')).join(', ');
+    }
+
+    function setKeywordTags(value) {
+        if (!seoKeywordsInput || !seoKeywordsValueInput) {
+            return;
+        }
+
+        const keywords = normalizeKeywords(value);
+        const control = seoKeywordsInput.tomselect;
+
+        if (!control) {
+            seoKeywordsValueInput.value = keywords.join(', ');
+            return;
+        }
+
+        control.clear(true);
+        control.clearOptions();
+        keywords.forEach((keyword) => {
+            control.addOption({ value: keyword, text: keyword });
+        });
+        control.setValue(keywords, true);
+        seoKeywordsValueInput.value = keywords.join(', ');
+    }
+
+    if (seoKeywordsInput && window.TomSelect && !seoKeywordsInput.tomselect) {
+        new TomSelect(seoKeywordsInput, {
+            create: (input) => {
+                const keyword = normalizeText(input);
+                return keyword ? { value: keyword, text: keyword } : false;
+            },
+            createOnBlur: true,
+            persist: false,
+            delimiter: ',',
+            hideSelected: true,
+            duplicates: false,
+            maxOptions: 100,
+            onChange: syncKeywordInputValue,
+            onBlur: syncKeywordInputValue,
+        });
+
+        setKeywordTags(seoKeywordsValueInput?.value || '');
+    }
+
+    const copyKeywordsBtn = document.getElementById('copy-shop-seo-keywords-btn');
+    copyKeywordsBtn?.addEventListener('click', function () {
+        const value = seoKeywordsValueInput?.value || '';
+        if (!value.trim()) return;
+        navigator.clipboard.writeText(value).then(function () {
+            const original = copyKeywordsBtn.innerHTML;
+            copyKeywordsBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-1"><polyline points="20 6 9 17 4 12"></polyline></svg>Copied!';
+            copyKeywordsBtn.classList.replace('btn-outline-secondary', 'btn-outline-success');
+            setTimeout(function () {
+                copyKeywordsBtn.innerHTML = original;
+                copyKeywordsBtn.classList.replace('btn-outline-success', 'btn-outline-secondary');
+            }, 2000);
+        });
+    });
+
     // ── FAQ repeater ──────────────────────────────────────────────────────
     function createFaqRowElement(question, answer) {
         const wrapper = document.createElement('div');
@@ -1687,6 +1791,7 @@
 
     form.addEventListener('submit', function () {
         contentHiddenInput.value = quill.getSemanticHTML ? quill.getSemanticHTML() : quill.root.innerHTML;
+        syncKeywordInputValue();
         syncFaqRepeaterValue();
     });
 })();

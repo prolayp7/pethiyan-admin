@@ -1619,7 +1619,11 @@
         seoKeywordsValueInput.value = keywords.join(', ');
     }
 
-    if (seoKeywordsInput && window.TomSelect && !seoKeywordsInput.tomselect) {
+    function ensureKeywordTagsInput() {
+        if (!seoKeywordsInput || !window.TomSelect || seoKeywordsInput.tomselect) {
+            return;
+        }
+
         new TomSelect(seoKeywordsInput, {
             create: (input) => {
                 const keyword = normalizeText(input);
@@ -1636,6 +1640,15 @@
         });
 
         setKeywordTags(seoKeywordsValueInput?.value || '');
+    }
+
+    // tom-select.base.min.js loads with `defer` from a shared layout partial,
+    // so it may not be defined yet at this point in the document — DOMContentLoaded
+    // fires only after all deferred scripts have run, guaranteeing it's ready.
+    if (window.TomSelect) {
+        ensureKeywordTagsInput();
+    } else {
+        document.addEventListener('DOMContentLoaded', ensureKeywordTagsInput);
     }
 
     const copyKeywordsBtn = document.getElementById('copy-shop-seo-keywords-btn');

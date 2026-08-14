@@ -121,6 +121,7 @@ return [
     'orders_retrieved_successfully' => 'Orders retrieved successfully',
     'order_status_updated_successfully' => 'Order status updated successfully',
     'order_status_update_failed' => 'Failed to update order status',
+    'order_deleted' => 'Order deleted successfully.',
     'online_payment_status_managed_by_gateway' => 'Online payment status is updated automatically from the payment gateway webhook or verification response and cannot be changed manually here.',
 
     // Store status toggle

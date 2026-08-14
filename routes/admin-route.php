@@ -525,6 +525,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{id}/invoice/download', [OrderController::class, 'downloadInvoice'])->name('invoice.download');
             Route::get('/{id}/shipping-address/download', [OrderController::class, 'downloadShippingAddress'])->name('shipping-address.download');
             Route::post('/{id}/manage', [OrderController::class, 'updateAdminOrder'])->name('manage');
+            Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');
             Route::get('/{id}', [OrderController::class, 'show'])->name('show');
             Route::post('/{id}/{status}', [OrderController::class, 'updateStatus'])->name('update_status');
         });

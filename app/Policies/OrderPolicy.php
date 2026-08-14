@@ -121,6 +121,19 @@ class OrderPolicy
         }
     }
 
+    /**
+     * Determine whether the user can delete the model.
+     */
+    public function delete(User|AdminUser $user, $order): bool
+    {
+        // Only admin panel users with explicit permission can delete orders
+        if ($user->seller() !== null) {
+            return false;
+        }
+
+        return $this->hasPermission(AdminPermissionEnum::ORDER_DELETE());
+    }
+
     public function viewInvoice(User|AdminUser $user, $orderData): bool
     {
         try {

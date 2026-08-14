@@ -225,13 +225,14 @@ class OrderController extends Controller
 
             $filteredRecords = $query->count();
 
+            $canDelete = $this->hasPermission(AdminPermissionEnum::ORDER_DELETE());
             $data = $query
                 ->orderBy($orderColumn, $orderDirection)
                 ->skip($start)
                 ->take($length)
                 ->get()
-                ->map(function (Order $order) {
-                    return $this->getAdminOrderReturnData($order);
+                ->map(function (Order $order) use ($canDelete) {
+                    return $this->getAdminOrderReturnData($order, $canDelete);
                 });
 
             return response()->json([
@@ -346,7 +347,7 @@ class OrderController extends Controller
         ]);
     }
 
-    private function getAdminOrderReturnData(Order $order): array
+    private function getAdminOrderReturnData(Order $order, bool $canDelete = false): array
     {
         $orderNo = $order->slug ?: $order->id;
         $orderNoDisplay = $orderNo ? '#' . ltrim((string) $orderNo, '#') : 'N/A';
@@ -439,6 +440,7 @@ class OrderController extends Controller
                 'title' => __('labels.edit_order') . $order->id,
                 'status' => $order->status ?? OrderItemStatusEnum::PENDING(),
                 'editPermission' => false,
+                'canDelete' => $canDelete,
             ])->render(),
         ];
     }
@@ -527,6 +529,7 @@ class OrderController extends Controller
                 'title' => __('labels.edit_order') . ($sellerOrder?->id ?? ''),
                 'status' => $orderItem?->status ?? OrderItemStatusEnum::PENDING(),
                 'editPermission' => $this->getPanel() === 'admin' ? false : $this->editPermission,
+                'canDelete' => false,
             ])->render(),
         ];
     }
@@ -845,6 +848,49 @@ class OrderController extends Controller
 
         } catch (AuthorizationException) {
             abort(403, __('messages.unauthorized_action'));
+        }
+    }
+
+    /**
+     * Permanently delete an order and all its related data (items, seller
+     * orders, payment transactions, shipping parcels, returns, etc. via
+     * cascading foreign keys). Admin panel only.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $order = Order::findOrFail($id);
+            $this->authorize('delete', $order);
+        } catch (AuthorizationException) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'messages.unauthorized_action',
+                status: 403,
+            );
+        } catch (\Throwable) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.order_not_found',
+                status: 404,
+            );
+        }
+
+        try {
+            DB::beginTransaction();
+            $order->delete();
+            DB::commit();
+
+            return ApiResponseType::sendJsonResponse(
+                success: true,
+                message: 'messages.order_deleted',
+            );
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'Failed to delete order: ' . $e->getMessage(),
+                status: 500,
+            );
         }
     }
 

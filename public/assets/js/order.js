@@ -236,6 +236,10 @@ $(document).ready(function () {
     });
 });
 
+document.addEventListener('click', function (event) {
+    handleDelete(event, '.delete-order', `/${panel}/orders/`, 'You are about to permanently delete this Order and all its related data (items, payments, shipping, returns). This cannot be undone.');
+});
+
 $(document).ready(function () {
     // Handle select all checkbox
     $('#select-all-items').on('change', function () {

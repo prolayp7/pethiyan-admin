@@ -10,3 +10,7 @@ Artisan::command('inspire', function () {
 
 // Schedule cashback processing to run daily at 2 AM
 Schedule::command('cashback:process')->dailyAt('02:00');
+
+// Re-check Easepay payments stuck pending (network/power failure mid-payment,
+// or a webhook that never arrived) every 15 minutes.
+Schedule::command('easepay:reconcile-pending')->everyFifteenMinutes();

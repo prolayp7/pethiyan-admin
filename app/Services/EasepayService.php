@@ -3,9 +3,19 @@
 namespace App\Services;
 
 use App\Enums\Payment\PaymentModeEnum;
+use App\Enums\Payment\PaymentTypeEnum;
+use App\Enums\PaymentStatusEnum;
 use App\Enums\SettingTypeEnum;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\OrderPaymentTransaction;
+use App\Models\PaymentRefund;
+use App\Models\PaymentWebhookLog;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Easebuzz (Easepay) payment gateway service.
@@ -252,4 +262,173 @@ class EasepayService
 
     public function getMode(): string   { return $this->mode; }
     public function getBaseUrl(): string { return $this->baseUrl; }
+
+    // -------------------------------------------------------------------------
+    // Shared transaction-outcome handling
+    //
+    // Used by EasepayController (webhook + client-side verify-payment) and by
+    // the ReconcilePendingEasepayPayments command, so a payment gets captured
+    // the same way regardless of which of those three paths detects it first.
+    // -------------------------------------------------------------------------
+
+    public function handleOrderWebhook(string $status, array $payload, string $txnid, string $easepayTxnId, ?PaymentWebhookLog $webhookLog = null): void
+    {
+        $orderId = (int)($payload['udf2'] ?? 0);
+        $order   = $orderId ? Order::find($orderId) : null;
+
+        if ($status === 'success') {
+            // Idempotency guard: webhook, client-side verify-payment, and the
+            // reconciliation job can all land for the same transaction. Skip
+            // re-processing an already captured order to avoid duplicate
+            // status-change side effects.
+            if ($order && $order->payment_status === PaymentStatusEnum::COMPLETED()) {
+                Log::info('[Easepay] Order already captured, skipping duplicate processing', ['order_id' => $orderId, 'txnid' => $txnid]);
+                return;
+            }
+
+            // Record or update the transaction
+            $transaction = OrderPaymentTransaction::updateOrCreate(
+                ['transaction_id' => $easepayTxnId],
+                [
+                    // uuid has a unique DB constraint and no default/auto-generation
+                    // on the model — omitting it defaults to '', which collides with
+                    // whichever row claimed '' first and silently rolls back this
+                    // entire webhook (including the Order::capturePayment() below).
+                    'uuid'           => Str::uuid()->toString(),
+                    'order_id'       => $orderId ?: null,
+                    'user_id'        => $payload['udf3'] ?? null,
+                    'transaction_id' => $easepayTxnId,
+                    'amount'         => $payload['amount'] ?? 0,
+                    'currency'       => $payload['currency'] ?? 'INR',
+                    'payment_method' => PaymentTypeEnum::EASEPAY(),
+                    'payment_status' => PaymentStatusEnum::COMPLETED(),
+                    'message'        => 'Payment Successful',
+                    'payment_details' => $payload,
+                ]
+            );
+
+            $webhookLog?->update([
+                'order_payment_transaction_id' => $transaction->id,
+                'order_id' => $orderId ?: null,
+            ]);
+
+            // createOrder() records a placeholder row at initiation time (keyed by
+            // our internal txnid) so a stuck payment has something to reconcile
+            // against. Once the real row above (keyed by Easebuzz's own id) exists,
+            // that placeholder is superseded — remove it so the Payment Monitor
+            // doesn't show two rows for one payment.
+            if ($txnid !== $easepayTxnId) {
+                OrderPaymentTransaction::where('transaction_id', $txnid)
+                    ->where('id', '!=', $transaction->id)
+                    ->delete();
+            }
+
+            if ($orderId) {
+                Order::capturePayment($orderId);
+                OrderItem::capturePayment($orderId);
+            }
+
+            Log::info('[Easepay] Order payment captured', ['order_id' => $orderId, 'txnid' => $txnid]);
+
+        } elseif ($status === 'failure' || $status === 'usercancel') {
+            // Same idempotency guard as above — paymentFailed() refunds any wallet
+            // balance used, so re-running it on a duplicate delivery would double-refund.
+            if ($order && $order->payment_status === PaymentStatusEnum::FAILED()) {
+                Log::info('[Easepay] Order already marked failed, skipping duplicate processing', ['order_id' => $orderId, 'txnid' => $txnid]);
+                return;
+            }
+
+            $transaction = OrderPaymentTransaction::where('transaction_id', $txnid)->first();
+            if ($transaction) {
+                $transaction->update([
+                    'payment_status' => PaymentStatusEnum::FAILED(),
+                    'message'        => 'Payment ' . ucfirst($status),
+                    'payment_details' => $payload,
+                ]);
+            }
+
+            $webhookLog?->update([
+                'order_payment_transaction_id' => $transaction?->id,
+                'order_id' => $orderId ?: $transaction?->order_id,
+            ]);
+
+            if ($orderId) {
+                Order::paymentFailed($orderId);
+                OrderItem::paymentFailed($orderId);
+            }
+        }
+    }
+
+    public function handleWalletWebhook(string $status, array $payload, string $easepayTxnId): void
+    {
+        $walletTransactionId = $payload['udf2'] ?? null;
+
+        if (!$walletTransactionId) {
+            Log::warning('[Easepay] Wallet webhook missing udf2 (transaction_id)');
+            return;
+        }
+
+        $transaction = WalletTransaction::find($walletTransactionId);
+        if (!$transaction) {
+            Log::warning('[Easepay] WalletTransaction not found', ['id' => $walletTransactionId]);
+            return;
+        }
+
+        if ($status === 'success') {
+            $transaction->update(['transaction_reference' => $easepayTxnId]);
+            $result = Wallet::captureRecharge($transaction->id);
+            if (!$result['success']) {
+                Log::error('[Easepay] Wallet capture failed: ' . $result['message']);
+            }
+        } elseif ($status === 'failure' || $status === 'usercancel') {
+            $transaction->update(['status' => PaymentStatusEnum::FAILED(), 'message' => 'Payment ' . ucfirst($status)]);
+        }
+    }
+
+    /**
+     * Handle Easebuzz refund webhook.
+     * Status is 'refund' (processed) or 'refund_bounced' (failed).
+     * Easebuzz re-sends the original txnid; the easepayid field holds the refund reference.
+     */
+    public function handleRefundWebhook(string $status, array $payload, string $txnid, string $easepayRefundId, ?PaymentWebhookLog $webhookLog = null): void
+    {
+        // Find original payment transaction by txnid
+        $transaction = OrderPaymentTransaction::where('transaction_id', $txnid)->first();
+
+        $refundStatus = $status === 'refund' ? 'processed' : 'failed';
+
+        PaymentRefund::updateOrCreate(
+            ['razorpay_refund_id' => 'ebz-' . $easepayRefundId],  // prefix to avoid collision with Razorpay IDs
+            [
+                'razorpay_payment_id'          => $txnid,
+                'order_payment_transaction_id' => $transaction?->id,
+                'order_id'                     => $transaction?->order_id,
+                'amount'                       => $payload['amount'] ?? 0,
+                'currency'                     => $payload['currency'] ?? 'INR',
+                'status'                       => $refundStatus,
+                'speed'                        => null,
+                'notes'                        => null,
+                'raw_payload'                  => $payload,
+            ]
+        );
+
+        $webhookLog?->update([
+            'order_payment_transaction_id' => $transaction?->id,
+            'order_id' => $transaction?->order_id,
+        ]);
+
+        if ($refundStatus === 'processed' && $transaction) {
+            $transaction->update([
+                'payment_status' => PaymentStatusEnum::REFUNDED(),
+                'message'        => 'Refund processed via Easebuzz',
+            ]);
+            Log::info('[Easepay] Refund processed', ['txnid' => $txnid, 'order_id' => $transaction->order_id]);
+        } elseif ($refundStatus === 'failed') {
+            Log::error('[Easepay] Refund BOUNCED (failed)', [
+                'txnid'    => $txnid,
+                'order_id' => $transaction?->order_id,
+                'amount'   => $payload['amount'] ?? null,
+            ]);
+        }
+    }
 }

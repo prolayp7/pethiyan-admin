@@ -414,6 +414,8 @@ return [
     'max_discount_value' => 'Max Discount Value',
     'enter_max_discount_value' => 'Enter maximum discount value',
     'required_for_percentage_discount' => 'Required for percentage discounts',
+    'applies_to_shipping' => 'Apply discount to shipping charges too',
+    'applies_to_shipping_help' => 'When on, the discount is calculated against the product subtotal plus the shipping charge, instead of the subtotal only',
     'start_date' => 'Start Date',
     'end_date' => 'End Date',
     'min_order_total' => 'Minimum Order Total',

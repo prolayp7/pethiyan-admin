@@ -1326,10 +1326,18 @@ class CartService
                 }
             }
 
+            // When applies_to_shipping is on for a percent/flat promo, the discount
+            // is computed against — and capped by — the subtotal plus delivery
+            // charge combined, instead of the subtotal alone. free_shipping is
+            // unaffected, since it already discounts the whole delivery charge.
+            $shippingEligible = $promo->applies_to_shipping
+                && in_array($promo->discount_type, [PromoDiscountTypeEnum::PERCENTAGE(), PromoDiscountTypeEnum::FIXED()], true);
+            $discountBase = $shippingEligible ? $cartTotal + $deliveryCharge : $cartTotal;
+
             // Calculate discount
             $discount = 0;
             if ($promo->discount_type === PromoDiscountTypeEnum::PERCENTAGE()) {
-                $discount = ($cartTotal * $promo->discount_amount) / 100;
+                $discount = ($discountBase * $promo->discount_amount) / 100;
                 if ($promo->max_discount_value && $discount > $promo->max_discount_value) {
                     $discount = $promo->max_discount_value;
                 }
@@ -1339,8 +1347,8 @@ class CartService
                 $discount = $deliveryCharge;
             }
 
-            // Ensure discount doesn't exceed order amount
-            $discount = min($discount, $cartTotal);
+            // Ensure discount doesn't exceed the discountable base
+            $discount = min($discount, $discountBase);
 
             return [
                 'success' => true,

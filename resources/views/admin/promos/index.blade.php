@@ -150,6 +150,18 @@
                                 </div>
                             </div>
 
+                            <div class="row" id="applies-to-shipping-row">
+                                <div class="col-md-12">
+                                    <div class="mb-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="applies_to_shipping"
+                                               id="applies-to-shipping-switch" value="1">
+                                        <label class="form-check-label"
+                                               for="applies-to-shipping-switch">{{ __('labels.applies_to_shipping') }}</label>
+                                        <small class="form-text text-muted d-block">{{ __('labels.applies_to_shipping_help') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">

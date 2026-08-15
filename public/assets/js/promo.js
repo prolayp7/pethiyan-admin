@@ -22,6 +22,25 @@ function viewPromo(id) {
         .catch(error => console.error('Error:', error));
 }
 
+// "Apply discount to shipping charges too" only means anything for percent/flat
+// discounts — free_shipping already discounts the whole shipping charge.
+function toggleAppliesToShippingVisibility() {
+    const discountType = document.getElementById('discount-type')?.value;
+    const row = document.getElementById('applies-to-shipping-row');
+    if (!row) return;
+
+    if (discountType === 'free_shipping') {
+        row.style.display = 'none';
+        const checkbox = row.querySelector('input[name="applies_to_shipping"]');
+        if (checkbox) checkbox.checked = false;
+    } else {
+        row.style.display = '';
+    }
+}
+
+document.getElementById('discount-type')?.addEventListener('change', toggleAppliesToShippingVisibility);
+toggleAppliesToShippingVisibility();
+
 function editPromo(id) {
     axios.get(`/admin/promos/${id}`)
         .then(response => {
@@ -40,6 +59,8 @@ function editPromo(id) {
                 document.querySelector('select[name="discount_type"]').value = promo.discount_type;
                 document.querySelector('input[name="discount_amount"]').value = promo.discount_amount;
                 document.querySelector('input[name="max_discount_value"]').value = promo.max_discount_value || '';
+                document.querySelector('input[name="applies_to_shipping"]').checked = !!promo.applies_to_shipping;
+                toggleAppliesToShippingVisibility();
                 document.querySelector('input[name="start_date"]').value = promo.start_date ? promo.start_date.slice(0, 16) : '';
                 document.querySelector('input[name="end_date"]').value = promo.end_date ? promo.end_date.slice(0, 16) : '';
                 document.querySelector('input[name="min_order_total"]').value = promo.min_order_total || '';

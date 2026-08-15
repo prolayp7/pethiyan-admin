@@ -31,6 +31,7 @@ class StorePromoRequest extends FormRequest
             'end_date' => 'required|date|after:start_date',
             'discount_type' => ['required', new Enum(PromoDiscountTypeEnum::class)],
             'discount_amount' => 'required_if:discount_type,' . PromoDiscountTypeEnum::PERCENTAGE() . ',' . PromoDiscountTypeEnum::FIXED() . '|min:0',
+            'applies_to_shipping' => 'nullable|boolean',
             'promo_mode' => ['nullable', new Enum(PromoModeEnum::class)],
 //            'individual_use' => 'nullable|integer|in:0,1',
             'max_total_usage' => 'nullable|integer|min:1',
@@ -68,6 +69,8 @@ class StorePromoRequest extends FormRequest
         $this->merge([
             'usage_count' => $this->usage_count ?? 0,
             'individual_use' => $this->individual_use ?? 0,
+            // Unchecked HTML checkboxes submit nothing at all, not false.
+            'applies_to_shipping' => $this->boolean('applies_to_shipping'),
         ]);
     }
 

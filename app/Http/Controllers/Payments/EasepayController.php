@@ -183,14 +183,33 @@ class EasepayController extends Controller
     /**
      * Verify a payment after the user is redirected back to the app.
      *
+     * The Easepay/Easebuzz webhook is the authoritative confirmation path, but it
+     * depends on the merchant dashboard being configured with our webhook URL and
+     * on Easebuzz reliably delivering it. Since surl/furl point at the storefront
+     * (not a backend endpoint), the frontend calls this after redirect so the order
+     * gets captured immediately even if the webhook is delayed, missing, or
+     * misconfigured. handleOrderWebhook() is idempotent, so it's safe to also run
+     * here if the webhook fires separately for the same transaction.
+     *
      * POST /api/easepay/verify-payment
      * Body: { txnid }
      */
     public function verifyPayment(Request $request): JsonResponse
     {
         $validated = $request->validate(['txnid' => 'required|string']);
+        $txnid = $validated['txnid'];
 
-        $result = $this->easepayService->verifyTransaction($validated['txnid']);
+        $result = $this->easepayService->verifyTransaction($txnid);
+
+        if ($result['success']) {
+            $payload = $result['data'] ?? [];
+            $status  = strtolower((string) ($payload['status'] ?? ''));
+
+            if (in_array($status, ['success', 'failure', 'usercancel'], true)) {
+                $easepayTxnId = $payload['easepayid'] ?? $txnid;
+                $this->handleOrderWebhook($status, $payload, $txnid, $easepayTxnId);
+            }
+        }
 
         return ApiResponseType::sendJsonResponse(
             $result['success'],
@@ -235,8 +254,17 @@ class EasepayController extends Controller
     private function handleOrderWebhook(string $status, array $payload, string $txnid, string $easepayTxnId, ?PaymentWebhookLog $webhookLog = null): void
     {
         $orderId = (int)($payload['udf2'] ?? 0);
+        $order   = $orderId ? Order::find($orderId) : null;
 
         if ($status === 'success') {
+            // Idempotency guard: webhook and client-side verify-payment can both
+            // land for the same transaction. Skip re-processing an already
+            // captured order to avoid duplicate status-change side effects.
+            if ($order && $order->payment_status === PaymentStatusEnum::COMPLETED()) {
+                Log::info('[Easepay] Order already captured, skipping duplicate processing', ['order_id' => $orderId, 'txnid' => $txnid]);
+                return;
+            }
+
             // Record or update the transaction
             $transaction = OrderPaymentTransaction::updateOrCreate(
                 ['transaction_id' => $easepayTxnId],
@@ -266,6 +294,13 @@ class EasepayController extends Controller
             Log::info('[Easepay] Order payment captured', ['order_id' => $orderId, 'txnid' => $txnid]);
 
         } elseif ($status === 'failure' || $status === 'usercancel') {
+            // Same idempotency guard as above — paymentFailed() refunds any wallet
+            // balance used, so re-running it on a duplicate delivery would double-refund.
+            if ($order && $order->payment_status === PaymentStatusEnum::FAILED()) {
+                Log::info('[Easepay] Order already marked failed, skipping duplicate processing', ['order_id' => $orderId, 'txnid' => $txnid]);
+                return;
+            }
+
             $transaction = OrderPaymentTransaction::where('transaction_id', $txnid)->first();
             if ($transaction) {
                 $transaction->update([

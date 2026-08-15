@@ -122,10 +122,14 @@ class EasepayService
             'firstname'   => $data['firstname']   ?? '',
             'email'       => $data['email']        ?? '',
             'phone'       => $data['phone']        ?? '',
-            // Easebuzz requires both success and failure return URLs. Must
-            // always be the storefront, never app.url (the admin/API origin).
-            'surl'        => $data['surl'] ?? rtrim(config('app.frontend_url'), '/') . '/checkout?payment_status=success',
-            'furl'        => $data['furl'] ?? rtrim(config('app.frontend_url'), '/') . '/checkout?payment_status=failed',
+            // Easebuzz requires both success and failure return URLs, and posts
+            // the transaction result (txnid, status, hash, ...) to them as a form
+            // body — they must be a POST-capable endpoint, not a plain frontend
+            // page route. The storefront's /api/easepay/callback receives that
+            // POST, forwards it to our webhook, and redirects the browser to the
+            // storefront checkout page with a clean query string.
+            'surl'        => $data['surl'] ?? rtrim(config('app.frontend_url'), '/') . '/api/easepay/callback',
+            'furl'        => $data['furl'] ?? rtrim(config('app.frontend_url'), '/') . '/api/easepay/callback',
             'udf1'        => $data['udf1']         ?? '',
             'udf2'        => $data['udf2']         ?? '',
             'udf3'        => $data['udf3']         ?? '',

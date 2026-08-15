@@ -20,6 +20,12 @@ class EasepayService
     protected string $merchantSalt;
     protected string $mode;        // 'test' | 'live'
     protected string $baseUrl;
+    // Transaction/refund/status APIs live on a separate "dashboard" subdomain
+    // from the pay/initiateLink APIs — see Easebuzz's own Node.js reference kit
+    // (easebuzz-lib/utils.js fetchBaseUrl()). Mixing them up returns a 404-ish
+    // non-JSON response, which verifyTransaction() surfaces as a generic
+    // "Verification failed." with no real error_desc from Easebuzz.
+    protected string $dashboardBaseUrl;
 
     public function __construct(SettingService $settingService)
     {
@@ -33,6 +39,10 @@ class EasepayService
         $this->baseUrl = $this->mode === PaymentModeEnum::Live->value
             ? 'https://pay.easebuzz.in'
             : 'https://testpay.easebuzz.in';
+
+        $this->dashboardBaseUrl = $this->mode === PaymentModeEnum::Live->value
+            ? 'https://dashboard.easebuzz.in'
+            : 'https://testdashboard.easebuzz.in';
 
     }
 
@@ -180,7 +190,7 @@ class EasepayService
         $hash = strtolower(hash('sha512', "{$this->merchantKey}|{$txnid}|{$this->merchantSalt}"));
 
         try {
-            $response = Http::asForm()->post("{$this->baseUrl}/payment/transaction/v2", [
+            $response = Http::asForm()->post("{$this->dashboardBaseUrl}/transaction/v2/retrieve", [
                 'key'    => $this->merchantKey,
                 'txnid'  => $txnid,
                 'hash'   => $hash,

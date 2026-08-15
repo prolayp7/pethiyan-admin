@@ -269,6 +269,11 @@ class EasepayController extends Controller
             $transaction = OrderPaymentTransaction::updateOrCreate(
                 ['transaction_id' => $easepayTxnId],
                 [
+                    // uuid has a unique DB constraint and no default/auto-generation
+                    // on the model — omitting it defaults to '', which collides with
+                    // whichever row claimed '' first and silently rolls back this
+                    // entire webhook (including the Order::capturePayment() below).
+                    'uuid'           => Str::uuid()->toString(),
                     'order_id'       => $orderId ?: null,
                     'user_id'        => $payload['udf3'] ?? null,
                     'transaction_id' => $easepayTxnId,

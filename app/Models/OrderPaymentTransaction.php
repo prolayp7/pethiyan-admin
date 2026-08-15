@@ -95,13 +95,19 @@ class OrderPaymentTransaction extends Model
         return 'PETTXN' . $date . str_pad((string) $order->id, 5, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * A PETTXNyyyymmdd##### style reference shown in the admin UI, uniform
+     * across every payment method. The real gateway transaction_id (Easepay's
+     * easepayid, Razorpay's payment_id, etc.) stays stored and unchanged in
+     * `transaction_id` — that's still what refund/verify calls to the gateway
+     * use, this accessor only affects what's displayed.
+     */
     public function getDisplayTransactionIdAttribute(): ?string
     {
-        if (strtolower((string) $this->payment_method) !== PaymentTypeEnum::COD()) {
-            return $this->transaction_id;
-        }
-
-        if (!empty($this->transaction_id) && !str_starts_with((string) $this->transaction_id, 'cod-order-')) {
+        if (strtolower((string) $this->payment_method) === PaymentTypeEnum::COD()
+            && !empty($this->transaction_id)
+            && !str_starts_with((string) $this->transaction_id, 'cod-order-')
+        ) {
             return $this->transaction_id;
         }
 

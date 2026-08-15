@@ -543,7 +543,7 @@ class ReportController extends Controller
                 return [
                     'id' => $transaction->id,
                     'order' => $this->renderOrderLink($transaction->order),
-                    'transaction_id' => e($transaction->transaction_id ?? '—'),
+                    'transaction_id' => e($transaction->display_transaction_id ?? '—'),
                     'payment_method' => '<span class="badge bg-azure-lt">' . e(Str::headline((string) $transaction->payment_method)) . '</span>',
                     'payment_status' => $this->renderPaymentBadge((string) $transaction->payment_status),
                     'amount' => $this->formatMoney($transaction->amount, $transaction->currency),
@@ -722,7 +722,7 @@ class ReportController extends Controller
     {
         return $this->datatableFromModel(
             request: $request,
-            baseQuery: PaymentWebhookLog::with(['order', 'transaction']),
+            baseQuery: PaymentWebhookLog::with(['order', 'transaction.order']),
             columnsMap: ['id', 'gateway', 'event_name', 'order_id', 'order_payment_transaction_id', 'status', 'signature_valid', 'updated_at'],
             searchCallback: function ($query, string $search): void {
                 $query->where(function ($q) use ($search) {
@@ -761,7 +761,7 @@ class ReportController extends Controller
                     'gateway' => '<span class="badge bg-azure-lt">' . e(Str::headline((string) $webhookLog->gateway)) . '</span>',
                     'event_name' => e($webhookLog->event_name ?? '—'),
                     'order' => $this->renderOrderLink($webhookLog->order),
-                    'transaction_id' => e($webhookLog->transaction?->transaction_id ?? '—'),
+                    'transaction_id' => e($webhookLog->transaction?->display_transaction_id ?? '—'),
                     'status' => $this->renderGenericBadge((string) $webhookLog->status),
                     'signature' => $webhookLog->signature_valid
                         ? '<span class="badge bg-green-lt">Valid</span>'
@@ -820,7 +820,7 @@ class ReportController extends Controller
                 return [
                     $transaction->id,
                     $transaction->order?->slug ?: $transaction->order?->uuid ?: $transaction->order_id,
-                    $transaction->transaction_id,
+                    $transaction->display_transaction_id,
                     $transaction->payment_method,
                     $transaction->payment_status,
                     $transaction->amount,
@@ -909,7 +909,7 @@ class ReportController extends Controller
 
     public function exportWebhookLogs(Request $request): StreamedResponse
     {
-        $query = PaymentWebhookLog::with(['order', 'transaction']);
+        $query = PaymentWebhookLog::with(['order', 'transaction.order']);
         $paymentMethod = (string) $request->get('payment_method', '');
         $paymentStatus = (string) $request->get('payment_status', '');
 
@@ -933,7 +933,7 @@ class ReportController extends Controller
                     $webhookLog->event_name,
                     $webhookLog->delivery_id,
                     $webhookLog->order?->slug ?: $webhookLog->order?->uuid ?: $webhookLog->order_id,
-                    $webhookLog->transaction?->transaction_id,
+                    $webhookLog->transaction?->display_transaction_id,
                     $webhookLog->status,
                     $webhookLog->signature_valid ? 'yes' : 'no',
                     $webhookLog->http_status,

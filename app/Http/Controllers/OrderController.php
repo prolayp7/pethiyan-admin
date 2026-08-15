@@ -699,7 +699,16 @@ class OrderController extends Controller
 
     private function resolveAdminOrderStatusLabel(string $status): string
     {
-        return $this->getAdminOrderStatusOptions($status)[$status] ?? Str::headline($status);
+        // ADMIN_ORDER_STATUS_OPTIONS is a curated subset of statuses an admin
+        // can manually transition an order to — it deliberately omits
+        // system-only statuses like awaiting_store_response. Using it to also
+        // label the order's *current* status caused the order list (which
+        // correctly uses OrderStatusEnum::label(), e.g. "Processing") and the
+        // order detail page (which fell through to Str::headline() for any
+        // status missing from that curated list, e.g. "Awaiting Store
+        // Response") to disagree for the same order. Resolve against the
+        // canonical enum label instead, so both views always match.
+        return OrderStatusEnum::tryFrom($status)?->label() ?? Str::headline($status);
     }
 
     /**

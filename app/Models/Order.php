@@ -225,13 +225,32 @@ class Order extends Model
         ];
     }
 
+    /**
+     * Statuses a paid order is still allowed to move to ACCEPTED_BY_SELLER from.
+     * Orders already start at ACCEPTED_BY_SELLER on creation (COD and online
+     * alike) — this just re-affirms that for the common case. It deliberately
+     * excludes later pipeline stages (preparing, ready_for_pickup, etc.) so a
+     * late-arriving webhook/reconciliation run can't regress an order a seller
+     * has already moved further along, just because payment confirmation landed late.
+     */
+    private static function acceptableStatusesBeforeCapture(): array
+    {
+        return [
+            OrderStatusEnum::PENDING(),
+            OrderStatusEnum::AWAITING_STORE_RESPONSE(),
+            OrderStatusEnum::ACCEPTED_BY_SELLER(),
+        ];
+    }
+
     public static function capturePayment(int $orderId): bool
     {
         try {
             $order = self::find($orderId);
             if ($order) {
                 $order->payment_status = PaymentStatusEnum::COMPLETED();
-                $order->status = OrderStatusEnum::AWAITING_STORE_RESPONSE();
+                if (in_array($order->status, self::acceptableStatusesBeforeCapture(), true)) {
+                    $order->status = OrderStatusEnum::ACCEPTED_BY_SELLER();
+                }
                 return $order->save();
             }
             return false;
@@ -248,7 +267,9 @@ class Order extends Model
             }
 
             $order->payment_status = PaymentStatusEnum::COMPLETED();
-            $order->status = OrderStatusEnum::AWAITING_STORE_RESPONSE();
+            if (in_array($order->status, self::acceptableStatusesBeforeCapture(), true)) {
+                $order->status = OrderStatusEnum::ACCEPTED_BY_SELLER();
+            }
 
             return $order->save();
         } catch (\Exception $e) {

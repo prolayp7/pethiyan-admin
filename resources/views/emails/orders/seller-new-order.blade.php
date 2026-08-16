@@ -55,7 +55,13 @@
     $customerGstin = data_get($order, 'customer_gstin')
         ?: data_get($order, 'gstin')
         ?: data_get($order, 'user.gstin');
-    $paymentStatus = ucfirst((string) ($order->payment_status ?? 'Pending'));
+    // Same reasoning as emails/orders/placed.blade.php — this is a creation-time
+    // snapshot sent before an online payment has had a chance to confirm.
+    $rawPaymentStatus = (string) ($order->payment_status ?? 'pending');
+    $isCod = strtolower((string) ($order->payment_method ?? '')) === 'cod';
+    $paymentStatus = ($rawPaymentStatus === 'pending' && !$isCod)
+        ? 'Awaiting confirmation'
+        : ucfirst($rawPaymentStatus);
 
     $sellerItems = $sellerOrder->items ?? collect();
     $sellerSubtotal = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->subtotal ?? 0));

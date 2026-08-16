@@ -8,6 +8,7 @@ use App\Events\Cart\CartUpdatedByLocation;
 use App\Events\Cart\ItemAddedToCart;
 use App\Events\Cart\ItemRemovedFromCart;
 use App\Events\DeliveryBoy\DeliveryBoyStatusUpdatedEvent;
+use App\Events\Order\OrderPaymentConfirmed;
 use App\Events\Order\OrderPlaced;
 use App\Events\Order\OrderStatusUpdated;
 use App\Events\Product\ProductAfterCreate;
@@ -19,6 +20,7 @@ use App\Listeners\Cart\LogCartActivity;
 use App\Listeners\DeliveryBoy\StoreDeliveryBoyLocation;
 use App\Listeners\Order\NewOrderNotification;
 use App\Listeners\Order\OrderStatusUpdatedNotification;
+use App\Listeners\Order\SendOrderPaymentConfirmedEmail;
 use App\Listeners\Order\SendOrderPlacedEmail;
 use App\Listeners\Order\SendOrderPlacedSms;
 use App\Listeners\Order\SendOrderStatusEmail;
@@ -70,6 +72,10 @@ class EventServiceProvider extends ServiceProvider
             NewOrderNotification::class,
             SendOrderPlacedEmail::class,
             SendOrderPlacedSms::class,
+        ],
+
+        OrderPaymentConfirmed::class => [
+            SendOrderPaymentConfirmedEmail::class,
         ],
 
         // DeliveryBoy Events

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\Order\OrderStatusEnum;
 use App\Enums\PaymentStatusEnum;
+use App\Events\Order\OrderPaymentConfirmed;
 use App\Services\WalletService;
 use App\Models\OrderManagementHistory;
 use Illuminate\Database\Eloquent\Builder;
@@ -247,11 +248,22 @@ class Order extends Model
         try {
             $order = self::find($orderId);
             if ($order) {
+                // Checked before overwriting below — only a genuine pending→completed
+                // transition should trigger the "payment confirmed" email, not a
+                // duplicate capture call for an order that was already completed.
+                $wasAlreadyCompleted = $order->payment_status === PaymentStatusEnum::COMPLETED();
+
                 $order->payment_status = PaymentStatusEnum::COMPLETED();
                 if (in_array($order->status, self::acceptableStatusesBeforeCapture(), true)) {
                     $order->status = OrderStatusEnum::ACCEPTED_BY_SELLER();
                 }
-                return $order->save();
+                $saved = $order->save();
+
+                if ($saved && !$wasAlreadyCompleted) {
+                    OrderPaymentConfirmed::dispatch($order);
+                }
+
+                return $saved;
             }
             return false;
         } catch (\Exception $e) {
@@ -266,12 +278,20 @@ class Order extends Model
                 return false;
             }
 
+            $wasAlreadyCompleted = $order->payment_status === PaymentStatusEnum::COMPLETED();
+
             $order->payment_status = PaymentStatusEnum::COMPLETED();
             if (in_array($order->status, self::acceptableStatusesBeforeCapture(), true)) {
                 $order->status = OrderStatusEnum::ACCEPTED_BY_SELLER();
             }
 
-            return $order->save();
+            $saved = $order->save();
+
+            if ($saved && !$wasAlreadyCompleted) {
+                OrderPaymentConfirmed::dispatch($order);
+            }
+
+            return $saved;
         } catch (\Exception $e) {
             Log::error('Order payment capture failed: ' . $e->getMessage(), [
                 'order_id' => $order->id,

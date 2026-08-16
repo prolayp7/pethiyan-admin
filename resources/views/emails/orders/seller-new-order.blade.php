@@ -55,14 +55,6 @@
     $customerGstin = data_get($order, 'customer_gstin')
         ?: data_get($order, 'gstin')
         ?: data_get($order, 'user.gstin');
-    // Same reasoning as emails/orders/placed.blade.php — this is a creation-time
-    // snapshot sent before an online payment has had a chance to confirm.
-    $rawPaymentStatus = (string) ($order->payment_status ?? 'pending');
-    $isCod = strtolower((string) ($order->payment_method ?? '')) === 'cod';
-    $paymentStatus = ($rawPaymentStatus === 'pending' && !$isCod)
-        ? 'Awaiting confirmation'
-        : ucfirst($rawPaymentStatus);
-
     $sellerItems = $sellerOrder->items ?? collect();
     $sellerSubtotal = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->subtotal ?? 0));
     $sellerGst = (float) $sellerItems->sum(fn ($item) => (float) ($item->orderItem?->total_tax_amount ?? 0));
@@ -128,8 +120,7 @@
                                 <td class="p" style="padding:12px 14px;">
                                     <strong>Order ID:</strong> #{{ $order->order_number ?? $order->slug ?? $order->id }}<br>
                                     <strong>Order Date:</strong> {{ $order->created_at?->format('d M Y, h:i A') }}<br>
-                                    <strong>Customer:</strong> {{ $customerName }}<br>
-                                    <strong>Payment Status:</strong> {{ $paymentStatus }}
+                                    <strong>Customer:</strong> {{ $customerName }}
                                 </td>
                             </tr>
                         </table>

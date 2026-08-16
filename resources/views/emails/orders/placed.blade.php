@@ -54,15 +54,6 @@
     $gst = $order->total_gst ?? 0;
     $grandTotal = $order->final_total ?? $order->grand_total ?? $order->total_payable ?? $order->total ?? 0;
 
-    // This email is a one-time snapshot sent at order creation, before an online
-    // payment has had a chance to confirm — "Pending" on its own reads as a final
-    // status rather than a moment-in-time one. Soften it for online gateways only;
-    // COD genuinely stays pending until delivery, so leave that wording as-is.
-    $rawPaymentStatus = (string) ($order->payment_status ?? 'pending');
-    $isCod = strtolower((string) ($order->payment_method ?? '')) === 'cod';
-    $paymentStatus = ($rawPaymentStatus === 'pending' && !$isCod)
-        ? 'Awaiting confirmation'
-        : ucfirst($rawPaymentStatus);
     $appName = $systemSettings['appName'] ?? config('app.name', 'Pethiyan');
     $logoUrl = !empty($systemSettings['logo']) ? $systemSettings['logo'] : asset('logos/hyper-local-logo.png');
     if (!str_starts_with($logoUrl, 'http://') && !str_starts_with($logoUrl, 'https://') && !str_starts_with($logoUrl, 'data:')) {
@@ -105,8 +96,7 @@
                             <tr>
                                 <td class="p" style="padding:12px 14px;">
                                     <strong>Order ID:</strong> #{{ $order->order_number ?? $order->slug ?? $order->id }}<br>
-                                    <strong>Order Date:</strong> {{ $order->created_at?->format('d M Y, h:i A') }}<br>
-                                    <strong>Payment Status:</strong> <span class="badge">{{ $paymentStatus }}</span>
+                                    <strong>Order Date:</strong> {{ $order->created_at?->format('d M Y, h:i A') }}
                                 </td>
                             </tr>
                         </table>

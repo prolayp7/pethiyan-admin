@@ -29,7 +29,8 @@ class OrderPaymentTransaction extends Model
         'payment_method',
         'payment_status',
         'message',
-        'payment_details'
+        'payment_details',
+        'checkout_payload'
     ];
 
     /**
@@ -40,6 +41,7 @@ class OrderPaymentTransaction extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'payment_details' => 'json',
+        'checkout_payload' => 'array',
 //        'payment_status' => PaymentStatusEnum::class
     ];
 

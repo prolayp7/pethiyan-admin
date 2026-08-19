@@ -31,11 +31,14 @@ class ReconcilePendingEasepayPayments extends Command
     {
         $cutoff = Carbon::now()->subMinutes((int) $this->option('minutes'));
 
-        // createOrder() records a placeholder row (transaction_id = our internal
-        // txnid) the moment a payment is initiated. If the customer's device or
-        // network drops before either the webhook or the browser redirect ever
-        // arrives, this is the only row that exists — nothing else knows the
-        // payment was attempted, so this is the only way to find it later.
+        // EasepayController::createOrder() records a placeholder row (transaction_id
+        // = our internal txnid, checkout_payload = the validated checkout data) the
+        // moment a payment is initiated — no Order exists yet at that point. If the
+        // customer's device or network drops before either the webhook or the
+        // browser redirect ever arrives, this is the only row that exists — nothing
+        // else knows the payment was attempted, so this is the only way to find it
+        // later. handleOrderWebhook() (called below via verifyTransaction's result)
+        // creates the Order for the first time on a resolved 'success' status.
         $pending = OrderPaymentTransaction::where('payment_method', PaymentTypeEnum::EASEPAY())
             ->where('payment_status', PaymentStatusEnum::PENDING())
             ->where('created_at', '<=', $cutoff)

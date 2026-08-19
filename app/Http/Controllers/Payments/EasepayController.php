@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Payments;
 use App\Enums\Payment\PaymentTypeEnum;
 use App\Enums\PaymentStatusEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\OrderPaymentTransaction;
 use App\Models\PaymentWebhookLog;
 use App\Services\EasepayService;
+use App\Services\OrderService;
 use App\Types\Api\ApiResponseType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,57 +27,70 @@ class EasepayController extends Controller
     // -------------------------------------------------------------------------
 
     /**
-     * Initiate Easepay payment for an order.
+     * Validate a checkout and initiate Easepay payment for it. No Order is
+     * created here — the validated checkout payload is stashed on the
+     * placeholder transaction row (keyed by our internal txnid) and only
+     * turned into a real Order once EasepayService::handleOrderWebhook()
+     * confirms payment succeeded. See CLAUDE.md-adjacent plan doc:
+     * docs/superpowers/plans/2026-08-18-easepay-defer-order-creation.md
      *
      * POST /api/easepay/create-order
-     * Body: { order_id, amount, productinfo?, firstname?, email?, phone? }
+     * Body: { address_id, shipping_rate_id?, delivery_charge?, promo_code?, ... }
      */
-    public function createOrder(Request $request): JsonResponse
+    public function createOrder(\App\Http\Requests\User\Order\InitiateEasepayPaymentRequest $request, OrderService $orderService): JsonResponse
     {
-        $validated = $request->validate([
-            'order_id'    => 'required|integer|exists:orders,id',
-            'amount'      => 'required|numeric|min:1',
-            'productinfo' => 'nullable|string|max:255',
-            'firstname'   => 'nullable|string|max:100',
-            'email'       => 'nullable|email|max:255',
-            'phone'       => 'nullable|string|max:20',
+        $validated = $request->validated();
+        $user = Auth::user();
+
+        if (!$user) {
+            return ApiResponseType::sendJsonResponse(false, __('labels.user_not_authenticated'), []);
+        }
+
+        $checkoutData = array_merge($validated, [
+            'payment_type' => PaymentTypeEnum::EASEPAY(),
         ]);
 
-        $user  = Auth::user();
-        $txnid = 'ORD-' . $validated['order_id'] . '-' . Str::random(8);
+        $validation = $orderService->validateCheckout($user, $checkoutData);
+        if (!$validation['success']) {
+            return ApiResponseType::sendJsonResponse(false, $validation['message'], $validation['data'] ?? []);
+        }
+
+        // Amount is computed server-side from the cart — never trust a
+        // client-supplied amount, since it is what gets sent to the payment
+        // gateway and stored as the payable amount for capture.
+        $amount = $orderService->computeCheckoutAmount($user, $checkoutData);
+
+        $txnid = 'ORD-' . Str::random(10) . '-' . $user->id;
 
         $result = $this->easepayService->initiatePayment([
             'txnid'       => $txnid,
-            'amount'      => $validated['amount'],
-            'productinfo' => $validated['productinfo'] ?? 'Order Payment',
-            'firstname'   => $validated['firstname']   ?? ($user?->name ?? ''),
-            'email'       => $validated['email']       ?? ($user?->email ?? ''),
-            'phone'       => $validated['phone']       ?? ($user?->mobile ?? ''),
+            'amount'      => $amount,
+            'productinfo' => 'Order Payment',
+            'firstname'   => $user->name ?? '',
+            'email'       => $user->email ?? '',
+            'phone'       => $user->mobile ?? '',
             'udf1'        => 'order_payment',
-            'udf2'        => (string)$validated['order_id'],
-            'udf3'        => (string)($user?->id ?? ''),
+            'udf3'        => (string)$user->id,
         ]);
 
         if (!$result['success']) {
             return ApiResponseType::sendJsonResponse(false, $result['message'], $result['data'] ?? []);
         }
 
-        // Record a placeholder row now, keyed by our internal txnid. Without this,
-        // a payment that never gets a webhook or a browser redirect (network drop,
-        // power cut, closed tab) leaves no trace of which txnid to ask Easebuzz
-        // about later — ReconcilePendingEasepayPayments finds these by payment_status
-        // = pending. handleOrderWebhook() supersedes/removes this row once the real
-        // outcome (keyed by Easebuzz's own id) is known.
+        // Placeholder row: no order_id yet (none exists), checkout_payload is
+        // the validated data createOrder() needs once payment is confirmed.
+        // See EasepayService::handleOrderWebhook() for the consuming side.
         OrderPaymentTransaction::create([
-            'uuid'           => Str::uuid()->toString(),
-            'order_id'       => $validated['order_id'],
-            'user_id'        => $user?->id,
-            'transaction_id' => $txnid,
-            'amount'         => $validated['amount'],
-            'currency'       => 'INR',
-            'payment_method' => PaymentTypeEnum::EASEPAY(),
-            'payment_status' => PaymentStatusEnum::PENDING(),
-            'message'        => 'Payment initiated, awaiting confirmation',
+            'uuid'             => Str::uuid()->toString(),
+            'order_id'         => null,
+            'user_id'          => $user->id,
+            'transaction_id'   => $txnid,
+            'amount'           => $amount,
+            'currency'         => 'INR',
+            'payment_method'   => PaymentTypeEnum::EASEPAY(),
+            'payment_status'   => PaymentStatusEnum::PENDING(),
+            'message'          => 'Payment initiated, awaiting confirmation',
+            'checkout_payload' => $checkoutData,
         ]);
 
         return ApiResponseType::sendJsonResponse(true, $result['message'], [
@@ -214,6 +229,8 @@ class EasepayController extends Controller
 
         $result = $this->easepayService->verifyTransaction($txnid);
 
+        $lookupTransactionId = $txnid;
+
         if ($result['success']) {
             $payload = $result['data'] ?? [];
             $status  = strtolower((string) ($payload['status'] ?? ''));
@@ -221,13 +238,31 @@ class EasepayController extends Controller
             if (in_array($status, ['success', 'failure', 'usercancel'], true)) {
                 $easepayTxnId = $payload['easepayid'] ?? $txnid;
                 $this->easepayService->handleOrderWebhook($status, $payload, $txnid, $easepayTxnId);
+                // On success, handleOrderWebhook() supersedes the txnid-keyed
+                // placeholder with a row keyed by easepayTxnId — look that up
+                // instead so the order (if created) is found.
+                $lookupTransactionId = $status === 'success' ? $easepayTxnId : $txnid;
+            }
+        }
+
+        $orderInfo = ['order_id' => null, 'order_number' => null, 'order_slug' => null];
+        $transaction = OrderPaymentTransaction::where('transaction_id', $lookupTransactionId)->first();
+
+        if ($transaction?->order_id) {
+            $order = Order::find($transaction->order_id);
+            if ($order) {
+                $orderInfo = [
+                    'order_id'     => $order->id,
+                    'order_number' => $order->order_number,
+                    'order_slug'   => $order->slug,
+                ];
             }
         }
 
         return ApiResponseType::sendJsonResponse(
             $result['success'],
             $result['message'],
-            $result['data']
+            array_merge($result['data'] ?? [], $orderInfo)
         );
     }
 
@@ -238,11 +273,20 @@ class EasepayController extends Controller
     /**
      * Refund an Easepay transaction.
      *
+     * Admin-only: this moves real money back to the customer, so a plain
+     * auth:sanctum check (any logged-in customer) isn't enough — only staff
+     * with the admin access panel may call it.
+     *
      * POST /api/easepay/refund
      * Body: { txnid, amount? }
      */
     public function refundPayment(Request $request): JsonResponse
     {
+        $user = Auth::user();
+        if (!$user || $user->access_panel?->value !== 'admin') {
+            return ApiResponseType::sendJsonResponse(false, __('labels.unauthorized_access'), []);
+        }
+
         $validated = $request->validate([
             'txnid'  => 'required|string',
             'amount' => 'nullable|numeric|min:1',

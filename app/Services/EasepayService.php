@@ -11,8 +11,11 @@ use App\Models\OrderItem;
 use App\Models\OrderPaymentTransaction;
 use App\Models\PaymentRefund;
 use App\Models\PaymentWebhookLog;
+use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\OrderService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -273,30 +276,143 @@ class EasepayService
 
     public function handleOrderWebhook(string $status, array $payload, string $txnid, string $easepayTxnId, ?PaymentWebhookLog $webhookLog = null): void
     {
-        $orderId = (int)($payload['udf2'] ?? 0);
-        $order   = $orderId ? Order::find($orderId) : null;
+        // The placeholder row created at initiate time (EasepayController::createOrder)
+        // is always keyed by OUR txnid — that's the only stable link back to the
+        // validated checkout payload before an Order exists. udf2 used to carry a
+        // pre-existing order_id; there is no order yet at initiate time anymore,
+        // so it's unused for this (order_payment) branch now.
+        $placeholder = OrderPaymentTransaction::where('transaction_id', $txnid)->first();
 
         if ($status === 'success') {
             // Idempotency guard: webhook, client-side verify-payment, and the
-            // reconciliation job can all land for the same transaction. Skip
-            // re-processing an already captured order to avoid duplicate
-            // status-change side effects.
-            if ($order && $order->payment_status === PaymentStatusEnum::COMPLETED()) {
-                Log::info('[Easepay] Order already captured, skipping duplicate processing', ['order_id' => $orderId, 'txnid' => $txnid]);
+            // reconciliation job can all land for the same transaction. The
+            // txnid-keyed placeholder gets deleted once superseded by the
+            // easepayTxnId-keyed row created further down (see below) — so a
+            // second call for the same payment (webhook + verify-payment
+            // racing, by design — see EasepayController) won't find it by
+            // txnid anymore. Check the superseding row too before concluding
+            // this is a genuine "never seen this payment" case.
+            $existing = $placeholder ?: OrderPaymentTransaction::where('transaction_id', $easepayTxnId)->first();
+
+            if ($existing && $existing->order_id) {
+                $existingOrder = Order::find($existing->order_id);
+                if ($existingOrder && $existingOrder->payment_status === PaymentStatusEnum::COMPLETED()) {
+                    Log::info('[Easepay] Order already captured, skipping duplicate processing', ['order_id' => $existing->order_id, 'txnid' => $txnid]);
+                    return;
+                }
+            }
+
+            if (!$placeholder || !$placeholder->checkout_payload) {
+                if ($existing) {
+                    // Found via easepayTxnId but order_id wasn't set/completed
+                    // above — already processed or currently being processed by
+                    // the other caller in the webhook/verify-payment race, not a
+                    // genuine gap.
+                    Log::info('[Easepay] Already processed for this transaction, skipping', ['txnid' => $txnid, 'easepayTxnId' => $easepayTxnId]);
+                } else {
+                    Log::error('[Easepay] Payment succeeded but no checkout payload found — cannot create order', ['txnid' => $txnid]);
+                }
                 return;
             }
 
-            // Record or update the transaction
+            // Security: verify what Easebuzz actually reports as paid matches what
+            // we expected to be paid (computed server-side and stored on the
+            // placeholder at initiate time — see EasepayController::createOrder()).
+            // This should never mismatch in normal operation (Easebuzz reports
+            // exactly what was charged), so treat any mismatch as an anomaly worth
+            // alerting on and refuse to create the order rather than trusting a
+            // client-influenced payload amount.
+            $expectedAmount = (float) $placeholder->amount;
+            $actualAmount   = (float) ($payload['amount'] ?? 0);
+
+            if (abs($expectedAmount - $actualAmount) > 1.0) {
+                // Easebuzz reported status=success, so money genuinely moved —
+                // just not the expected amount. This is COMPLETED (captured),
+                // not FAILED, so it stays visible for manual follow-up (the
+                // Payment Monitor, and NOT silently excluded by
+                // ReconcilePendingEasepayPayments's PENDING-only query) —
+                // same reasoning as the "order creation failed" branch below.
+                $placeholder->update([
+                    'payment_status' => PaymentStatusEnum::COMPLETED(),
+                    'message'        => sprintf(
+                        'Payment captured but amount does not match expected total (expected %.2f, received %.2f) — needs manual review',
+                        $expectedAmount,
+                        $actualAmount
+                    ),
+                    'payment_details' => $payload,
+                ]);
+                Log::error('[Easepay] Payment amount mismatch — refusing to create order', [
+                    'txnid'    => $txnid,
+                    'expected' => $expectedAmount,
+                    'actual'   => $actualAmount,
+                ]);
+
+                $webhookLog?->update([
+                    'order_payment_transaction_id' => $placeholder->id,
+                ]);
+
+                return;
+            }
+
+            $user = User::find($placeholder->user_id);
+            if (!$user) {
+                Log::error('[Easepay] Payment succeeded but user no longer exists', ['txnid' => $txnid, 'user_id' => $placeholder->user_id]);
+                return;
+            }
+
+            // OrderService::createOrder() opens its own DB transaction but only
+            // rolls it back inside its catch blocks — every early `return` on
+            // validation failure leaves that transaction open, and it can also
+            // throw outright (e.g. its own catch-block failure handler reading
+            // a key our checkout_payload never has). Either way, without this
+            // guard the "payment captured but order creation failed" bookkeeping
+            // update just below would execute inside that still-open,
+            // uncommitted transaction and get silently rolled back at the end
+            // of the request — exactly the silent-money-loss this method exists
+            // to prevent. Catch any throw and roll back any leaked transaction
+            // level before touching the placeholder.
+            $transactionLevelBefore = DB::transactionLevel();
+            try {
+                $orderResult = app(OrderService::class)->createOrder($user, $placeholder->checkout_payload);
+            } catch (\Throwable $e) {
+                Log::error('[Easepay] OrderService::createOrder() threw', [
+                    'txnid' => $txnid,
+                    'error' => $e->getMessage(),
+                ]);
+                $orderResult = ['success' => false, 'message' => $e->getMessage()];
+            }
+            while (DB::transactionLevel() > $transactionLevelBefore) {
+                DB::rollBack();
+            }
+
+            if (!$orderResult['success']) {
+                // Money has already been captured by Easebuzz at this point, but the
+                // order couldn't be created (e.g. cart or address changed between
+                // initiation and confirmation). Do NOT lose this — mark the payment
+                // itself completed (it was) but leave order_id null, and alert an
+                // admin so it gets resolved manually (refund or manual order).
+                $placeholder->update([
+                    'payment_status' => PaymentStatusEnum::COMPLETED(),
+                    'message'        => 'Payment captured but order creation failed: ' . ($orderResult['message'] ?? 'unknown error'),
+                    'payment_details' => $payload,
+                ]);
+                Log::error('[Easepay] Payment succeeded but order creation failed', [
+                    'txnid' => $txnid,
+                    'user_id' => $user->id,
+                    'reason' => $orderResult['message'] ?? null,
+                ]);
+                return;
+            }
+
+            $order = $orderResult['data'];
+
+            // Record or update the transaction, keyed by Easebuzz's own id
             $transaction = OrderPaymentTransaction::updateOrCreate(
                 ['transaction_id' => $easepayTxnId],
                 [
-                    // uuid has a unique DB constraint and no default/auto-generation
-                    // on the model — omitting it defaults to '', which collides with
-                    // whichever row claimed '' first and silently rolls back this
-                    // entire webhook (including the Order::capturePayment() below).
                     'uuid'           => Str::uuid()->toString(),
-                    'order_id'       => $orderId ?: null,
-                    'user_id'        => $payload['udf3'] ?? null,
+                    'order_id'       => $order->id,
+                    'user_id'        => $user->id,
                     'transaction_id' => $easepayTxnId,
                     'amount'         => $payload['amount'] ?? 0,
                     'currency'       => $payload['currency'] ?? 'INR',
@@ -309,53 +425,46 @@ class EasepayService
 
             $webhookLog?->update([
                 'order_payment_transaction_id' => $transaction->id,
-                'order_id' => $orderId ?: null,
+                'order_id' => $order->id,
             ]);
 
-            // createOrder() records a placeholder row at initiation time (keyed by
-            // our internal txnid) so a stuck payment has something to reconcile
-            // against. Once the real row above (keyed by Easebuzz's own id) exists,
-            // that placeholder is superseded — remove it so the Payment Monitor
-            // doesn't show two rows for one payment.
+            // Supersede the initiate-time placeholder now that the real,
+            // order-linked row above exists — same cleanup as before, just
+            // keyed by our txnid instead of assuming it differs from easepayTxnId.
             if ($txnid !== $easepayTxnId) {
                 OrderPaymentTransaction::where('transaction_id', $txnid)
                     ->where('id', '!=', $transaction->id)
                     ->delete();
             }
 
-            if ($orderId) {
-                Order::capturePayment($orderId);
-                OrderItem::capturePayment($orderId);
-            }
+            Order::capturePayment($order->id);
+            OrderItem::capturePayment($order->id);
 
-            Log::info('[Easepay] Order payment captured', ['order_id' => $orderId, 'txnid' => $txnid]);
+            Log::info('[Easepay] Order created and payment captured', ['order_id' => $order->id, 'txnid' => $txnid]);
 
         } elseif ($status === 'failure' || $status === 'usercancel') {
-            // Same idempotency guard as above — paymentFailed() refunds any wallet
-            // balance used, so re-running it on a duplicate delivery would double-refund.
-            if ($order && $order->payment_status === PaymentStatusEnum::FAILED()) {
-                Log::info('[Easepay] Order already marked failed, skipping duplicate processing', ['order_id' => $orderId, 'txnid' => $txnid]);
+            // No order exists yet in this flow, so there's nothing to roll back
+            // (no stock reserved, no wallet deducted, no promo usage counted) —
+            // just record the outcome on the placeholder for the Payment Monitor.
+            if (!$placeholder) {
+                Log::info('[Easepay] Failure/usercancel webhook for unknown txnid', ['txnid' => $txnid]);
                 return;
             }
 
-            $transaction = OrderPaymentTransaction::where('transaction_id', $txnid)->first();
-            if ($transaction) {
-                $transaction->update([
-                    'payment_status' => PaymentStatusEnum::FAILED(),
-                    'message'        => 'Payment ' . ucfirst($status),
-                    'payment_details' => $payload,
-                ]);
+            if ($placeholder->payment_status === PaymentStatusEnum::FAILED()) {
+                Log::info('[Easepay] Already marked failed, skipping duplicate processing', ['txnid' => $txnid]);
+                return;
             }
 
-            $webhookLog?->update([
-                'order_payment_transaction_id' => $transaction?->id,
-                'order_id' => $orderId ?: $transaction?->order_id,
+            $placeholder->update([
+                'payment_status' => PaymentStatusEnum::FAILED(),
+                'message'        => 'Payment ' . ucfirst($status),
+                'payment_details' => $payload,
             ]);
 
-            if ($orderId) {
-                Order::paymentFailed($orderId);
-                OrderItem::paymentFailed($orderId);
-            }
+            $webhookLog?->update([
+                'order_payment_transaction_id' => $placeholder->id,
+            ]);
         }
     }
 

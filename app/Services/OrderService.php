@@ -154,6 +154,63 @@ class OrderService
     }
 
     /**
+     * Run checkout validation (cart contents, payment method availability,
+     * address/delivery serviceability) WITHOUT creating an order. Used by
+     * payment flows that must confirm a checkout is viable before sending
+     * the customer to a hosted payment page, since no Order should exist
+     * until that payment is actually confirmed.
+     *
+     * @param User $user
+     * @param array $data
+     * @return array
+     */
+    public function validateCheckout(User $user, array $data): array
+    {
+        $cartValidation = $this->validateCartAndSettings($user);
+        if (!$cartValidation['success']) {
+            return $cartValidation;
+        }
+
+        $paymentValidation = $this->validatePaymentMethod($data);
+        if (!$paymentValidation['success']) {
+            return $paymentValidation;
+        }
+
+        $addressValidation = $this->validateAddressAndDeliveryZone($user, $data);
+        if (!$addressValidation['success']) {
+            return $addressValidation;
+        }
+
+        return ['success' => true];
+    }
+
+    /**
+     * Compute the authoritative payable amount for a checkout, server-side,
+     * from the user's cart. Mirrors the exact getPaymentSummary() call
+     * createOrderFromCart() makes internally — used so payment gateways are
+     * never handed a client-supplied amount that could be manipulated to pay
+     * less than the cart is actually worth.
+     *
+     * @param User $user
+     * @param array $data
+     * @return float
+     */
+    public function computeCheckoutAmount(User $user, array $data): float
+    {
+        $cart = CartService::getUserCart($user);
+        $cartService = app(CartService::class);
+        $deliveryCharge = (float)($data['delivery_charge'] ?? 0);
+        $paymentSummary = $cartService->getPaymentSummary(
+            cart: $cart,
+            deliveryCharge: $deliveryCharge,
+            isRushDelivery: $data['rush_delivery'] ?? false,
+            useWallet: $data['use_wallet'] ?? false,
+            promoCode: $data['promo_code'] ?? null
+        );
+        return (float) $paymentSummary['payable_amount'];
+    }
+
+    /**
      * Validate cart and system settings
      *
      * @param User $user

@@ -336,7 +336,7 @@ Route::post('flutterwave/webhook', [FlutterwaveController::class, 'handleWebhook
 // easepay routes
 Route::post('easepay/create-order', [EasepayController::class, 'createOrder'])->middleware('auth:sanctum');
 Route::post('easepay/verify-payment', [EasepayController::class, 'verifyPayment'])->middleware('auth:sanctum');
-Route::post('easepay/refund', [EasepayController::class, 'refundPayment']);
+Route::post('easepay/refund', [EasepayController::class, 'refundPayment'])->middleware('auth:sanctum');
 Route::post('easepay/webhook', [EasepayController::class, 'handleWebhook']);
 
 Route::post('/test-fcm', [\App\Http\Controllers\NotificationController::class, 'test']);

@@ -349,8 +349,7 @@ class OrderController extends Controller
 
     private function getAdminOrderReturnData(Order $order, bool $canDelete = false): array
     {
-        $orderNo = $order->slug ?: $order->id;
-        $orderNoDisplay = $orderNo ? '#' . ltrim((string) $orderNo, '#') : 'N/A';
+        $orderNoDisplay = $order->order_number;
 
         $orderSubtotal = (float) ($order->subtotal ?? $order->sub_total ?? 0);
         $orderShipping = (float) ($order->delivery_charge ?? 0);

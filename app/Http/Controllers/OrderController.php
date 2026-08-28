@@ -966,7 +966,7 @@ class OrderController extends Controller
             foreach ($orders as $order) {
                 fputcsv($handle, [
                     $order->id,
-                    $order->slug ?? $order->id,
+                    $order->order_number,
                     $order->created_at?->format('Y-m-d H:i:s'),
                     $order->shipping_name ?? '',
                     $order->email ?? '',

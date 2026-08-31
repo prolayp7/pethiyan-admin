@@ -496,7 +496,7 @@ class CustomerController extends Controller
 
         $callback = function () {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['ID', 'Name', 'Email', 'Mobile', 'Status', 'Created At']);
+            fputcsv($handle, ['ID', 'Name', 'Email', 'Mobile', 'Company Name', 'GSTIN', 'Status', 'Created At']);
 
             $this->customerQuery()
                 ->orderBy('id', 'desc')
@@ -507,6 +507,8 @@ class CustomerController extends Controller
                             $user->name,
                             $user->email,
                             $user->mobile,
+                            $user->company_name ?? '',
+                            $user->gstin ?? '',
                             $user->status ? 'Active' : 'Inactive',
                             optional($user->created_at)->format('Y-m-d H:i:s'),
                         ]);

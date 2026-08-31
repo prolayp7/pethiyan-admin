@@ -955,7 +955,7 @@ class OrderController extends Controller
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, [
-                'Order ID', 'Order Number', 'Date', 'Buyer Name', 'Email',
+                'Order ID', 'Order Number', 'Date', 'Buyer Name', 'Company Name', 'GSTIN', 'Email',
                 'Phone', 'Payment Method', 'Payment Status', 'Order Status',
                 'Subtotal', 'Shipping', 'Handling', 'GST', 'Promo Code',
                 'Promo Discount', 'Gift Card Discount', 'Total Payable',
@@ -969,6 +969,8 @@ class OrderController extends Controller
                     $order->order_number,
                     $order->created_at?->format('Y-m-d H:i:s'),
                     $order->shipping_name ?? '',
+                    $order->user?->company_name ?? '',
+                    $order->user?->gstin ?? '',
                     $order->email ?? '',
                     $order->shipping_phone ?? '',
                     $order->payment_method ?? '',

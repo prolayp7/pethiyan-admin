@@ -494,9 +494,13 @@ class CategoryController extends Controller
         $columns = ['sort_order', 'id', 'title', 'parent_id', 'status', 'created_at'];
         $orderColumn = $columns[$orderColumnIndex] ?? 'sort_order';
 
-        $query = Category::with('parent');
+        $showTrashed = $request->boolean('trashed');
 
-        $totalRecords = Category::count();
+        $query = $showTrashed
+            ? Category::onlyTrashed()->with('parent')
+            : Category::with('parent');
+
+        $totalRecords = $showTrashed ? Category::onlyTrashed()->count() : Category::count();
         $filteredRecords = $totalRecords;
 
         // Search filter
@@ -518,9 +522,11 @@ class CategoryController extends Controller
             $query->skip($start)->take($length);
         }
 
+        $canRestore = $this->deletePermission;
+
         $data = $query
             ->get()
-            ->map(function ($category) {
+            ->map(function ($category) use ($showTrashed, $canRestore) {
                 return [
                     'DT_RowId' => 'category-row-' . $category->id,
                     'DT_RowClass' => 'category-row',
@@ -536,14 +542,16 @@ class CategoryController extends Controller
                     'created_at' => $category->created_at->format('Y-m-d'),
                     'parent' => $category->parent ? $category->parent->title : 'N/A',
 
-                    'action' => view('partials.actions', [
-                        'modelName' => 'category',
-                        'id' => $category->id,
-                        'title' => $category->title,
-                        'mode' => 'model_view',
-                        'editPermission' => $this->editPermission,
-                        'deletePermission' => $this->deletePermission
-                    ])->render(),
+                    'action' => $showTrashed
+                        ? $this->renderRestoreButton($category, $canRestore)
+                        : view('partials.actions', [
+                            'modelName' => 'category',
+                            'id' => $category->id,
+                            'title' => $category->title,
+                            'mode' => 'model_view',
+                            'editPermission' => $this->editPermission,
+                            'deletePermission' => $this->deletePermission
+                        ])->render(),
                 ];
             })
             ->toArray();
@@ -625,6 +633,51 @@ class CategoryController extends Controller
 
         // Return the categories as JSON
         return response()->json($results);
+    }
+
+    private function renderRestoreButton(Category $category, bool $canRestore): string
+    {
+        if (!$canRestore) {
+            return '';
+        }
+
+        return sprintf(
+            '<button type="button" class="btn btn-sm btn-outline-success restore-category-btn" data-id="%d">%s</button>',
+            $category->id,
+            __('labels.restore')
+        );
+    }
+
+    /**
+     * Restore a soft-deleted category.
+     */
+    public function restore($id): JsonResponse
+    {
+        if (!$this->deletePermission) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.permission_denied',
+                data: [],
+            );
+        }
+
+        $category = Category::onlyTrashed()->find($id);
+
+        if (!$category) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.category_not_found',
+                status: 404
+            );
+        }
+
+        $category->restore();
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.category_restored_successfully',
+            data: $category
+        );
     }
 
     private function renderSortHandle($category): string

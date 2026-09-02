@@ -384,6 +384,9 @@ return [
     'category_updated_successfully' => 'Category updated successfully',
     'category_deleted_successfully' => 'Category deleted successfully',
     'category_not_found' => 'Category not found',
+    'category_restored_successfully' => 'Category restored successfully',
+    'restore' => 'Restore',
+    'show_deleted_categories' => 'Show deleted categories',
 
     // Home General Settings Labels
     'home_general_settings' => 'Home General Settings',

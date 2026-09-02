@@ -28,7 +28,7 @@ class StoreCategoryRequest extends FormRequest
     {
         $rules = [
             'parent_id' => 'nullable|integer|exists:categories,id',
-            'title' => 'required|string|max:255|unique:categories,title',
+            'title' => ['required', 'string', 'max:255', Rule::unique('categories', 'title')->whereNull('deleted_at')],
             'description' => 'nullable|string',
             'page_content' => 'nullable|string',
             'status' => ['nullable', new Enum(CategoryStatusEnum::class)],

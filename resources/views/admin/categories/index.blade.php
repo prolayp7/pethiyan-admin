@@ -53,6 +53,12 @@
                                     </div>
                                 @endif
                             </div>
+                            <div class="col-auto d-flex align-items-center">
+                                <label class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="show-deleted-categories">
+                                    <span class="form-check-label">{{ __('labels.show_deleted_categories') }}</span>
+                                </label>
+                            </div>
                             <div class="col-auto">
                                 <button class="btn btn-outline-primary" id="refresh">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -594,9 +600,9 @@
             }
 
             const isFiltered = !!dt.search();
-            setSortingAvailability(!isFiltered);
+            setSortingAvailability(!isFiltered && !window.categoryShowTrashed);
 
-            if (isFiltered || typeof Sortable === 'undefined') {
+            if (isFiltered || window.categoryShowTrashed || typeof Sortable === 'undefined') {
                 return;
             }
 
@@ -623,6 +629,36 @@
         table.on('draw.dt', function () {
             refreshSortBadges();
             initCategorySorting();
+        });
+
+        window.categoryShowTrashed = false;
+
+        $('#show-deleted-categories').on('change', function () {
+            window.categoryShowTrashed = this.checked;
+            const dt = dataTableInstance();
+            if (dt) {
+                dt.ajax.reload();
+            }
+        });
+
+        const restoreUrl = (id) => `{{ route('admin.categories.restore', ':id') }}`.replace(':id', id);
+
+        table.on('click', '.restore-category-btn', function () {
+            const id = $(this).data('id');
+            $.ajax({
+                url: restoreUrl(id),
+                method: 'POST',
+                data: { _token: '{{ csrf_token() }}' },
+            }).done((response) => {
+                if (!response.success) {
+                    toastError(response.message || 'Unable to restore category.');
+                    return;
+                }
+                toastSuccess(response.message || 'Category restored.');
+                table.DataTable().ajax.reload(null, false);
+            }).fail(() => {
+                toastError('Unable to restore category.');
+            });
         });
     })();
 

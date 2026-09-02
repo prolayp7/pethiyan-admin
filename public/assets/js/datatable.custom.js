@@ -140,6 +140,9 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
                         } else if (typeof window.orderDefaultStatus !== 'undefined' && window.orderDefaultStatus !== null) {
                             d.status = window.orderDefaultStatus;
                         }
+                        if (element.id === 'categories-table') {
+                            d.trashed = window.categoryShowTrashed === true;
+                        }
                         return d;
                     }
                 },

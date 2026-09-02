@@ -142,6 +142,8 @@ if (typeof jq === 'function' && jq.fn?.DataTable) {
                         }
                         if (element.id === 'categories-table') {
                             d.trashed = window.categoryShowTrashed === true;
+                        } else if (element.id === 'trashed-categories-table' || element.id === 'trashed-products-table') {
+                            d.trashed = true;
                         }
                         return d;
                     }

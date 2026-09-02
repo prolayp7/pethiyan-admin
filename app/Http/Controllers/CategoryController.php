@@ -540,6 +540,7 @@ class CategoryController extends Controller
                     'status' => view('partials.status', ['status' => $category->status ?? ""])->render(),
 
                     'created_at' => $category->created_at->format('Y-m-d'),
+                    'deleted_at' => $category->deleted_at?->format('Y-m-d H:i'),
                     'parent' => $category->parent ? $category->parent->title : 'N/A',
 
                     'action' => $showTrashed

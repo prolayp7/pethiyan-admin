@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\BannerController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\TrashController;
 use App\Http\Controllers\DeliveryBoyController;
 use App\Http\Controllers\DeliveryZoneController;
 use App\Http\Controllers\FaqController;
@@ -119,6 +120,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/latest', [SystemUpdateController::class, 'latest'])->name('latest');
             Route::get('/{update}/log', [SystemUpdateController::class, 'showLog'])->name('log');
         });
+
+        // trash
+        Route::get('/trash', [TrashController::class, 'index'])->name('trash.index');
 
         // categories
         Route::prefix('categories')->namespace('Categories')->name('categories.')->group(function () {
@@ -550,6 +554,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/{id}/update-status', [ProductController::class, 'updateStatus'])->name('update-status');
             Route::delete('/{id}/media', [ProductController::class, 'deleteMedia'])->name('media.delete');
             Route::delete('/{id}', [ProductController::class, 'destroy'])->name('delete');
+            Route::post('/{id}/restore', [ProductController::class, 'restore'])->name('restore');
             Route::get('/{id}', [ProductController::class, 'show'])->name('show');
         });
 

@@ -526,7 +526,9 @@ class ProductController extends Controller
 
             [$draw, $start, $length, $searchValue, $filters, $orderColumn, $orderDirection] = $this->extractRequestParams($request);
 
-            $query = $this->buildBaseQuery();
+            $showTrashed = $request->boolean('trashed');
+
+            $query = $this->buildBaseQuery($showTrashed);
 
             $totalRecords = $query->count();
 
@@ -539,7 +541,7 @@ class ProductController extends Controller
                 ->take($length)
                 ->get();
 
-            $data = $products->map(fn($product) => $this->formatProductData($product))->toArray();
+            $data = $products->map(fn($product) => $this->formatProductData($product, $showTrashed))->toArray();
 
             return response()->json([
                 'draw' => intval($draw),
@@ -552,6 +554,26 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             return ApiResponseType::sendJsonResponse(false, 'labels.failed_to_fetch_products: ' . $e->getMessage(), []);
         }
+    }
+
+    /**
+     * Restore a soft-deleted product.
+     */
+    public function restore($id): JsonResponse
+    {
+        if (!$this->deletePermission) {
+            return ApiResponseType::sendJsonResponse(false, 'labels.permission_denied', []);
+        }
+
+        $product = Product::onlyTrashed()->find($id);
+
+        if (!$product) {
+            return ApiResponseType::sendJsonResponse(false, 'labels.product_not_found', [], 404);
+        }
+
+        $product->restore();
+
+        return ApiResponseType::sendJsonResponse(true, 'labels.product_restored_successfully', $product);
     }
 
     private function extractRequestParams(Request $request): array
@@ -576,9 +598,11 @@ class ProductController extends Controller
         return [$draw, $start, $length, $searchValue, $filters, $orderColumn, $orderDirection];
     }
 
-    private function buildBaseQuery(): Builder
+    private function buildBaseQuery(bool $trashed = false): Builder
     {
-        $query = Product::with(['category', 'seller']);
+        $query = $trashed
+            ? Product::onlyTrashed()->with(['category', 'seller'])
+            : Product::with(['category', 'seller']);
 
         if ($this->getPanel() === 'seller') {
             $query->where('seller_id', $this->sellerId);
@@ -622,7 +646,7 @@ class ProductController extends Controller
         return $query;
     }
 
-    private function formatProductData(Product $product): array
+    private function formatProductData(Product $product, bool $showTrashed = false): array
     {
         return [
             'id' => $product->id,
@@ -639,21 +663,37 @@ class ProductController extends Controller
             'admin_approval_status' => view('partials.status', ['status' => $product->verification_status ?? ""])->render(),
             'featured' => $product->featured ? 'Yes' : 'No',
             'created_at' => $product->created_at->format('Y-m-d'),
-            'action' => view('partials.product-actions', [
-                'modelName' => 'product',
-                'id' => $product->id,
-                'title' => $product->title,
-                'status' => $product->status,
-                'mode' => 'page_view',
-                'route' => route($this->panelView('products.edit'), ['id' => $product->id]),
-                'viewRoute' => route($this->panelView('products.show'), ['id' => $product->id]),
-                'editPermission' => $this->editPermission,
-                'deletePermission' => $this->deletePermission,
-                'duplicatePermission' => $this->createPermission,
-                'duplicateRoute' => route($this->panelView('products.duplicate'), ['id' => $product->id]),
-                'viewPermission' => $this->viewPermission,
-            ])->render(),
+            'deleted_at' => $product->deleted_at?->format('Y-m-d H:i'),
+            'action' => $showTrashed
+                ? $this->renderRestoreButton($product)
+                : view('partials.product-actions', [
+                    'modelName' => 'product',
+                    'id' => $product->id,
+                    'title' => $product->title,
+                    'status' => $product->status,
+                    'mode' => 'page_view',
+                    'route' => route($this->panelView('products.edit'), ['id' => $product->id]),
+                    'viewRoute' => route($this->panelView('products.show'), ['id' => $product->id]),
+                    'editPermission' => $this->editPermission,
+                    'deletePermission' => $this->deletePermission,
+                    'duplicatePermission' => $this->createPermission,
+                    'duplicateRoute' => route($this->panelView('products.duplicate'), ['id' => $product->id]),
+                    'viewPermission' => $this->viewPermission,
+                ])->render(),
         ];
+    }
+
+    private function renderRestoreButton(Product $product): string
+    {
+        if (!$this->deletePermission) {
+            return '';
+        }
+
+        return sprintf(
+            '<button type="button" class="btn btn-sm btn-outline-success restore-product-btn" data-id="%d">%s</button>',
+            $product->id,
+            __('labels.restore')
+        );
     }
 
 

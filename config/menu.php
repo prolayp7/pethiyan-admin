@@ -358,6 +358,12 @@ return [
         ],
 
         // ─── Administration ──────────────────────────────────────────────
+        'trash' => [
+            'icon'   => 'ti-trash',
+            'route'  => 'admin.trash.index',
+            'title'  => 'labels.trash',
+            'active' => 'trash',
+        ],
         'roles_permissions' => [
             'icon'   => 'ti-users-group',
             'title'  => 'labels.roles_permissions',

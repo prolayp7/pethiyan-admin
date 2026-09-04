@@ -124,7 +124,9 @@ class OrderController extends Controller
             'defaultStatuses' => [
                 OrderStatusEnum::ACCEPTED_BY_SELLER(),
                 OrderStatusEnum::PREPARING(),
+                OrderStatusEnum::READY_FOR_PICKUP(),
                 OrderStatusEnum::ASSIGNED(),
+                OrderStatusEnum::COLLECTED(),
             ],
             'pageTitle' => 'Processing Orders',
             'subPage'   => 'processing_orders',

@@ -208,7 +208,14 @@ class OrderController extends Controller
             }
 
             if (!empty($searchValue)) {
-                $query->where(function ($q) use ($searchValue) {
+                // order_number is a computed attribute (PET + Ymd + zero-padded ID),
+                // so we derive the ID from the string when the format matches.
+                $orderNumberId = null;
+                if (preg_match('/^PET(\d{8})(\d{5})$/', strtoupper($searchValue), $m)) {
+                    $orderNumberId = (int) $m[2];
+                }
+
+                $query->where(function ($q) use ($searchValue, $orderNumberId) {
                     $q->where('id', 'like', "%$searchValue%")
                         ->orWhere('slug', 'like', "%$searchValue%")
                         ->orWhere('payment_method', 'like', "%$searchValue%")
@@ -220,6 +227,9 @@ class OrderController extends Controller
                         ->orWhereHas('items.variant', function ($variantQuery) use ($searchValue) {
                             $variantQuery->where('title', 'like', "%$searchValue%");
                         });
+                    if ($orderNumberId) {
+                        $q->orWhere('id', $orderNumberId);
+                    }
                 });
             }
 

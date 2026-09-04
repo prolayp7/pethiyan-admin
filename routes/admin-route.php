@@ -169,6 +169,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/{id}',                                [CustomerController::class, 'destroy'])->name('destroy');
             Route::patch('/{id}/toggle-status',                   [CustomerController::class, 'toggleStatus'])->name('toggle-status');
             Route::post('/{id}/toggle-status',                    [CustomerController::class, 'toggleStatus']);
+            Route::patch('/{id}/verify',                          [CustomerController::class, 'verify'])->name('verify');
+            Route::post('/{id}/verify',                           [CustomerController::class, 'verify']);
             // Addresses
             Route::get('/{id}/addresses',                         [CustomerController::class, 'addresses'])->name('addresses');
             Route::post('/{id}/addresses',                        [CustomerController::class, 'storeAddress'])->name('addresses.store');

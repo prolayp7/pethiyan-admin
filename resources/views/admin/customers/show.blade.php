@@ -50,16 +50,26 @@
                 @if($customer->mobile)
                     <div class="text-secondary">{{ $customer->mobile }}</div>
                 @endif
-                <div class="mt-2">
+                <div class="mt-2 d-flex gap-1 justify-content-center flex-wrap">
                     @if($customer->status)
                         <span class="badge bg-success-lt text-success">{{ __('labels.active') }}</span>
                     @else
                         <span class="badge bg-danger-lt text-danger">{{ __('labels.inactive') }}</span>
                     @endif
+                    @if($customer->email_verified_at && $customer->mobile_verified_at)
+                        <span class="badge bg-azure-lt text-azure">{{ __('labels.verified') }}</span>
+                    @else
+                        <span class="badge bg-danger-lt text-danger">{{ __('labels.unverified') }}</span>
+                    @endif
                 </div>
             </div>
             @if($editPermission)
             <div class="card-footer d-flex gap-2">
+                @if(!($customer->email_verified_at && $customer->mobile_verified_at))
+                <button class="btn btn-azure flex-fill" id="verifyCustomerBtn" data-id="{{ $customer->id }}">
+                    {{ __('labels.verify_account') }}
+                </button>
+                @endif
                 <button class="btn btn-primary flex-fill" id="editCustomerBtn"
                         data-id="{{ $customer->id }}"
                         data-name="{{ $customer->name }}"
@@ -491,6 +501,21 @@
     // ── Toggle status ─────────────────────────────────────────────────────
     document.getElementById('toggleStatusBtn')?.addEventListener('click', () => {
         fetch(`${baseUrl}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ _method: 'PATCH' }),
+        })
+        .then(r => r.json())
+        .then(() => location.reload());
+    });
+
+    // ── Manually verify ───────────────────────────────────────────────────
+    document.getElementById('verifyCustomerBtn')?.addEventListener('click', () => {
+        fetch(`${baseUrl}/verify`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',

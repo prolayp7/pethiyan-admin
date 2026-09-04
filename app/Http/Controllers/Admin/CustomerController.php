@@ -75,6 +75,7 @@ class CustomerController extends Controller
             ['data' => 'email',       'name' => 'email',       'title' => __('labels.email')],
             ['data' => 'mobile',      'name' => 'mobile',      'title' => __('labels.mobile')],
             ['data' => 'status',      'name' => 'status',      'title' => __('labels.status'),  'orderable' => false, 'searchable' => false],
+            ['data' => 'verified',    'name' => 'verified',    'title' => __('labels.verified'),'orderable' => false, 'searchable' => false],
             ['data' => 'created_at',  'name' => 'created_at',  'title' => __('labels.created_at')],
             ['data' => 'action',      'name' => 'action',      'title' => __('labels.action'),   'orderable' => false, 'searchable' => false],
         ];
@@ -106,7 +107,7 @@ class CustomerController extends Controller
         $orderColumnIndex = $request->get('order')[0]['column'] ?? 0;
         $orderDirection   = $request->get('order')[0]['dir']    ?? 'asc';
 
-        $columnsMap  = ['id', 'name', 'email', 'mobile', 'status', 'created_at'];
+        $columnsMap  = ['id', 'name', 'email', 'mobile', 'status', 'verified', 'created_at'];
         $orderColumn = $columnsMap[$orderColumnIndex] ?? 'id';
 
         $query = $this->customerQuery();
@@ -140,6 +141,7 @@ class CustomerController extends Controller
                     'email'      => $demo ? Str::mask($email,  '****', 3, 4) : e($email),
                     'mobile'     => $demo ? Str::mask($mobile, '****', 3, 4) : e($mobile),
                     'status'     => view('partials.status', ['status' => $user->status ? 'active' : 'inactive'])->render(),
+                    'verified'   => view('partials.status', ['status' => ($user->email_verified_at && $user->mobile_verified_at) ? 'verified' : 'unverified'])->render(),
                     'created_at' => $user->created_at?->format('Y-m-d'),
                     'action'     => view('admin.customers.partials.actions', [
                         'customer'        => $user,
@@ -185,6 +187,8 @@ class CustomerController extends Controller
                     'company_name' => $customer->company_name,
                     'status' => (bool) $customer->status,
                     'gstin' => $customer->gstin,
+                    'email_verified_at' => $customer->email_verified_at,
+                    'mobile_verified_at' => $customer->mobile_verified_at,
                 ],
             ]);
         }
@@ -296,6 +300,33 @@ class CustomerController extends Controller
             success: true,
             message: $customer->status ? 'labels.customer_activated' : 'labels.customer_deactivated',
             data:    ['status' => $customer->status]
+        );
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Manually verify (bypass OTP, e.g. when the verification email is delayed)
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function verify(int $id): JsonResponse
+    {
+        if (!$this->hasPermission(AdminPermissionEnum::CUSTOMER_EDIT())) {
+            return ApiResponseType::sendJsonResponse(false, 'labels.permission_denied', [], 403);
+        }
+
+        $customer = $this->customerQuery()->findOrFail($id);
+        $customer->update([
+            'email_verified_at'  => $customer->email_verified_at ?? now(),
+            'mobile_verified_at' => $customer->mobile_verified_at ?? now(),
+        ]);
+        $customer->refresh();
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.customer_verified',
+            data:    [
+                'email_verified_at'  => $customer->email_verified_at,
+                'mobile_verified_at' => $customer->mobile_verified_at,
+            ]
         );
     }
 

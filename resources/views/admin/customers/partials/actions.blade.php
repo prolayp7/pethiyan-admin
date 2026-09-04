@@ -10,6 +10,19 @@
         </svg>
     </a>
 
+    @if($editPermission && !($customer->email_verified_at && $customer->mobile_verified_at))
+    {{-- Manually verify --}}
+    <button type="button"
+            class="btn btn-sm btn-outline-azure"
+            data-customer-verify="{{ $customer->id }}"
+            title="{{ __('labels.verify_account') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l5 5l10 -10"/>
+        </svg>
+    </button>
+    @endif
+
     @if($editPermission)
     {{-- Toggle status --}}
     <button type="button"

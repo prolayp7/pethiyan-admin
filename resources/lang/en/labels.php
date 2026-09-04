@@ -1344,6 +1344,8 @@ return [
     'customer_deleted_successfully' => 'Customer deleted successfully.',
     'customer_activated' => 'Customer activated.',
     'customer_deactivated' => 'Customer deactivated.',
+    'customer_verified' => 'Customer verified successfully.',
+    'unverified' => 'Unverified',
     'add_address' => 'Add Address',
     'edit_address' => 'Edit Address',
     'delete_address' => 'Delete Address',

@@ -366,6 +366,37 @@
         .catch(err => alert(err.message || 'Unable to update customer status.'));
     });
 
+    // ── Manually verify (delegated) ─────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-customer-verify]');
+        if (!btn) return;
+        const id = btn.dataset.customerVerify;
+        fetch(`{{ url('/admin/customers') }}/${id}/verify`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ _method: 'PATCH' }),
+        })
+        .then(parseJsonResponse)
+        .then(() => {
+            if (typeof window.DatatableUtils?.refreshDatatable === 'function') {
+                window.DatatableUtils.refreshDatatable('customers-table');
+                return;
+            }
+
+            if (table?.ajax?.reload) {
+                table.ajax.reload(null, false);
+                return;
+            }
+
+            window.LaravelDataTables?.['customers-table']?.draw(false);
+        })
+        .catch(err => alert(err.message || 'Unable to verify customer.'));
+    });
+
     // ══════════════════════════════════════════════════════════════════════
     // ADD-mode address helpers (collapsed toggle, new customer only)
     // ══════════════════════════════════════════════════════════════════════

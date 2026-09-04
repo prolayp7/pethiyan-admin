@@ -133,6 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         Array.from(input.files).forEach(function (file) {
                             formData.append(fieldName, file, file.name);
                         });
+                        appendedAnyFiles = true;
+                    }
+
+                    if (!appendedAnyFiles && pond.getFiles().length > 0) {
+                        // Pond is holding file item(s) but none exposed a usable File/Blob
+                        // (e.g. still loading, or failed to load) — the field would otherwise
+                        // be silently dropped from the submit with no indication why.
+                        console.warn(`Category "${fieldName}" has a pending/unusable file and was not submitted.`, pond.getFiles());
                     }
                 });
             }

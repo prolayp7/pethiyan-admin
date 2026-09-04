@@ -1,5 +1,8 @@
+let categoryModalRequestToken = 0;
+
 document.addEventListener('show.bs.modal', function (event) {
     if (event.target.id === 'category-modal') {
+        const requestToken = ++categoryModalRequestToken;
         const triggerButton = event.relatedTarget;
         const categoryId = triggerButton?.getAttribute('data-id') || null;
         const categoryBaseUrl = `${base_url}/${panel}/categories`;
@@ -106,6 +109,13 @@ document.addEventListener('show.bs.modal', function (event) {
             fetch(url, {method: 'GET'})
                 .then(response => response.json())
                 .then(async responseData => {
+                    // A newer modal open (different category, or re-opening the same one)
+                    // superseded this fetch — discard it so its image/fields can't clobber
+                    // whatever is now showing.
+                    if (requestToken !== categoryModalRequestToken) {
+                        return;
+                    }
+
                     const data = responseData.data;
                     // Fill form fields
                     setFormFieldValue('input[name="title"]', data.title || '');

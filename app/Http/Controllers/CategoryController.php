@@ -318,11 +318,17 @@ class CategoryController extends Controller
             if ($request->hasFile($requestField)) {
                 $collectionValue = $this->resolveMediaCollectionName($collectionName);
                 $converted = ImageWebpService::convert($request->file($requestField));
-                $category->addMedia($converted['path'])
-                    ->usingFileName($converted['filename'])
-                    ->toMediaCollection($collectionValue);
-                if ($converted['isWebp']) {
-                    @unlink($converted['path']);
+                try {
+                    $category->addMedia($converted['path'])
+                        ->usingFileName($converted['filename'])
+                        ->toMediaCollection($collectionValue);
+                } finally {
+                    // Always clean up the temp webp file, even if addMedia() throws
+                    // (e.g. disk full) — otherwise failed uploads leak temp files and
+                    // make the underlying disk-space problem worse on every retry.
+                    if ($converted['isWebp']) {
+                        @unlink($converted['path']);
+                    }
                 }
             }
         }
@@ -359,12 +365,17 @@ class CategoryController extends Controller
 
         $converted = ImageWebpService::convert($newFile);
 
-        $category->addMedia($converted['path'])
-            ->usingFileName($converted['filename'])
-            ->toMediaCollection($collectionName);
-
-        if ($converted['isWebp']) {
-            @unlink($converted['path']);
+        try {
+            $category->addMedia($converted['path'])
+                ->usingFileName($converted['filename'])
+                ->toMediaCollection($collectionName);
+        } finally {
+            // Always clean up the temp webp file, even if addMedia() throws
+            // (e.g. disk full) — otherwise failed uploads leak temp files and
+            // make the underlying disk-space problem worse on every retry.
+            if ($converted['isWebp']) {
+                @unlink($converted['path']);
+            }
         }
     }
 
@@ -432,14 +443,21 @@ class CategoryController extends Controller
 
             $file      = $request->file($field);
             $converted = ImageWebpService::convert($file);
-            $stored    = Storage::disk('public')->put('seo/category', new \Illuminate\Http\File($converted['path']), ['visibility' => 'public']);
-            $target    = dirname($stored) . '/' . $converted['filename'];
-            if ($stored !== $target) {
-                Storage::disk('public')->move($stored, $target);
-                $stored = $target;
-            }
-            if ($converted['isWebp']) {
-                @unlink($converted['path']);
+
+            try {
+                $stored = Storage::disk('public')->put('seo/category', new \Illuminate\Http\File($converted['path']), ['visibility' => 'public']);
+                $target = dirname($stored) . '/' . $converted['filename'];
+                if ($stored !== $target) {
+                    Storage::disk('public')->move($stored, $target);
+                    $stored = $target;
+                }
+            } finally {
+                // Always clean up the temp webp file, even if the disk write throws
+                // (e.g. disk full) — otherwise failed uploads leak temp files and
+                // make the underlying disk-space problem worse on every retry.
+                if ($converted['isWebp']) {
+                    @unlink($converted['path']);
+                }
             }
 
             $metadata[$field] = $stored;

@@ -238,6 +238,10 @@ return [
     'product_variant_id_required' => 'Product variant ID is required.',
     'product_variant_required_with_product' => 'Product variant is required when a product is selected.',
     'product_variant_exists_with_product' => 'The selected product variant does not exist for the given product.',
+    'quantity_required' => 'Quantity is required.',
+    'quantity_integer' => 'Quantity must be a whole number.',
+    'quantity_min' => 'Quantity must be at least :min.',
+    'quantity_max' => 'Quantity may not be greater than :max.',
 
     // OTP validation messages
     'otp_required' => 'The verification code is required for delivery.',

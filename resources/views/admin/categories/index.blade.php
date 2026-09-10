@@ -191,7 +191,7 @@
                                             <label class="form-label">{{ __('labels.banner') }}</label>
                                             <input type="file" class="form-control" id="banner-upload" name="banner"
                                                    data-image-url=""/>
-                                            <small class="form-hint">Recommended: 1600 x 600 px. Max upload size: 2 MB.</small>
+                                            <small class="form-hint">Recommended: 1600 x 600 px. Max upload size: 10 MB.</small>
                                         </div>
 
                                         {{--<div class="mb-3">

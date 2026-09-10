@@ -55,6 +55,17 @@ document.addEventListener('show.bs.modal', function (event) {
                 credits: false,
                 storeAsFile: true,
                 acceptedFileTypes: ['image/*'],
+                onaddfile: (error, fileItem) => {
+                    // Without this, FilePond rejects a bad/oversized file silently in
+                    // the widget (small red icon) and the field just never gets
+                    // submitted — the user sees nothing explaining why.
+                    if (error && typeof Toast !== 'undefined') {
+                        Toast.fire({
+                            icon: 'error',
+                            title: `${input.name || 'File'}: ${error.main || 'Could not add file.'}`,
+                        });
+                    }
+                },
             });
 
             return pond;

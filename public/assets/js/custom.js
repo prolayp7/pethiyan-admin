@@ -141,6 +141,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         // (e.g. still loading, or failed to load) — the field would otherwise
                         // be silently dropped from the submit with no indication why.
                         console.warn(`Category "${fieldName}" has a pending/unusable file and was not submitted.`, pond.getFiles());
+                        Toast.fire({
+                            icon: 'error',
+                            title: `The ${fieldName.replace(/_/g, ' ')} file wasn't ready and was not saved — please re-select it and try again.`,
+                        });
                     }
                 });
             }

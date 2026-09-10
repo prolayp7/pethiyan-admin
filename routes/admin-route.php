@@ -131,6 +131,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/reorder', [CategoryController::class, 'reorder'])->name('reorder');
             Route::get('/{id}/edit', [CategoryController::class, 'show'])->name('edit');
             Route::post('/{id}', [CategoryController::class, 'update'])->name('update');
+            Route::post('/{id}/media/{field}', [CategoryController::class, 'uploadMedia'])->name('media.upload');
             Route::delete('/{id}', [CategoryController::class, 'destroy'])->name('delete');
             Route::post('/{id}/restore', [CategoryController::class, 'restore'])->name('restore');
             Route::get('/datatable', [CategoryController::class, 'getCategories'])->name('datatable');

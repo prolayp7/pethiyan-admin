@@ -24,6 +24,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -247,6 +248,76 @@ class CategoryController extends Controller
 
 
     /**
+     * Upload a single media field (image/banner/icon/active_icon/background_image) for an
+     * existing category immediately, independent of the full category update — so a slow
+     * or failed image upload doesn't block/hang saving the rest of the form, and unchanged
+     * images don't need to be resent on every save.
+     */
+    public function uploadMedia(Request $request, $id, string $field): JsonResponse
+    {
+        if (!array_key_exists($field, $this->mediaCollections)) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.validation_failed',
+                data: ['field' => 'Unknown media field.'],
+                status: 422
+            );
+        }
+
+        if ($this->uploadExceededPhpLimit($request)) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'messages.upload_too_large',
+                data: ['error' => 'The uploaded file exceeds the server upload limit. Max allowed: ' . ini_get('upload_max_filesize')],
+                status: 422
+            );
+        }
+
+        try {
+            $category = Category::findOrFail($id);
+            $this->authorize('update', $category);
+        } catch (ModelNotFoundException) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.category_not_found',
+                data: [],
+                status: 404
+            );
+        } catch (AuthorizationException) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.permission_denied',
+                data: [],
+            );
+        }
+
+        $rules = match ($field) {
+            'image', 'background_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'banner' => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+            default => 'required|mimes:jpeg,png,jpg,webp,svg', // icon, active_icon
+        };
+
+        $validator = Validator::make($request->all(), ['file' => $rules]);
+        if ($validator->fails()) {
+            return ApiResponseType::sendJsonResponse(
+                success: false,
+                message: 'labels.validation_failed',
+                data: $validator->errors()->toArray(),
+                status: 422
+            );
+        }
+
+        $collectionValue = $this->resolveMediaCollectionName($this->mediaCollections[$field]);
+        $this->handleSingleFileUpload($request->file('file'), $category, $collectionValue);
+
+        return ApiResponseType::sendJsonResponse(
+            success: true,
+            message: 'labels.category_updated_successfully',
+            data: ['field' => $field, 'url' => $category->getFirstMediaUrl($collectionValue)]
+        );
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy($id): JsonResponse
@@ -345,22 +416,17 @@ class CategoryController extends Controller
             $uploadedFile = $request->file($requestField);
             if ($uploadedFile instanceof UploadedFile && $uploadedFile->isValid()) {
                 // New file uploaded — replace existing media
-                $this->handleSingleFileUpload($request, $category, $requestField, $collectionValue);
+                $this->handleSingleFileUpload($uploadedFile, $category, $collectionValue);
             }
         }
     }
 
     /**
-     * Handle single file upload with duplicate check
+     * Convert and store a single file into a category's media collection,
+     * replacing whatever was there before.
      */
-    private function handleSingleFileUpload(UpdateCategoryRequest $request, Category $category, string $requestField, string $collectionName): void
+    private function handleSingleFileUpload(UploadedFile $newFile, Category $category, string $collectionName): void
     {
-        $newFile = $request->file($requestField);
-
-        if (! $newFile instanceof UploadedFile || ! $newFile->isValid()) {
-            return;
-        }
-
         $category->clearMediaCollection($collectionName);
 
         $converted = ImageWebpService::convert($newFile);

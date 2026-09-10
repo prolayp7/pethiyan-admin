@@ -107,6 +107,66 @@ document.addEventListener('show.bs.modal', function (event) {
             element.checked = checked;
         };
 
+        // Uploads a picked file straight to its own endpoint the moment it's selected,
+        // instead of waiting for it to be bundled into the (much heavier) full category
+        // save — so a slow/failed image doesn't hang saving the title/SEO/FAQ fields too,
+        // and an unchanged image never needs to be resent.
+        const configureInstantUpload = (pond, fieldName) => {
+            if (!pond || !categoryId) return;
+
+            pond.setOptions({
+                server: {
+                    process: (fieldKey, file, metadata, load, error, progress, abort) => {
+                        const uploadData = new FormData();
+                        uploadData.append('file', file, file.name);
+
+                        httpClient.post(`${categoryBaseUrl}/${categoryId}/media/${fieldName}`, uploadData, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            onUploadProgress: (evt) => {
+                                if (evt.total) progress(true, evt.loaded, evt.total);
+                            },
+                        }).then((response) => {
+                            const data = response.data;
+                            if (data.success === false) {
+                                error(data.message || 'Upload failed.');
+                                Toast.fire({icon: 'error', title: data.message || 'Upload failed.'});
+                                return;
+                            }
+                            load(data.data?.url || file.name);
+                            Toast.fire({icon: 'success', title: data.message || 'Image saved.'});
+                        }).catch((err) => {
+                            const message = err.response?.data?.message || 'Upload failed.';
+                            error(message);
+                            Toast.fire({icon: 'error', title: message});
+                        });
+
+                        return {abort: () => abort()};
+                    },
+                    // Once a custom `process` is set, FilePond stops auto-fetching plain
+                    // URLs for existing images (used by preloadFilePondField) unless we
+                    // fetch them ourselves here.
+                    load: (source, load, error, progress, abort) => {
+                        const controller = new AbortController();
+                        fetch(source, {signal: controller.signal})
+                            .then((res) => {
+                                if (!res.ok) throw new Error('Failed to load image');
+                                return res.blob();
+                            })
+                            .then(load)
+                            .catch((err) => {
+                                if (err.name !== 'AbortError') error('Could not load image');
+                            });
+                        return {abort: () => controller.abort()};
+                    },
+                    revert: null,
+                },
+            });
+        };
+
 // Remove files from FilePond if available
         resetFilePondField(imageUpload);
         resetFilePondField(bannerUpload);
@@ -115,6 +175,19 @@ document.addEventListener('show.bs.modal', function (event) {
         resetFilePondField(backgroundImageUpload);
         resetFilePondField(ogImageUpload);
         resetFilePondField(twitterImageUpload);
+
+        // Existing categories only — a new category has no id yet to attach media to,
+        // so its files still ride along with the initial create request.
+        if (categoryId) {
+            [
+                [imageUpload, 'image'],
+                [bannerUpload, 'banner'],
+                [iconUpload, 'icon'],
+                [activeIconUpload, 'active_icon'],
+                [backgroundImageUpload, 'background_image'],
+            ].forEach(([input, fieldName]) => configureInstantUpload(ensureFilePondInstance(input), fieldName));
+        }
+
         if (categoryId) {
             // Fetch category data
             fetch(url, {method: 'GET'})

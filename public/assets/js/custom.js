@@ -103,6 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             if (form.closest('#category-modal') && typeof FilePond !== 'undefined') {
+                // image/banner/icon/active_icon/background_image are uploaded immediately
+                // on selection (see configureInstantUpload in admin/js/custom.js) once a
+                // category already exists, so they're already saved server-side by the
+                // time this runs — resending them here would just be dead weight on every
+                // save. A brand-new category has no id yet, so its files still ride along
+                // with this request as before.
+                const isEditingExistingCategory = !!form.querySelector('#category-id')?.value;
+                const instantUploadFields = ['image', 'banner', 'icon', 'active_icon', 'background_image'];
+
                 [
                     'image',
                     'banner',
@@ -114,6 +123,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 ].forEach(function (fieldName) {
                     const input = form.querySelector(`[name="${fieldName}"]`);
                     if (!input) return;
+
+                    if (isEditingExistingCategory && instantUploadFields.includes(fieldName)) {
+                        formData.delete(fieldName);
+                        return;
+                    }
 
                     const pond = FilePond.find(input);
                     if (!pond) return;

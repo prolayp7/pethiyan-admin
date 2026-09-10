@@ -107,6 +107,36 @@ document.addEventListener('show.bs.modal', function (event) {
             element.checked = checked;
         };
 
+        // message/detail come from the server response, which can echo back user-controlled
+        // input (e.g. a validation error quoting the uploaded filename) — escape before
+        // inserting into Swal's `html` so a crafted filename can't inject markup/script.
+        const escapeHtml = (value) => String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+
+        // Shows a dialog that stays on screen (unlike the 3s auto-dismiss Toast) with the
+        // raw server response, so a failure can actually be read/copied for debugging
+        // instead of just flashing an "Error during upload" icon.
+        const showUploadErrorDetail = (fieldName, status, message, detail) => {
+            console.error(`Category "${fieldName}" upload failed (HTTP ${status ?? 'network error'}):`, message, detail);
+
+            if (typeof Swal === 'undefined') return;
+
+            const detailHtml = detail
+                ? `<pre style="text-align:left;white-space:pre-wrap;font-size:11px;background:#f8f9fa;padding:8px;border-radius:4px;max-height:220px;overflow:auto;margin-top:8px;">${escapeHtml(JSON.stringify(detail, null, 2))}</pre>`
+                : '';
+
+            Swal.fire({
+                icon: 'error',
+                title: `Couldn't save ${escapeHtml(fieldName.replace(/_/g, ' '))}`,
+                html: `<div style="text-align:left">${status ? `<p><strong>HTTP ${escapeHtml(status)}</strong></p>` : ''}<p>${escapeHtml(message)}</p>${detailHtml}</div>`,
+                confirmButtonText: 'OK',
+            });
+        };
+
         // Uploads a picked file straight to its own endpoint the moment it's selected,
         // instead of waiting for it to be bundled into the (much heavier) full category
         // save — so a slow/failed image doesn't hang saving the title/SEO/FAQ fields too,
@@ -133,15 +163,15 @@ document.addEventListener('show.bs.modal', function (event) {
                             const data = response.data;
                             if (data.success === false) {
                                 error(data.message || 'Upload failed.');
-                                Toast.fire({icon: 'error', title: data.message || 'Upload failed.'});
+                                showUploadErrorDetail(fieldName, response.status, data.message || 'Upload failed.', data.data);
                                 return;
                             }
                             load(data.data?.url || file.name);
                             Toast.fire({icon: 'success', title: data.message || 'Image saved.'});
                         }).catch((err) => {
-                            const message = err.response?.data?.message || 'Upload failed.';
+                            const message = err.response?.data?.message || (err.response ? `Server error (HTTP ${err.response.status}).` : 'Network error — request never reached the server.');
                             error(message);
-                            Toast.fire({icon: 'error', title: message});
+                            showUploadErrorDetail(fieldName, err.response?.status, message, err.response?.data);
                         });
 
                         return {abort: () => abort()};

@@ -74,6 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
             allowImagePreview: true,
             credits: false,
             storeAsFile: true,
+            // filePondServerLoad only implements `load` (for previewing an existing
+            // image URL) — there's no `process` handler, so a newly dropped file has
+            // nothing to complete the (default-on) instant upload and hangs at 100%
+            // forever. The file still gets submitted via the surrounding <input> when
+            // the page's own form posts, so no server round-trip is needed here.
+            instantUpload: false,
             maxFileSize: maxFileSize,
             acceptedFileTypes: allowFileTypes,
             server: filePondServerLoad,
@@ -184,6 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
             allowImagePreview: true,
             credits: false,
             storeAsFile: true,
+            // Same reason as initializeFilePond() above: serverOptions has no `process`,
+            // so instant upload (default on) would hang new files at 100% forever.
+            instantUpload: false,
             maxFileSize: '2MB',
             acceptedFileTypes: ['image/*'],
             server: serverOptions,

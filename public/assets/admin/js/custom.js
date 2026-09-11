@@ -145,6 +145,10 @@ document.addEventListener('show.bs.modal', function (event) {
             if (!pond || !categoryId) return;
 
             pond.setOptions({
+                // The shared filepond.custom.js initializer that first creates this pond
+                // sets instantUpload: false (it has no working process handler); re-enable
+                // it now that a real one is configured below, or new files just sit unsent.
+                instantUpload: true,
                 server: {
                     process: (fieldKey, file, metadata, load, error, progress, abort) => {
                         const uploadData = new FormData();
@@ -156,6 +160,11 @@ document.addEventListener('show.bs.modal', function (event) {
                                 'Accept': 'application/json',
                                 'X-CSRF-TOKEN': csrfToken,
                             },
+                            // Without this, a backend that accepts the upload but never
+                            // responds (worker hang, DB stall, etc.) leaves the widget
+                            // spinning at "100%" forever — the exact stuck-spinner symptom
+                            // this whole instant-upload path was meant to avoid.
+                            timeout: 30000,
                             onUploadProgress: (evt) => {
                                 if (evt.total) progress(true, evt.loaded, evt.total);
                             },
@@ -169,7 +178,9 @@ document.addEventListener('show.bs.modal', function (event) {
                             load(data.data?.url || file.name);
                             Toast.fire({icon: 'success', title: data.message || 'Image saved.'});
                         }).catch((err) => {
-                            const message = err.response?.data?.message || (err.response ? `Server error (HTTP ${err.response.status}).` : 'Network error — request never reached the server.');
+                            const message = err.response?.data?.message
+                                || (err.code === 'ECONNABORTED' ? 'Upload timed out — the server accepted the file but never responded. It may still have saved; reopen this category to check before retrying.' : null)
+                                || (err.response ? `Server error (HTTP ${err.response.status}).` : 'Network error — request never reached the server.');
                             error(message);
                             showUploadErrorDetail(fieldName, err.response?.status, message, err.response?.data);
                         });

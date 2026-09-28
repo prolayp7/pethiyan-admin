@@ -181,7 +181,15 @@ class AuthApiController extends Controller
             ]);
 
             $isNewUser = false;
-            $existingUser = User::where('email', $validated['email'])->first();
+            $existingUser = User::withTrashed()->where('email', $validated['email'])->first();
+
+            if ($existingUser?->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This email is linked to an inactive account. Please contact support.',
+                    'data'    => [],
+                ], 422);
+            }
 
             if ($existingUser) {
                 // Already fully verified — tell them to sign in instead
@@ -195,7 +203,7 @@ class AuthApiController extends Controller
                 // Unverified account exists — update credentials and resend OTP
                 // If mobile changed, ensure it isn't taken by a different account
                 if ($validated['mobile'] != $existingUser->mobile) {
-                    if (User::where('mobile', $validated['mobile'])->where('id', '!=', $existingUser->id)->exists()) {
+                    if (User::withTrashed()->where('mobile', $validated['mobile'])->where('id', '!=', $existingUser->id)->exists()) {
                         return response()->json([
                             'success' => false,
                             'message' => __('labels.mobile_already_registered'),
@@ -211,7 +219,7 @@ class AuthApiController extends Controller
                 $successMessage = __('labels.otp_resent_to_unverified');
             } else {
                 // Brand-new registration — check mobile uniqueness here
-                if (User::where('mobile', $validated['mobile'])->exists()) {
+                if (User::withTrashed()->where('mobile', $validated['mobile'])->exists()) {
                     return response()->json([
                         'success' => false,
                         'message' => __('labels.mobile_already_registered'),
@@ -328,7 +336,7 @@ class AuthApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => __('labels.registration_failed', ['error' => $e->getMessage()]),
+                'message' => __('labels.something_went_wrong'),
                 'data'    => [],
             ], 500);
         }

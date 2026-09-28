@@ -69,17 +69,19 @@ class ForgotPasswordOtpController extends Controller
         $demoOtp = null;
 
         if ($user) {
+            $accountEmail = $user->email;
+
             // Invalidate previous OTPs
             if (!empty($mobile)) {
                 OtpVerification::invalidatePrevious($mobile, $countryCode);
             }
-            if (!empty($email)) {
-                OtpVerification::invalidatePreviousByEmail($email);
+            if (!empty($accountEmail)) {
+                OtpVerification::invalidatePreviousByEmail($accountEmail);
             }
 
             OtpVerification::create([
                 'mobile'       => $mobile ?: '',
-                'email'        => $email,
+                'email'        => $accountEmail,
                 'country_code' => $countryCode,
                 'otp'          => Hash::make($otp),
                 'expires_at'   => now()->addMinutes($expiryMins),
@@ -100,14 +102,14 @@ class ForgotPasswordOtpController extends Controller
             }
 
             // Send via email (always attempt for password reset, regardless of emailOtpEnabled)
-            if (!empty($email)) {
+            if (!empty($accountEmail)) {
                 if ($this->smsDemoMode) {
                     $demoOtp = $otp;
                 } else {
                     try {
                         app(EmailService::class)->send(
                             new ForgotPasswordOtpMail($user->name, $otp, $expiryMins),
-                            $email,
+                            $accountEmail,
                             $user->name
                         );
                     } catch (\Throwable $th) {

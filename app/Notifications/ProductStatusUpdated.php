@@ -54,7 +54,9 @@ class ProductStatusUpdated extends Notification implements ShouldQueue
             ->line('New Status: ' . $product->status)
             ->line('Verification Status: ' . $product->verification_status)
             ->action('View Product', url('admin/products/' . $product->id))
-            ->line('Thank you for using our application!');
+            ->line('Thank you for using our application!')
+            ->line('Patepur,Bihar,843110')
+            ->line('Contact:9899592110');
     }
 
     /**

@@ -5,8 +5,8 @@ namespace App\Models;
 use App\Enums\GuardNameEnum;
 use App\Enums\SpatieMediaCollectionName;
 use App\Notifications\AdminPasswordResetNotification;
+use App\Notifications\CustomerPasswordResetNotification;
 use App\Notifications\SellerPasswordResetNotification;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -180,8 +180,7 @@ class User extends Authenticatable implements HasMedia
             // Check if the user has seller access panel
             $this->notify(new SellerPasswordResetNotification($token));
         } else {
-            // Use Laravel's default password reset notification for regular users
-            $this->notify(new ResetPassword($token));
+            $this->notify(new CustomerPasswordResetNotification($token));
         }
     }
 

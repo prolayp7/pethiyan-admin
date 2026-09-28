@@ -71,7 +71,9 @@ class OrderStatusUpdated extends Notification
                 ->line('Previous Status: ' . $oldStatus)
                 ->line('New Status: ' . $newStatus)
                 ->action('View Order', url('seller/orders/' . $sellerOrderItem->sellerOrder->id))
-                ->line('Thank you for using our application!');
+                ->line('Thank you for using our application!')
+                ->line('Patepur,Bihar,843110')
+                ->line('Contact:9899592110');
         } catch (\Throwable $e) {
             // Log error but don’t stop the process
             Log::error('Mail notification failed: ' . $e->getMessage(), [

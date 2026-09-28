@@ -6,9 +6,9 @@ use App\Exceptions\SellerNotFoundException;
 use App\Models\AdminUser;
 use App\Models\User;
 use App\Notifications\AdminPasswordResetNotification;
+use App\Notifications\CustomerPasswordResetNotification;
 use App\Notifications\SellerPasswordResetNotification;
 use App\Types\Api\ApiResponseType;
-use Illuminate\Auth\Notifications\ResetPassword;
 
 trait PanelAware
 {
@@ -60,7 +60,7 @@ trait PanelAware
         return match ($panel) {
             'admin' => AdminPasswordResetNotification::class,
             'seller' => SellerPasswordResetNotification::class,
-            default => ResetPassword::class,
+            default => CustomerPasswordResetNotification::class,
         };
     }
 

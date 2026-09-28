@@ -12,7 +12,6 @@ use App\Http\Resources\User\UserResource;
 use App\Models\User;
 use App\Services\EmailService;
 use App\Services\SettingService;
-use App\Services\SmsService;
 use App\Traits\AuthTrait;
 use App\Types\Api\ApiResponseType;
 use App\Support\FrontendAuthCookie;
@@ -254,9 +253,7 @@ class AuthApiController extends Controller
 
             $smsSettings      = $this->settingService->getSettingByVariable(SettingTypeEnum::SMS())?->value ?? [];
             $emailSettings    = $this->settingService->getSettingByVariable(SettingTypeEnum::EMAIL())?->value ?? [];
-            $smsEnabled       = (bool)($smsSettings['enabled'] ?? false);
             $emailOtpEnabled  = (bool)($emailSettings['email_otp_enabled'] ?? ($smsSettings['email_enabled'] ?? false));
-            $smsDemoMode      = $smsEnabled && (bool)($smsSettings['otp_demo_mode'] ?? false);
             $emailDemoMode    = $emailOtpEnabled && (bool)($emailSettings['email_demo_mode'] ?? false);
             $countryCode      = $validated['country_code'] ?? '+91';
             $expiryMinutes    = (int)($smsSettings['otp_expiry_minutes'] ?? 10);
@@ -264,58 +261,39 @@ class AuthApiController extends Controller
             $smsOtpSent       = false;
             $emailOtpSent     = false;
 
-            if ($smsEnabled || $emailOtpEnabled) {
-                $otp = $smsDemoMode ? '123456' : $this->generateRegistrationOtp($otpLength);
+            if ($emailOtpEnabled) {
+                $otp = $emailDemoMode ? '123456' : $this->generateRegistrationOtp($otpLength);
 
-                OtpVerification::invalidatePrevious($user->mobile, $countryCode);
+                OtpVerification::invalidatePreviousByEmail($user->email);
                 OtpVerification::create([
-                    'mobile'      => $user->mobile,
+                    'mobile'      => '',
+                    'email'       => $user->email,
                     'country_code'=> $countryCode,
                     'otp'         => Hash::make($otp),
                     'expires_at'  => now()->addMinutes($expiryMinutes),
                     'attempts'    => 0,
                 ]);
 
-                if ($smsEnabled) {
-                    try {
-                        if ($smsDemoMode) {
-                            Log::info('[RegisterOtp] SMS demo OTP generated.', [
-                                'user_id'      => $user->id,
-                                'mobile'       => $user->mobile,
-                                'country_code' => $countryCode,
-                                'otp'          => $otp,
-                            ]);
-                            $smsOtpSent = true;
-                        } else {
-                            $smsOtpSent = app(SmsService::class)->sendOtp($user->mobile, $countryCode, $otp);
-                        }
-                    } catch (\Throwable $th) {
-                        Log::error('Mobile OTP send failed for user ' . $user->id . ': ' . $th->getMessage());
+                try {
+                    if ($emailDemoMode) {
+                        Log::info('[RegisterOtp] Email demo OTP generated.', [
+                            'user_id' => $user->id,
+                            'email'   => $user->email,
+                            'otp'     => $otp,
+                        ]);
+                        $emailOtpSent = true;
+                    } else {
+                        $emailOtpSent = app(EmailService::class)->send(
+                            new RegistrationOtpMail($user->name, $otp, $expiryMinutes),
+                            $user->email,
+                            $user->name
+                        );
                     }
-                }
-
-                if ($emailOtpEnabled) {
-                    try {
-                        if ($emailDemoMode) {
-                            Log::info('[RegisterOtp] Email demo OTP generated.', [
-                                'user_id' => $user->id,
-                                'email'   => $user->email,
-                                'otp'     => $otp,
-                            ]);
-                            $emailOtpSent = true;
-                        } else {
-                            $emailOtpSent = app(EmailService::class)->send(
-                                new RegistrationOtpMail($user->name, $otp, $expiryMinutes),
-                                $user->email,
-                                $user->name
-                            );
-                        }
-                    } catch (\Throwable $th) {
-                        Log::error('Email OTP send failed for user ' . $user->id . ': ' . $th->getMessage());
-                    }
+                } catch (\Throwable $th) {
+                    Log::error('Email OTP send failed for user ' . $user->id . ': ' . $th->getMessage());
                 }
             } else {
-                // No OTP configured — auto-verify both channels immediately
+                // No email OTP configured — auto-verify both channels immediately
                 $user->update([
                     'mobile_verified_at' => now(),
                     'email_verified_at'  => now(),

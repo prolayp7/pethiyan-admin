@@ -166,6 +166,8 @@
                 </tr>
                 <tr>
                     <td class="footer" align="center" style="padding:16px;">
+                        Patepur,Bihar,843110<br>
+                        Contact:9899592110<br>
                         Copyright {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
                     </td>
                 </tr>

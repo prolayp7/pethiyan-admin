@@ -55,7 +55,9 @@ class ProductCreated extends Notification implements ShouldQueue
             ->line('Price: $' . number_format($product->price ?? 0, 2))
             ->line('Status: ' . $product->status)
             ->action('View Product', url('admin/products/' . $product->id))
-            ->line('Thank you for using our application!');
+            ->line('Thank you for using our application!')
+            ->line('Patepur,Bihar,843110')
+            ->line('Contact:9899592110');
     }
 
     /**

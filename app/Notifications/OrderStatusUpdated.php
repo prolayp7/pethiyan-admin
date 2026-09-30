@@ -72,8 +72,7 @@ class OrderStatusUpdated extends Notification
                 ->line('New Status: ' . $newStatus)
                 ->action('View Order', url('seller/orders/' . $sellerOrderItem->sellerOrder->id))
                 ->line('Thank you for using our application!')
-                ->line('Patepur,Bihar,843110')
-                ->line('Contact:9899592110');
+                ->line('Contact Us: 9310341981 | care@pethiyan.com');
         } catch (\Throwable $e) {
             // Log error but don’t stop the process
             Log::error('Mail notification failed: ' . $e->getMessage(), [

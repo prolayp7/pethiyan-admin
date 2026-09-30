@@ -45,8 +45,7 @@ class NewOrderNotification extends Notification
             ->line('The introduction to the notification.')
             ->action('Notification Action', url('/'))
             ->line('Thank you for using our application!')
-            ->line('Patepur,Bihar,843110')
-            ->line('Contact:9899592110');
+            ->line('Contact Us: 9310341981 | care@pethiyan.com');
     }
 
     /**

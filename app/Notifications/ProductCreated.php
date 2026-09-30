@@ -56,8 +56,7 @@ class ProductCreated extends Notification implements ShouldQueue
             ->line('Status: ' . $product->status)
             ->action('View Product', url('admin/products/' . $product->id))
             ->line('Thank you for using our application!')
-            ->line('Patepur,Bihar,843110')
-            ->line('Contact:9899592110');
+            ->line('Contact Us: 9310341981 | care@pethiyan.com');
     }
 
     /**

@@ -98,12 +98,7 @@
                 </tr>
                 <tr>
                     <td class="footer" align="center" style="padding:16px;">
-                        <p>
-                            Patepur,Bihar,843110<br>
-                            Contact:9899592110<br>
-                            You are receiving this email because you have an account with {{ $appName }}.<br>
-                            &copy; {{ date('Y') }} {{ $appName }}. All rights reserved.
-                        </p>
+                        @include('emails.partials.footer-contact')
                     </td>
                 </tr>
             </table>

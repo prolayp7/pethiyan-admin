@@ -130,9 +130,7 @@
     {{-- Footer --}}
     <tr>
         <td class="footer" style="padding:20px 32px; text-align:center;">
-            Patepur,Bihar,843110<br>
-            Contact:9899592110<br>
-            &copy; {{ date('Y') }} {{ $appName }}. This is an automated notification.
+                        @include('emails.partials.footer-contact')
         </td>
     </tr>
 

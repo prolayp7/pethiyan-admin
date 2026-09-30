@@ -22,7 +22,6 @@ class CustomerPasswordResetNotification extends ResetPassword
             ->action('Reset Password', $url)
             ->line('This password reset link will expire in ' . config('auth.passwords.' . config('auth.defaults.passwords') . '.expire') . ' minutes.')
             ->line('If you did not request a password reset, no further action is required.')
-            ->line('Patepur,Bihar,843110')
-            ->line('Contact:9899592110');
+            ->line('Contact Us: 9310341981 | care@pethiyan.com');
     }
 }

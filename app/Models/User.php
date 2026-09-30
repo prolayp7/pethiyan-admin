@@ -186,6 +186,13 @@ class User extends Authenticatable implements HasMedia
 
     protected static function booted(): void
     {
+        // Customers verify via email only, so an email verification also verifies the mobile on file.
+        static::saving(function ($user) {
+            if ($user->isDirty('email_verified_at') && $user->email_verified_at && $user->mobile && !$user->mobile_verified_at) {
+                $user->mobile_verified_at = $user->email_verified_at;
+            }
+        });
+
         static::deleting(function ($user) {
             $user->clearMediaCollection(SpatieMediaCollectionName::PROFILE_IMAGE());
         });

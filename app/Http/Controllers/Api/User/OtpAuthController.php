@@ -224,7 +224,11 @@ class OtpAuthController extends Controller
         if (!empty($mobile)) {
             $user = User::where('mobile', $mobile)->first();
         }
-        if (!$user && !empty($email)) {
+        // if (!$user && !empty($email)) {
+        //     $user = User::where('email', $email)->first();
+        // }
+
+        if (!empty($email)) {
             $user = User::where('email', $email)->first();
         }
 
@@ -260,10 +264,11 @@ class OtpAuthController extends Controller
         }
 
         $verificationUpdates = [];
-        if (!empty($mobile) && $user->mobile === $mobile) {
-            $verificationUpdates['mobile_verified_at'] = now();
-        }
+        // if (!empty($mobile) && $user->mobile === $mobile) {
+        //     $verificationUpdates['mobile_verified_at'] = now();
+        // }
         if (!empty($email) && $user->email === $email) {
+            $verificationUpdates['mobile_verified_at'] = now();
             $verificationUpdates['email_verified_at'] = now();
         }
         if (!empty($verificationUpdates)) {

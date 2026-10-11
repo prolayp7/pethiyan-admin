@@ -371,7 +371,7 @@
         @endif
         @if(($order['delivery_charge'] ?? 0) > 0)
         <tr>
-            <td class="label">Shipping:</td>
+            <td class="label">Shipping (Inc. GST):</td>
             <td class="text-right">{{ $currency }}{{ number_format($order['delivery_charge'], 2) }}</td>
         </tr>
         @endif
@@ -398,18 +398,6 @@
             <td class="text-right grand">{{ $currency }}{{ number_format($order['total_payable'], 2) }}</td>
         </tr>
     </table>
-
-    {{-- Signatory --}}
-    <div class="clearfix" style="margin-top:30px;">
-        <div class="signatory">
-            @if(!empty($adminSignatureSrc))
-                <img src="{{ $adminSignatureSrc }}" style="max-height:60px; max-width:180px;">
-            @else
-                <div style="height:50px;"></div>
-            @endif
-            <div class="signatory-line">Authorized Signatory</div>
-        </div>
-    </div>
 
     <div class="footer-note">
         Computer Generated Invoice - No Signature Required.

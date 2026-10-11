@@ -186,15 +186,6 @@
                                                 </div>
                                             </div>
 
-                                            {{-- Invoice prefix --}}
-                                            <div class="col-md-4">
-                                                <label class="form-label" for="invoice_prefix">Invoice Prefix</label>
-                                                <input type="text" class="form-control" name="invoice_prefix" id="invoice_prefix"
-                                                       maxlength="10" placeholder="INV"
-                                                       value="{{ $settings['invoice_prefix'] ?? 'INV' }}">
-                                                <small class="form-hint">E.g. "INV" → INV-1001</small>
-                                            </div>
-
                                             {{-- Invoice starting number --}}
                                             <div class="col-md-4">
                                                 <label class="form-label" for="invoice_starting_number">Starting Number</label>

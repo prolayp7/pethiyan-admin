@@ -38,7 +38,6 @@ class GstSettingResource extends JsonResource
                 'collect_customer_gstin'  => $this->value['collect_customer_gstin']  ?? false,
                 'show_gst_breakdown'      => $this->value['show_gst_breakdown']      ?? true,
                 'show_hsn_on_invoice'     => $this->value['show_hsn_on_invoice']     ?? true,
-                'invoice_prefix'          => $this->value['invoice_prefix']          ?? 'INV',
                 'invoice_starting_number' => $this->value['invoice_starting_number'] ?? 1001,
                 'default_gst_rate'        => $this->value['default_gst_rate']        ?? 18,
                 'composition_scheme'      => $this->value['composition_scheme']      ?? false,

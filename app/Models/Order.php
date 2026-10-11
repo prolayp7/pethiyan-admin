@@ -164,7 +164,7 @@ class Order extends Model
 
     public function getInvoiceNumberAttribute(): string
     {
-        return $this->formatDocumentNumber('INV');
+        return $this->formatDocumentNumber('');
     }
 
     private function formatDocumentNumber(string $prefix): string

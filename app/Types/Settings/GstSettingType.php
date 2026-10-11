@@ -24,7 +24,6 @@ class GstSettingType implements SettingInterface
     // Invoice display options
     public bool   $show_gst_breakdown         = true;   // show CGST/SGST/IGST line items
     public bool   $show_hsn_on_invoice        = true;   // show HSN code per item
-    public string $invoice_prefix             = 'INV';
     public int    $invoice_starting_number    = 1001;
 
     // Default GST slab for new products (%)
@@ -45,7 +44,6 @@ class GstSettingType implements SettingInterface
             'collect_customer_gstin'   => 'nullable|boolean',
             'show_gst_breakdown'       => 'nullable|boolean',
             'show_hsn_on_invoice'      => 'nullable|boolean',
-            'invoice_prefix'           => 'nullable|string|max:10',
             'invoice_starting_number'  => 'nullable|integer|min:1',
             'default_gst_rate'         => 'nullable|integer|in:0,5,12,18,28',
             'composition_scheme'       => 'nullable|boolean',

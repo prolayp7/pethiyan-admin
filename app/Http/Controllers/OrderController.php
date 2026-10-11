@@ -22,6 +22,7 @@ use App\Models\Seller;
 use App\Models\SellerOrder;
 use App\Models\SellerOrderItem;
 use App\Services\CurrencyService;
+use App\Services\GstService;
 use App\Services\OrderService;
 use App\Services\SettingService;
 use App\Traits\ChecksPermissions;
@@ -48,36 +49,43 @@ class OrderController extends Controller
         'Order Number',
         'Date',
         'Buyer Name',
-        'Company Name',
-        'GSTIN',
+        'Buyer Legal / Trade Name',
+        'Buyer GSTIN',
         'Email',
         'Phone',
         'Payment Method',
         'Payment Status',
         'Order Status',
-        'Items',
+        'Item Name',
+        'Item Description / Weight',
         'HSN',
         'UQC (Unit of Measurement)',
         'Qty',
-        'Unit Price',
+        'Unit Price (excl. GST)',
         'Item Taxable Amt',
         'Item GST %',
         'Item IGST',
+        'Item CGST %',
+        'Item CGST Amt',
         'Item SGST/UTGST %',
         'Item SGST/UTGST Amt',
-        'Item Tax Amt',
+        'Item Cess Amt',
+        'Item Total Tax (IGST+CGST+SGST+Cess)',
         'Item Total',
-        'Subtotal',
+        'Order Taxable Value (Items)',
         'Shipping',
-        'Handling',
-        'GST',
+        'Handling Charges (Taxable Value)',
+        'Handling GST Rate',
+        'Handling GST Tax',
+        'Order Total GST',
         'Promo Code',
-        'Promo Discount',
-        'Gift Card Discount',
-        'Total Payable',
+        'Promo Discount (Order Level)',
+        'Gift Card Redeemed',
+        'Invoice Value / Total Payable',
         'Shipping Address',
         'City',
-        'State',
+        'Shipping State',
+        'Place of Supply',
         'Country',
         'Pincode',
         'Tracking Code',
@@ -1118,7 +1126,9 @@ class OrderController extends Controller
             fputcsv($handle, self::CA_CSV_HEADERS);
 
             foreach ($orders as $order) {
-                fputcsv($handle, $this->formatCaCsvOrderRow($order, $countriesByIso2));
+                foreach ($this->formatCaCsvOrderRows($order, $countriesByIso2) as $row) {
+                    fputcsv($handle, $row);
+                }
             }
 
             fclose($handle);
@@ -1127,67 +1137,93 @@ class OrderController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    private function formatCaCsvOrderRow(Order $order, array $countriesByIso2): array
+    private function formatCaCsvOrderRows(Order $order, array $countriesByIso2): array
     {
-        $items = $order->items->map(function (OrderItem $item) use ($order) {
-            $taxableAmount = (float) ($item->taxable_amount ?? $item->subtotal ?? 0);
-            $gstRate = (float) ($item->gst_rate ?? $item->tax_percent ?? 0);
-            $igstAmount = (float) ($item->igst_amount ?? 0);
-            $sgstAmount = (float) ($item->sgst_amount ?? 0);
-            $cgstAmount = (float) ($item->cgst_amount ?? 0);
-            $taxAmount = (float) ($item->total_tax_amount ?? $item->tax_amount ?? ($cgstAmount + $sgstAmount + $igstAmount));
+        $orderItems = $order->items;
+        $orderTaxableBeforePromo = (float) $orderItems->sum(
+            fn (OrderItem $item) => (float) ($item->taxable_amount ?? $item->subtotal ?? 0)
+        );
+        $orderPromoDiscount = (float) ($order->promo_discount ?? $order->promoLine?->discount_amount ?? 0);
+        $remainingPromoDiscount = min(max(0, $orderPromoDiscount), $orderTaxableBeforePromo);
+        $gstService = app(GstService::class);
+
+        $items = $orderItems->values()->map(function (OrderItem $item, int $index) use (
+            $order,
+            $orderItems,
+            $orderTaxableBeforePromo,
+            $orderPromoDiscount,
+            &$remainingPromoDiscount,
+            $gstService
+        ) {
+            $originalTaxableAmount = (float) ($item->taxable_amount ?? $item->subtotal ?? 0);
+            if ($index === $orderItems->count() - 1) {
+                $promoDiscount = $remainingPromoDiscount;
+            } elseif ($orderTaxableBeforePromo > 0) {
+                $promoDiscount = min(
+                    $remainingPromoDiscount,
+                    round($orderPromoDiscount * $originalTaxableAmount / $orderTaxableBeforePromo, 2)
+                );
+            } else {
+                $promoDiscount = 0.0;
+            }
+            $remainingPromoDiscount = max(0, $remainingPromoDiscount - $promoDiscount);
+
+            $taxableAmount = round(max(0, $originalTaxableAmount - $promoDiscount), 2);
+            $gstRate = (float) ($item->gst_rate ?: ($item->tax_percent ?? 0));
             $supplyType = $item->gst_type ?? $order->supply_type ?? 'intra';
-            $sgstRate = strtolower((string) $supplyType) === 'inter' ? 0 : $gstRate / 2;
+            $gst = $gstService->calculateLineItem(
+                unitPrice: $taxableAmount,
+                quantity: 1,
+                gstRatePct: (int) round($gstRate),
+                supplyType: strtolower((string) $supplyType) === 'inter' ? 'inter' : 'intra',
+            );
 
             return [
                 'name' => $this->cleanCaCsvItemName((string) ($item->title ?? '')),
+                'description' => trim((string) ($item->variant_title ?? '')),
                 'hsn' => $item->hsn_code ?? '',
                 'uqc' => 'PCS',
                 'quantity' => $item->quantity ?? 0,
                 'unit_price' => $item->price ?? 0,
-                'taxable_amount' => $taxableAmount,
+                'promo_discount' => $promoDiscount,
+                'taxable_amount' => $gst['taxable_amount'],
                 'gst_rate' => $gstRate,
-                'igst_amount' => $igstAmount,
-                'sgst_rate' => $sgstRate,
-                'sgst_amount' => $sgstAmount,
-                'tax_amount' => $taxAmount,
-                'total' => $taxableAmount + $taxAmount,
+                'igst_amount' => $gst['igst_amount'],
+                'cgst_rate' => $gst['gst_type'] === 'intra' ? $gst['cgst_rate'] : 0.0,
+                'cgst_amount' => $gst['cgst_amount'],
+                'sgst_rate' => $gst['gst_type'] === 'intra' ? $gst['sgst_rate'] : 0.0,
+                'sgst_amount' => $gst['sgst_amount'],
+                'cess_amount' => 0.0,
+                'tax_amount' => $gst['total_tax_amount'],
+                'total' => $gst['total_amount'],
             ];
         });
 
-        $joinedItemValues = fn (string $key) => $items->pluck($key)->implode('; ');
         $countryCode = strtoupper((string) $order->shipping_country_code);
-
-        return [
+        $orderTaxableValue = round($items->sum(fn (array $item) => (float) $item['taxable_amount']), 2);
+        $orderTotalGst = round($items->sum(fn (array $item) => (float) $item['tax_amount']), 2);
+        $orderValues = [
             $order->invoice_number,
             $order->order_number,
-            $order->created_at?->format('Y-m-d H:i:s'),
+            $order->created_at?->format('Y-m-d'),
             $order->shipping_name ?? $order->user?->name ?? '',
-            $order->shipping_company_name ?? $order->user?->company_name ?? '',
+            $order->shipping_company_name ?? $order->billing_company_name ?? $order->user?->company_name ?? '',
             $order->user?->gstin ?? '',
             $order->email ?? '',
             $order->shipping_phone ?? '',
             $order->payment_method ?? '',
             $order->payment_status ?? '',
             $order->status ?? '',
-            $joinedItemValues('name'),
-            $joinedItemValues('hsn'),
-            $joinedItemValues('uqc'),
-            $joinedItemValues('quantity'),
-            $joinedItemValues('unit_price'),
-            $joinedItemValues('taxable_amount'),
-            $joinedItemValues('gst_rate'),
-            $joinedItemValues('igst_amount'),
-            $joinedItemValues('sgst_rate'),
-            $joinedItemValues('sgst_amount'),
-            $joinedItemValues('tax_amount'),
-            $joinedItemValues('total'),
-            $order->subtotal ?? 0,
+        ];
+        $orderTotals = [
+            $orderTaxableValue,
             $order->delivery_charge ?? 0,
             $order->handling_charges ?? 0,
-            $order->total_gst ?? 0,
+            '',
+            '',
+            $orderTotalGst,
             $order->promo_code ?? $order->promoLine?->promo_code ?? '',
-            $order->promo_discount ?? $order->promoLine?->discount_amount ?? 0,
+            null,
             $order->gift_card_discount ?? 0,
             $order->total_payable ?? $order->final_total ?? 0,
             trim(implode(', ', array_filter([
@@ -1197,12 +1233,44 @@ class OrderController extends Controller
             ]))),
             $order->shipping_city ?? '',
             $order->shipping_state ?? '',
+            $order->shipping_state ?? '',
             $countriesByIso2[$countryCode] ?? $order->shipping_country ?? '',
             $order->shipping_zip ?? '',
             $order->tracking_code ?? '',
             'No',
             $items->sum(fn (array $item) => (float) $item['quantity']),
         ];
+
+        if ($items->isEmpty()) {
+            return [array_merge($orderValues, array_fill(0, 16, ''), $orderTotals)];
+        }
+
+        return $items->map(function (array $item) use ($orderValues, $orderTotals) {
+            $orderTotals[7] = $item['promo_discount'];
+
+            return array_merge(
+                $orderValues,
+                [
+                $item['name'],
+                $item['description'],
+                $item['hsn'],
+                $item['uqc'],
+                $item['quantity'],
+                $item['unit_price'],
+                $item['taxable_amount'],
+                $item['gst_rate'],
+                $item['igst_amount'],
+                $item['cgst_rate'],
+                $item['cgst_amount'],
+                $item['sgst_rate'],
+                $item['sgst_amount'],
+                $item['cess_amount'],
+                $item['tax_amount'],
+                $item['total'],
+                ],
+                $orderTotals
+            );
+        })->all();
     }
 
     private function cleanCaCsvItemName(string $itemName): string

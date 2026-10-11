@@ -528,6 +528,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/cancelled', [OrderController::class, 'indexCancelled'])->name('cancelled');
             Route::get('/dispatched', [OrderController::class, 'indexDispatched'])->name('dispatched');
             Route::get('/datatable', [OrderController::class, 'getOrders'])->name('datatable');
+            Route::get('/export-ca', [OrderController::class, 'exportCaOrders'])->name('export-ca');
             Route::get('/export', [OrderController::class, 'exportOrders'])->name('export');
             Route::get('invoice', [OrderController::class, 'orderInvoice']);
             Route::get('/{id}/invoice/download', [OrderController::class, 'downloadInvoice'])->name('invoice.download');

@@ -128,6 +128,29 @@ $(document).ready(function () {
         window.location.href = baseUrl + '?' + params.toString();
     });
 
+    $('#exportCaOrders').on('click', function () {
+        const baseUrl = $(this).data('export-url');
+        const params = new URLSearchParams({
+            range:        $('#rangeFilter').val(),
+            payment_type: $('#paymentFilter').val(),
+            promo_code:   $('#promoFilter').val(),
+        });
+        if (typeof window.orderDefaultStatuses !== 'undefined') {
+            window.orderDefaultStatuses.forEach(s => params.append('statuses[]', s));
+        } else {
+            const statusVal = (typeof window.orderDefaultStatus !== 'undefined')
+                              ? window.orderDefaultStatus
+                              : $('#statusFilter').val();
+            params.set('status', statusVal);
+        }
+        const { start, end } = getCustomDates();
+        if (start && end) {
+            params.set('start_date', start);
+            params.set('end_date', end);
+        }
+        window.location.href = baseUrl + '?' + params.toString();
+    });
+
     setTimeout(function () {
         updateOrderCount();
     }, 1000);

@@ -15,6 +15,7 @@ use App\Enums\SellerPermissionEnum;
 use App\Enums\SettingTypeEnum;
 use App\Http\Resources\OrderResource;
 use App\Enums\SpatieMediaCollectionName;
+use App\Models\Country;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Seller;
@@ -41,6 +42,48 @@ use Illuminate\Validation\Rule;
 class OrderController extends Controller
 {
     use PanelAware, AuthorizesRequests, ChecksPermissions;
+
+    private const CA_CSV_HEADERS = [
+        'Order ID',
+        'Order Number',
+        'Date',
+        'Buyer Name',
+        'Company Name',
+        'GSTIN',
+        'Email',
+        'Phone',
+        'Payment Method',
+        'Payment Status',
+        'Order Status',
+        'Items',
+        'HSN',
+        'UQC (Unit of Measurement)',
+        'Qty',
+        'Unit Price',
+        'Item Taxable Amt',
+        'Item GST %',
+        'Item IGST',
+        'Item SGST/UTGST %',
+        'Item SGST/UTGST Amt',
+        'Item Tax Amt',
+        'Item Total',
+        'Subtotal',
+        'Shipping',
+        'Handling',
+        'GST',
+        'Promo Code',
+        'Promo Discount',
+        'Gift Card Discount',
+        'Total Payable',
+        'Shipping Address',
+        'City',
+        'State',
+        'Country',
+        'Pincode',
+        'Tracking Code',
+        'Is Rush Order',
+        'Items Count',
+    ];
 
     private const ADMIN_ORDER_STATUS_OPTIONS = [
         'accepted_by_seller' => 'Order Accepted',
@@ -1015,6 +1058,159 @@ class OrderController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportCaOrders(Request $request)
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $status      = $request->get('status');
+        $statuses    = $request->get('statuses');
+        $paymentType = $request->get('payment_type');
+        $dateRange   = $request->get('range');
+        $promoCode   = trim($request->get('promo_code', ''));
+        $startDate   = $request->get('start_date');
+        $endDate     = $request->get('end_date');
+
+        $query = Order::with(['items', 'user', 'promoLine']);
+
+        if (!empty($statuses) && is_array($statuses)) {
+            $query->whereIn('status', $statuses);
+        } elseif ($status !== null && $status !== '') {
+            $query->where('status', $status);
+        }
+
+        if ($paymentType !== null && $paymentType !== '') {
+            $query->where('payment_method', $paymentType);
+        }
+
+        if (!empty($startDate) && !empty($endDate) && strtotime($startDate) && strtotime($endDate)) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay(),
+            ]);
+        } elseif ($dateRange !== null && $dateRange !== '') {
+            $fromDate = $this->getDateRange($dateRange);
+            if ($fromDate) {
+                $query->where('created_at', '>=', $fromDate);
+            }
+        }
+
+        if (!empty($promoCode)) {
+            $query->where('promo_code', 'like', "%$promoCode%");
+        }
+
+        $orders = $query->orderBy('id', 'asc')->get();
+        $countriesByIso2 = Country::query()
+            ->pluck('name', 'iso2')
+            ->mapWithKeys(fn ($name, $iso2) => [strtoupper((string) $iso2) => $name])
+            ->all();
+
+        $filename = 'orders-ca-export-' . now()->format('Y-m-d_H-i-s') . '.csv';
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($orders, $countriesByIso2) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, self::CA_CSV_HEADERS);
+
+            foreach ($orders as $order) {
+                fputcsv($handle, $this->formatCaCsvOrderRow($order, $countriesByIso2));
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    private function formatCaCsvOrderRow(Order $order, array $countriesByIso2): array
+    {
+        $items = $order->items->map(function (OrderItem $item) use ($order) {
+            $taxableAmount = (float) ($item->taxable_amount ?? $item->subtotal ?? 0);
+            $gstRate = (float) ($item->gst_rate ?? $item->tax_percent ?? 0);
+            $igstAmount = (float) ($item->igst_amount ?? 0);
+            $sgstAmount = (float) ($item->sgst_amount ?? 0);
+            $cgstAmount = (float) ($item->cgst_amount ?? 0);
+            $taxAmount = (float) ($item->total_tax_amount ?? $item->tax_amount ?? ($cgstAmount + $sgstAmount + $igstAmount));
+            $supplyType = $item->gst_type ?? $order->supply_type ?? 'intra';
+            $sgstRate = strtolower((string) $supplyType) === 'inter' ? 0 : $gstRate / 2;
+
+            return [
+                'name' => $this->cleanCaCsvItemName((string) ($item->title ?? '')),
+                'hsn' => $item->hsn_code ?? '',
+                'uqc' => 'PCS',
+                'quantity' => $item->quantity ?? 0,
+                'unit_price' => $item->price ?? 0,
+                'taxable_amount' => $taxableAmount,
+                'gst_rate' => $gstRate,
+                'igst_amount' => $igstAmount,
+                'sgst_rate' => $sgstRate,
+                'sgst_amount' => $sgstAmount,
+                'tax_amount' => $taxAmount,
+                'total' => $taxableAmount + $taxAmount,
+            ];
+        });
+
+        $joinedItemValues = fn (string $key) => $items->pluck($key)->implode('; ');
+        $countryCode = strtoupper((string) $order->shipping_country_code);
+
+        return [
+            $order->invoice_number,
+            $order->order_number,
+            $order->created_at?->format('Y-m-d H:i:s'),
+            $order->shipping_name ?? $order->user?->name ?? '',
+            $order->shipping_company_name ?? $order->user?->company_name ?? '',
+            $order->user?->gstin ?? '',
+            $order->email ?? '',
+            $order->shipping_phone ?? '',
+            $order->payment_method ?? '',
+            $order->payment_status ?? '',
+            $order->status ?? '',
+            $joinedItemValues('name'),
+            $joinedItemValues('hsn'),
+            $joinedItemValues('uqc'),
+            $joinedItemValues('quantity'),
+            $joinedItemValues('unit_price'),
+            $joinedItemValues('taxable_amount'),
+            $joinedItemValues('gst_rate'),
+            $joinedItemValues('igst_amount'),
+            $joinedItemValues('sgst_rate'),
+            $joinedItemValues('sgst_amount'),
+            $joinedItemValues('tax_amount'),
+            $joinedItemValues('total'),
+            $order->subtotal ?? 0,
+            $order->delivery_charge ?? 0,
+            $order->handling_charges ?? 0,
+            $order->total_gst ?? 0,
+            $order->promo_code ?? $order->promoLine?->promo_code ?? '',
+            $order->promo_discount ?? $order->promoLine?->discount_amount ?? 0,
+            $order->gift_card_discount ?? 0,
+            $order->total_payable ?? $order->final_total ?? 0,
+            trim(implode(', ', array_filter([
+                $order->shipping_address_1,
+                $order->shipping_address_2,
+                $order->shipping_landmark,
+            ]))),
+            $order->shipping_city ?? '',
+            $order->shipping_state ?? '',
+            $countriesByIso2[$countryCode] ?? $order->shipping_country ?? '',
+            $order->shipping_zip ?? '',
+            $order->tracking_code ?? '',
+            'No',
+            $items->sum(fn (array $item) => (float) $item['quantity']),
+        ];
+    }
+
+    private function cleanCaCsvItemName(string $itemName): string
+    {
+        $itemName = preg_replace('/\R\s*\d+(?:[.,]\d+)?\s*(?:mg|kg|g|ml|l)\s*$/iu', '', $itemName) ?? $itemName;
+        $itemName = preg_replace('/\s+/u', ' ', $itemName) ?? $itemName;
+
+        return trim($itemName);
     }
 
     private function canManageAdminOrder(): bool

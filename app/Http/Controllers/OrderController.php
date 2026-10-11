@@ -426,7 +426,7 @@ class OrderController extends Controller
                         </div>",
             'order_details' => "<div>
                         <p class='m-0 fw-medium text-primary'>" . __('labels.order_number') . ": " . e($orderNoDisplay) . "</p>
-                        <p class='m-0 fw-medium text-primary'>" . __('labels.order_id') . ": " . e((string) $order->id) . "</p>
+                        <p class='m-0 fw-medium text-primary'>" . __('labels.order_id') . ": " . e($order->invoice_number) . "</p>
                         <p class='m-0'>" . __('labels.buyer_name') . ": " . e($order->shipping_name ?? 'N/A') . "</p>
                         <p class='m-0'>" . __('labels.payment_method') . ": " . e($order->payment_method ?? 'N/A') . "</p>
                         <p class='m-0'>" . __('labels.is_rush_order') . ": " . (($order->is_rush_order ?? false) ? 'Yes' : 'No') . "</p>

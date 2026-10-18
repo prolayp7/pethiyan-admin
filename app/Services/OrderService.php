@@ -511,9 +511,11 @@ class OrderService
         }
 
         $cart->items()->delete();
-        DB::afterCommit(function () use ($order) {
-            event(new OrderPlaced($order));
-        });
+        if ($data['payment_type'] !== PaymentTypeEnum::EASEPAY()) {
+            DB::afterCommit(function () use ($order) {
+                event(new OrderPlaced($order));
+            });
+        }
 
         return [
             'success' => true,

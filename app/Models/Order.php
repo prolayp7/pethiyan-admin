@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\Order\OrderStatusEnum;
+use App\Enums\Payment\PaymentTypeEnum;
 use App\Enums\PaymentStatusEnum;
 use App\Events\Order\OrderPaymentConfirmed;
+use App\Events\Order\OrderPlaced;
 use App\Services\WalletService;
 use App\Models\OrderManagementHistory;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -261,6 +264,9 @@ class Order extends Model
 
                 if ($saved && !$wasAlreadyCompleted) {
                     OrderPaymentConfirmed::dispatch($order);
+                    if ($order->payment_method === PaymentTypeEnum::EASEPAY()) {
+                        DB::afterCommit(fn () => OrderPlaced::dispatch($order));
+                    }
                 }
 
                 return $saved;

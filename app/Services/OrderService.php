@@ -92,6 +92,7 @@ class OrderService
             // Step 1: Validate cart and system settings
             $cartValidation = $this->validateCartAndSettings($user);
             if (!$cartValidation['success']) {
+                DB::rollBack();
                 return $cartValidation;
             }
             $cart = $cartValidation['cart'];
@@ -99,12 +100,14 @@ class OrderService
             // Step 2: Validate payment method
             $paymentValidation = $this->validatePaymentMethod($data);
             if (!$paymentValidation['success']) {
+                DB::rollBack();
                 return $paymentValidation;
             }
 
             // Step 3: Validate address and delivery zone
             $addressValidation = $this->validateAddressAndDeliveryZone($user, $data);
             if (!$addressValidation['success']) {
+                DB::rollBack();
                 return $addressValidation;
             }
             $data = $addressValidation['data'];
@@ -112,6 +115,7 @@ class OrderService
             // Step 4: Validate stock and delivery availability
             $stockAndDeliveryValidation = $this->validateStockAndDeliveryAvailability($cart, $data['address']);
             if (!$stockAndDeliveryValidation['success']) {
+                DB::rollBack();
                 return $stockAndDeliveryValidation;
             }
 
@@ -121,6 +125,7 @@ class OrderService
             // Step 6: Create order items and finalize
             $finalizationResult = $this->finalizeOrderCreation($order, $cart, $user, $data);
             if (!$finalizationResult['success']) {
+                DB::rollBack();
                 return $finalizationResult;
             }
 
@@ -524,7 +529,15 @@ class OrderService
      */
     private function handleOrderCreationFailure(array $data): void
     {
-        if ($data['payment_type'] !== PaymentTypeEnum::COD() && $data['payment_type'] !== PaymentTypeEnum::WALLET() && $data['payment_type'] !== PaymentTypeEnum::FLUTTERWAVE()) {
+        if (
+            !in_array($data['payment_type'], [
+                PaymentTypeEnum::COD(),
+                PaymentTypeEnum::WALLET(),
+                PaymentTypeEnum::FLUTTERWAVE(),
+                PaymentTypeEnum::EASEPAY(),
+            ], true)
+            && !empty($data['transaction_id'])
+        ) {
             $this->paymentService->processOrderRefund(paymentMethod: $data['payment_type'], transactionId: $data['transaction_id']);
         }
     }

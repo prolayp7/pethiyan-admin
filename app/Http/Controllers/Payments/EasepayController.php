@@ -6,6 +6,7 @@ use App\Enums\Payment\PaymentTypeEnum;
 use App\Enums\PaymentStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\OrderPaymentTransaction;
 use App\Models\PaymentWebhookLog;
 use App\Services\EasepayService;
@@ -27,12 +28,10 @@ class EasepayController extends Controller
     // -------------------------------------------------------------------------
 
     /**
-     * Validate a checkout and initiate Easepay payment for it. No Order is
-     * created here — the validated checkout payload is stashed on the
-     * placeholder transaction row (keyed by our internal txnid) and only
-     * turned into a real Order once EasepayService::handleOrderWebhook()
-     * confirms payment succeeded. See CLAUDE.md-adjacent plan doc:
-     * docs/superpowers/plans/2026-08-18-easepay-defer-order-creation.md
+     * Create a pending order from the current cart, then initiate Easepay
+     * payment for that order. The payment callback only needs to capture or
+     * fail the already-persisted order, so it does not depend on the cart
+     * still existing after the customer returns from Easebuzz.
      *
      * POST /api/easepay/create-order
      * Body: { address_id, shipping_rate_id?, delivery_charge?, promo_code?, ... }
@@ -55,12 +54,32 @@ class EasepayController extends Controller
             return ApiResponseType::sendJsonResponse(false, $validation['message'], $validation['data'] ?? []);
         }
 
-        // Amount is computed server-side from the cart — never trust a
-        // client-supplied amount, since it is what gets sent to the payment
-        // gateway and stored as the payable amount for capture.
+        // Compute the amount server-side; never trust a client-supplied amount.
         $amount = $orderService->computeCheckoutAmount($user, $checkoutData);
 
+        $orderResult = $orderService->createOrder($user, $checkoutData);
+        if (!$orderResult['success'] || !(($orderResult['data'] ?? null) instanceof Order)) {
+            return ApiResponseType::sendJsonResponse(
+                false,
+                $orderResult['message'] ?? 'Could not create the order.',
+                $orderResult['data'] ?? []
+            );
+        }
+        $order = $orderResult['data'];
+
         $txnid = 'ORD-' . Str::random(10) . '-' . $user->id;
+
+        $placeholder = OrderPaymentTransaction::create([
+            'uuid'           => Str::uuid()->toString(),
+            'order_id'       => $order->id,
+            'user_id'        => $user->id,
+            'transaction_id' => $txnid,
+            'amount'         => $amount,
+            'currency'       => 'INR',
+            'payment_method' => PaymentTypeEnum::EASEPAY(),
+            'payment_status' => PaymentStatusEnum::PENDING(),
+            'message'        => 'Payment initiated, awaiting confirmation',
+        ]);
 
         $result = $this->easepayService->initiatePayment([
             'txnid'       => $txnid,
@@ -70,31 +89,26 @@ class EasepayController extends Controller
             'email'       => $user->email ?? '',
             'phone'       => $user->mobile ?? '',
             'udf1'        => 'order_payment',
+            'udf2'        => (string) $order->id,
             'udf3'        => (string)$user->id,
         ]);
 
         if (!$result['success']) {
+            $placeholder->update([
+                'payment_status' => PaymentStatusEnum::FAILED(),
+                'message'        => $result['message'] ?? 'Could not initiate Easepay payment.',
+            ]);
+            Order::paymentFailed($order->id);
+            OrderItem::paymentFailed($order->id);
+
             return ApiResponseType::sendJsonResponse(false, $result['message'], $result['data'] ?? []);
         }
 
-        // Placeholder row: no order_id yet (none exists), checkout_payload is
-        // the validated data createOrder() needs once payment is confirmed.
-        // See EasepayService::handleOrderWebhook() for the consuming side.
-        OrderPaymentTransaction::create([
-            'uuid'             => Str::uuid()->toString(),
-            'order_id'         => null,
-            'user_id'          => $user->id,
-            'transaction_id'   => $txnid,
-            'amount'           => $amount,
-            'currency'         => 'INR',
-            'payment_method'   => PaymentTypeEnum::EASEPAY(),
-            'payment_status'   => PaymentStatusEnum::PENDING(),
-            'message'          => 'Payment initiated, awaiting confirmation',
-            'checkout_payload' => $checkoutData,
-        ]);
-
         return ApiResponseType::sendJsonResponse(true, $result['message'], [
             'txnid'       => $txnid,
+            'order_id'    => $order->id,
+            'order_number'=> $order->order_number,
+            'order_slug'  => $order->slug,
             'access_key'  => $result['access_key'],
             'payment_url' => $result['payment_url'],
         ]);
@@ -250,7 +264,7 @@ class EasepayController extends Controller
 
         if ($transaction?->order_id) {
             $order = Order::find($transaction->order_id);
-            if ($order) {
+            if ($order && $order->payment_status === PaymentStatusEnum::COMPLETED()) {
                 $orderInfo = [
                     'order_id'     => $order->id,
                     'order_number' => $order->order_number,
@@ -259,9 +273,16 @@ class EasepayController extends Controller
             }
         }
 
+        $success = $result['success'] && $orderInfo['order_id'] !== null;
+        $message = $result['message'];
+        if ($result['success'] && !$success) {
+            $message = $transaction?->message
+                ?: 'Payment was confirmed but the order is not ready yet. Please contact support with reference: ' . $txnid;
+        }
+
         return ApiResponseType::sendJsonResponse(
-            $result['success'],
-            $result['message'],
+            $success,
+            $message,
             array_merge($result['data'] ?? [], $orderInfo)
         );
     }

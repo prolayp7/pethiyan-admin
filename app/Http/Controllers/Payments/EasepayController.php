@@ -244,14 +244,17 @@ class EasepayController extends Controller
         $result = $this->easepayService->verifyTransaction($txnid);
 
         $lookupTransactionId = $txnid;
+        $paymentConfirmed = false;
 
         if ($result['success']) {
             $payload = $result['data'] ?? [];
-            $status  = strtolower((string) ($payload['status'] ?? ''));
+            $transactionPayload = $this->findTransactionPayload($payload);
+            $status = strtolower((string) ($transactionPayload['status'] ?? ''));
 
             if (in_array($status, ['success', 'failure', 'usercancel'], true)) {
-                $easepayTxnId = $payload['easepayid'] ?? $txnid;
-                $this->easepayService->handleOrderWebhook($status, $payload, $txnid, $easepayTxnId);
+                $paymentConfirmed = $status === 'success';
+                $easepayTxnId = $transactionPayload['easepayid'] ?? $txnid;
+                $this->easepayService->handleOrderWebhook($status, $transactionPayload, $txnid, $easepayTxnId);
                 // On success, handleOrderWebhook() supersedes the txnid-keyed
                 // placeholder with a row keyed by easepayTxnId — look that up
                 // instead so the order (if created) is found.
@@ -261,10 +264,13 @@ class EasepayController extends Controller
 
         $orderInfo = ['order_id' => null, 'order_number' => null, 'order_slug' => null];
         $transaction = OrderPaymentTransaction::where('transaction_id', $lookupTransactionId)->first();
+        if (!$transaction && $lookupTransactionId !== $txnid) {
+            $transaction = OrderPaymentTransaction::where('transaction_id', $txnid)->first();
+        }
 
         if ($transaction?->order_id) {
             $order = Order::find($transaction->order_id);
-            if ($order && $order->payment_status === PaymentStatusEnum::COMPLETED()) {
+            if ($order) {
                 $orderInfo = [
                     'order_id'     => $order->id,
                     'order_number' => $order->order_number,
@@ -283,8 +289,36 @@ class EasepayController extends Controller
         return ApiResponseType::sendJsonResponse(
             $success,
             $message,
-            array_merge($result['data'] ?? [], $orderInfo)
+            array_merge($result['data'] ?? [], $orderInfo, [
+                'payment_confirmed' => $paymentConfirmed,
+            ])
         );
+    }
+
+    /**
+     * Easebuzz's transaction API can return the transaction as a nested record.
+     * Find the record whose status is a payment outcome rather than relying on
+     * the outer API response's status field.
+     *
+     * @param array<mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function findTransactionPayload(array $payload): array
+    {
+        if (in_array(strtolower((string) ($payload['status'] ?? '')), ['success', 'failure', 'usercancel'], true)) {
+            return $payload;
+        }
+
+        foreach ($payload as $value) {
+            if (is_array($value)) {
+                $transactionPayload = $this->findTransactionPayload($value);
+                if ($transactionPayload !== []) {
+                    return $transactionPayload;
+                }
+            }
+        }
+
+        return [];
     }
 
     // -------------------------------------------------------------------------

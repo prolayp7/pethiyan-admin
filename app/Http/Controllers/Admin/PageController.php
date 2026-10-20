@@ -143,6 +143,8 @@ class PageController extends Controller
 
         $page->update($data);
 
+        FrontendRevalidateService::revalidate(tags: ['pages'], paths: ["/{$page->slug}"]);
+
         return redirect()->route('admin.pages.index')->with('success', 'Page updated successfully.');
     }
 
